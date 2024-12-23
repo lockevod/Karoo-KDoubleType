@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ExtensionInfo
+    displayName="@string/extension_name"
+    icon="@drawable/ic_launcher"
+    id="kcustomfield"
+    scansDevices="false">
+    <DataType
+        description="@string/custom_double_description1"
+        displayName="@string/custom_double1"
+        graphical="true"
+        icon="@drawable/ic_launcher"
+        typeId="custom-one" />
+    <DataType
+        description="@string/custom_double_description2"
+        displayName="@string/custom_double2"
+        graphical="true"
+        icon="@drawable/ic_launcher"
+        typeId="custom-two" />
+</ExtensionInfo>

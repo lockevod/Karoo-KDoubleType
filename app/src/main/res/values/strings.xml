@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">KDouble Field</string>
+    <string name="extension_name">Karoo Double Field</string>
+    <string name="custom_double1">Custom Field One</string>
+    <string name="custom_double_description1">Karoo DualType One</string>
+    <string name="custom_double_description2">Karoo DualType Two</string>
+    <string name="custom_double2">Custom Field Two</string>
+</resources>
