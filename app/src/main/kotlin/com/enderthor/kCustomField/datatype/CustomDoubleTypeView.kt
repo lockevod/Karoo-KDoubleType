@@ -23,16 +23,20 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.color.ColorProvider
+import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxHeight
+import androidx.glance.layout.height
+
 
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun NumberWithIcon(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: Int) {
+fun NumberWithIcon(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: Int, iconColorLeft: Color, iconColorRight: Color) {
+
+
     Box(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .padding(start = 3.dp, top = 10.dp, end = 3.dp, bottom = 15.dp),
+        modifier = GlanceModifier.fillMaxSize()
+        .padding(start = 3.dp, top = 8.dp, end = 3.dp, bottom = 14.dp)
 
     ) {
         Row(
@@ -49,9 +53,10 @@ fun NumberWithIcon(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: 
                         provider = ImageProvider(leftIcon),
                         contentDescription = "Left Icon",
                         modifier = GlanceModifier.size(20.dp),
-                        colorFilter = ColorFilter.tint(ColorProvider(day = Color.Green, night = Color.Green))
+                        colorFilter = ColorFilter.tint(ColorProvider(day = iconColorLeft, night = iconColorLeft))
                     )
                 }
+                Spacer(modifier = GlanceModifier.height(5.dp))
                 Row(
                     modifier = GlanceModifier.fillMaxHeight().fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
@@ -80,9 +85,10 @@ fun NumberWithIcon(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: 
                         provider = ImageProvider(rightIcon),
                         contentDescription = "Right Icon",
                         modifier = GlanceModifier.size(20.dp),
-                        colorFilter = ColorFilter.tint(ColorProvider(day = Color.Green, night = Color.Green))
+                        colorFilter = ColorFilter.tint(ColorProvider(day = iconColorRight, night = iconColorRight))
                     )
                 }
+                Spacer(modifier = GlanceModifier.height(5.dp))
                 Row(
                     modifier = GlanceModifier.fillMaxHeight().fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,

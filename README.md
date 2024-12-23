@@ -43,6 +43,7 @@ You can configure left and right sides in configuration tab.
 
 - Made possible by the generous usage terms of timklge (apache 2.0). He has a great development and I use part of his code to create this extension.
   https://github.com/timklge?tab=repositories
+- Thanks to valterc for the great ki2 app. Colors file is from his app.
 - Thanks to Hammerhead for the great Karoo device.
 - Thanks to DC Rainmaker for the great guide to sideload apps.
 - Thanks to Boxicons for the great icons.

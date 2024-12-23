@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.combine
 import com.enderthor.kCustomField.extensions.streamSettings
 import com.enderthor.kCustomField.extensions.streamDataFlow
 import kotlinx.coroutines.flow.map
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.graphics.Color
 import timber.log.Timber
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
@@ -72,10 +74,12 @@ class CustomDoubleType1(
                         .collect { (settings, left: StreamState, right: StreamState) ->
                             val leftValue = if (left is StreamState.Streaming) left.dataPoint.singleValue!!.toInt() % 1000 else 0
                             val rightValue = if (right is StreamState.Streaming) right.dataPoint.singleValue!!.toInt() % 1000 else 0
+                            val colorleft = Color(ContextCompat.getColor(context,settings.customleft1.color))
+                            val colorright = Color(ContextCompat.getColor(context,settings.customright1.color))
 
                             Timber.d("Updating view ($emitter) with $leftValue and $rightValue")
                             val result = glance.compose(context, DpSize.Unspecified) {
-                                NumberWithIcon(leftValue, rightValue, settings.customleft1.icon, settings.customright1.icon)
+                                NumberWithIcon(leftValue, rightValue, settings.customleft1.icon, settings.customright1.icon,colorleft,colorright)
                             }
                             emitter.updateView(result.remoteViews)
                         }

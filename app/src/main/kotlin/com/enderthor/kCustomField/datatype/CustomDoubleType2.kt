@@ -1,7 +1,9 @@
 package com.enderthor.kCustomField.datatype
 
 import android.content.Context
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
+import androidx.core.content.ContextCompat
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import androidx.glance.appwidget.GlanceRemoteViews
 import io.hammerhead.karooext.KarooSystemService
@@ -72,10 +74,12 @@ class CustomDoubleType2(
                         .collect { (settings, left: StreamState, right: StreamState) ->
                             val leftValue = if (left is StreamState.Streaming) left.dataPoint.singleValue!!.toInt() % 1000 else 0
                             val rightValue = if (right is StreamState.Streaming) right.dataPoint.singleValue!!.toInt() % 1000 else 0
+                            val colorleft = Color(ContextCompat.getColor(context,settings.customleft2.color))
+                            val colorright = Color(ContextCompat.getColor(context,settings.customright2.color))
 
                             Timber.d("Updating view ($emitter) with $leftValue and $rightValue")
                             val result = glance.compose(context, DpSize.Unspecified) {
-                                NumberWithIcon(leftValue, rightValue, settings.customleft2.icon, settings.customright2.icon)
+                                NumberWithIcon(leftValue, rightValue, settings.customleft2.icon, settings.customright2.icon,colorleft,colorright)
                             }
                             emitter.updateView(result.remoteViews)
                         }

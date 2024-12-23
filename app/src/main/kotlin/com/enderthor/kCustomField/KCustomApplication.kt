@@ -11,6 +11,7 @@ class KCustomApplication : Application() {
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
+       // Timber.plant(Timber.DebugTree())
         Timber.Forest.d("Starting KCustom App")
     }
 }
