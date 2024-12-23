@@ -37,7 +37,6 @@ You can configure left and right sides in configuration tab.
 
 ## Know Bugs
 - The max number of every field is 3 digits, but it's better if you don't mix two types with 3 digits always.
-- Field in Map page has to be improved.
 
 
 ## Credits
