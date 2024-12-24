@@ -1,6 +1,5 @@
 package com.enderthor.kCustomField.datatype
 
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -29,17 +28,48 @@ import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.height
 import androidx.glance.layout.width
+import timber.log.Timber
 
 
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun NumberWithIcon(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: Int, iconColorLeft: Color, iconColorRight: Color) {
+fun NumberWithIcon(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: Int, iconColorLeft: Color, iconColorRight: Color,isVertical:Boolean) {
 
+    Timber.d("NumberWithIcon isvertical: $isVertical")
+    if (isVertical) {
+        Box(modifier = GlanceModifier.fillMaxWidth().height(8.dp))
+        {
+            Row(
+                modifier = GlanceModifier.fillMaxSize(),
+            ) {
+                Column(
+                    modifier = GlanceModifier.defaultWeight(),
+                ) {
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                    ) {
+                    }
+                }
+                Spacer(
+                    modifier = GlanceModifier.fillMaxHeight().width(1.dp)
+                        .background(ColorProvider(Color.Black, Color.White))
+                )
+                Column(
+                    modifier = GlanceModifier.defaultWeight(),
+                ) {
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                    ) {
 
+                    }
+                }
+            }
+        }
+    }
     Box(
         modifier = GlanceModifier.fillMaxSize()
-        .padding(start = 3.dp, top = 8.dp, end = 3.dp, bottom = 14.dp)
+        .padding(start = 3.dp,  end = 3.dp)
 
     ) {
         Row(
@@ -76,7 +106,7 @@ fun NumberWithIcon(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: 
                     )
                 }
             }
-            //Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(ColorProvider(Color.Black, Color.White)))
+           if(isVertical) Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(ColorProvider(Color.Black, Color.White)))
             Column(
                 modifier = GlanceModifier.defaultWeight(),
             ) {
@@ -107,6 +137,36 @@ fun NumberWithIcon(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: 
                             color = ColorProvider(Color.Black, Color.White)
                         )
                     )
+                }
+            }
+        }
+    }
+    if (isVertical) {
+        Box(modifier = GlanceModifier.fillMaxWidth().height(14.dp))
+        {
+            Row(
+                modifier = GlanceModifier.fillMaxSize(),
+            ) {
+                Column(
+                    modifier = GlanceModifier.defaultWeight(),
+                ) {
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                    ) {
+                    }
+                }
+                Spacer(
+                    modifier = GlanceModifier.fillMaxHeight().width(1.dp)
+                        .background(ColorProvider(Color.Black, Color.White))
+                )
+                Column(
+                    modifier = GlanceModifier.defaultWeight(),
+                ) {
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                    ) {
+
+                    }
                 }
             }
         }

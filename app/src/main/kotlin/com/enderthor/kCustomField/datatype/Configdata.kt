@@ -1,6 +1,5 @@
 package com.enderthor.kCustomField.datatype
 
-import android.health.connect.datatypes.ExerciseRoute
 import io.hammerhead.karooext.models.DataType
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -24,15 +23,6 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     //AVERAGE_PEDAL_BALANCE(DataType.Type.AVERAGE_PEDAL_POWER_BALANCE,"Avg Pedal Balance",R.drawable.ic_pedal_balance,R.color.hh_success_green_400,"none"),
 }
 
-enum class KarooUnits(val action: String) {
-    LEFT1("customleft1"),
-    RIGHT1("customright1"),
-    LEFT2("customleft2"),
-    RIGHT2("customright2"),
-}
-
-
-
 @Serializable
 data class CustomFieldSettings(
     val customleft1: KarooAction,
@@ -43,7 +33,9 @@ data class CustomFieldSettings(
     val customright1zone: Boolean,
     val customleft2zone: Boolean,
     val customright2zone: Boolean,
+    val isvertical1: Boolean,
+    val isvertical2: Boolean,
 )
 
-val defaultSettings = Json.encodeToString(CustomFieldSettings(KarooAction.HR, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.SLOPE, false, false, false, false))
+val defaultSettings = Json.encodeToString(CustomFieldSettings(KarooAction.HR, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.SLOPE, false, false, false, false, false,false))
 

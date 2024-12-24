@@ -10,9 +10,7 @@ import com.enderthor.kCustomField.datatype.defaultSettings
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.KarooEvent
 import io.hammerhead.karooext.models.OnStreamState
-import io.hammerhead.karooext.models.RideState
 import io.hammerhead.karooext.models.StreamState
-import io.hammerhead.karooext.models.UserProfile
 
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
@@ -29,12 +27,14 @@ val jsonWithUnknownKeys = Json { ignoreUnknownKeys = true }
 val settingsKey = stringPreferencesKey("settings")
 
 suspend fun saveSettings(context: Context, settings: CustomFieldSettings) {
+    Timber.d("saveSettings IN $settings")
     context.dataStore.edit { t ->
         t[settingsKey] = Json.encodeToString(settings)
     }
 }
 
-fun Context.streamSettings(karooSystemService: KarooSystemService): Flow<CustomFieldSettings> {
+fun Context.streamSettings(): Flow<CustomFieldSettings> {
+    Timber.d("streamSettings IN")
     return dataStore.data.map { settingsJson ->
         try {
             jsonWithUnknownKeys.decodeFromString<CustomFieldSettings>(
@@ -51,29 +51,6 @@ fun KarooSystemService.streamDataFlow(dataTypeId: String): Flow<StreamState> {
     return callbackFlow<StreamState> {
         val listenerId = addConsumer(OnStreamState.StartStreaming(dataTypeId)) { event: OnStreamState ->
             trySendBlocking(event.state)
-        }
-        awaitClose {
-            removeConsumer(listenerId)
-        }
-    }
-}
-
-
-fun KarooSystemService.streamRideState(): Flow<RideState> {
-    return callbackFlow {
-        val listenerId = addConsumer { rideState: RideState ->
-            trySendBlocking(rideState)
-        }
-        awaitClose {
-            removeConsumer(listenerId)
-        }
-    }
-}
-
-fun KarooSystemService.streamUserProfile(): Flow<UserProfile> {
-    return callbackFlow {
-        val listenerId = addConsumer { userProfile: UserProfile ->
-            trySendBlocking(userProfile)
         }
         awaitClose {
             removeConsumer(listenerId)

@@ -3,6 +3,7 @@ package com.enderthor.kCustomField.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +21,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 
 
 import androidx.compose.material3.Tab
@@ -35,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 import androidx.compose.ui.platform.LocalContext
@@ -48,9 +51,9 @@ import com.enderthor.kCustomField.datatype.KarooAction
 
 import com.enderthor.kCustomField.extensions.saveSettings
 import com.enderthor.kCustomField.extensions.streamSettings
-import io.hammerhead.karooext.KarooSystemService
 
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 
 @Composable
@@ -87,7 +90,6 @@ fun Config() {
 
     val ctx = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val karooSystem = remember { KarooSystemService(ctx) }
 
     var bottomleft1 by remember { mutableStateOf(KarooAction.SPEED) }
     var bottomright1 by remember { mutableStateOf(KarooAction.SPEED) }
@@ -97,12 +99,14 @@ fun Config() {
     var customright1zone by remember { mutableStateOf(false) }
     var customleft2zone by remember { mutableStateOf(false) }
     var customright2zone by remember { mutableStateOf(false) }
+    var isverticalfield1 by remember { mutableStateOf(false) }
+    var isverticalfield2 by remember { mutableStateOf(false) }
 
 
     var savedDialogVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        ctx.streamSettings(karooSystem).collect { settings ->
+        ctx.streamSettings().collect { settings ->
 
             bottomright1 = settings.customright1
             bottomleft1 = settings.customleft1
@@ -112,6 +116,8 @@ fun Config() {
             customright1zone = settings.customright1zone
             customleft2zone = settings.customleft2zone
             customright2zone = settings.customright2zone
+            isverticalfield1 = settings.isvertical1
+            isverticalfield2 = settings.isvertical2
         }
     }
 
@@ -125,7 +131,6 @@ fun Config() {
             .fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
             TopAppBar(title = { Text("Custom Field 1") })
-            Spacer(modifier = Modifier.height(2.dp))
 
                 apply {
                     val dropdownOptions = KarooAction.entries.toList()
@@ -159,50 +164,64 @@ fun Config() {
                     }
                 }
 
-            TopAppBar(title = { Text("Custom Field 2") })
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = isverticalfield1, onCheckedChange = {
+                        isverticalfield1 = it
+                    })
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text("Vertical Divider?")
+                }
             Spacer(modifier = Modifier.height(2.dp))
+            TopAppBar(title = { Text("Custom Field 2") })
 
-            apply {
-                val dropdownOptions = KarooAction.entries.toList()
-                    .map { unit -> DropdownOption(unit.action.toString(), unit.label) }
-                val dropdownInitialSelection by remember(bottomleft2) {
-                    mutableStateOf(dropdownOptions.find { option -> option.id == bottomleft2.action.toString() }!!)
+                apply {
+                    val dropdownOptions = KarooAction.entries.toList()
+                        .map { unit -> DropdownOption(unit.action.toString(), unit.label) }
+                    val dropdownInitialSelection by remember(bottomleft2) {
+                        mutableStateOf(dropdownOptions.find { option -> option.id == bottomleft2.action.toString() }!!)
+                    }
+                    KarooKeyDropdown(
+                        remotekey = "Left",
+                        options = dropdownOptions,
+                        selectedOption = dropdownInitialSelection
+                    ) { selectedOption ->
+                        bottomleft2 =
+                            KarooAction.entries.find { unit -> unit.action == selectedOption.id }!!
+                    }
                 }
-                KarooKeyDropdown(
-                    remotekey = "Left",
-                    options = dropdownOptions,
-                    selectedOption = dropdownInitialSelection
-                ) { selectedOption ->
-                    bottomleft2 =
-                        KarooAction.entries.find { unit -> unit.action == selectedOption.id }!!
+
+                apply {
+                    val dropdownOptions = KarooAction.entries.toList()
+                        .map { unit -> DropdownOption(unit.action.toString(), unit.label) }
+                    val dropdownInitialSelection by remember(bottomright2) {
+                        mutableStateOf(dropdownOptions.find { option -> option.id == bottomright2.action.toString() }!!)
+                    }
+                    KarooKeyDropdown(
+                        remotekey = "Right",
+                        options = dropdownOptions,
+                        selectedOption = dropdownInitialSelection
+                    ) { selectedOption ->
+                        bottomright2 =
+                            KarooAction.entries.find { unit -> unit.action == selectedOption.id }!!
+                    }
                 }
-            }
 
-            apply {
-                val dropdownOptions = KarooAction.entries.toList()
-                    .map { unit -> DropdownOption(unit.action.toString(), unit.label) }
-                val dropdownInitialSelection by remember(bottomright2) {
-                    mutableStateOf(dropdownOptions.find { option -> option.id == bottomright2.action.toString() }!!)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = isverticalfield2, onCheckedChange = { isverticalfield2 = it })
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Timber.d("isverticalfield2: $isverticalfield2")
+                    Text("Vertical Divider?")
                 }
-                KarooKeyDropdown(
-                    remotekey = "Right",
-                    options = dropdownOptions,
-                    selectedOption = dropdownInitialSelection
-                ) { selectedOption ->
-                    bottomright2 =
-                        KarooAction.entries.find { unit -> unit.action == selectedOption.id }!!
-                }
-            }
-
-
-
+            Timber.d("isverticalfield1: $isverticalfield1")
+            Timber.d("isverticalfield2 LATER: $isverticalfield2")
             FilledTonalButton(modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp), onClick = {
                 val newSettings =
                     CustomFieldSettings(
                         customleft1 = bottomleft1, customright1 = bottomright1, customleft2 = bottomleft2, customright2 = bottomright2,
-                        customleft1zone = customleft1zone, customright1zone = customright1zone, customleft2zone = customleft2zone, customright2zone = customright2zone
+                        customleft1zone = customleft1zone, customright1zone = customright1zone, customleft2zone = customleft2zone, customright2zone = customright2zone,
+                        isvertical1 = isverticalfield1, isvertical2 = isverticalfield2
                     )
 
                 coroutineScope.launch {

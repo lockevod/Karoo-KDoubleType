@@ -35,7 +35,7 @@ class CustomDoubleType2(
         Timber.d("start double type stream")
 
         val job = CoroutineScope(Dispatchers.IO).launch {
-            context.streamSettings(karooSystem)
+            context.streamSettings()
                 .map { settings -> settings.customleft2.action to settings.customright2.action }
                 .collect { (leftAction, rightAction) ->
                     karooSystem.streamDataFlow(leftAction)
@@ -45,7 +45,7 @@ class CustomDoubleType2(
                             val rightValue = if (right is StreamState.Streaming) right.dataPoint.singleValue!! else 0.0
                                    // val value = leftValue + rightValue
 
-                            Timber.d("Updating stream with $leftValue and $rightValue")
+                            //Timber.d("Updating stream with $leftValue and $rightValue")
                             emitter.onNext(
                                 StreamState.Streaming(
                                     DataPoint(
@@ -82,7 +82,7 @@ class CustomDoubleType2(
 
         val job = CoroutineScope(Dispatchers.IO).launch {
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
-            context.streamSettings(karooSystem)
+            context.streamSettings()
                 .map { settings -> Triple(settings, settings.customleft2.action, settings.customright2.action) }
                 .collect { (settings, leftAction, rightAction) ->
                     karooSystem.streamDataFlow(leftAction)
@@ -96,9 +96,9 @@ class CustomDoubleType2(
                             val colorleft = Color(ContextCompat.getColor(context,settings.customleft2.color))
                             val colorright = Color(ContextCompat.getColor(context,settings.customright2.color))
 
-                            Timber.d("Updating view ($emitter) with $leftValue and $rightValue")
+                            //Timber.d("Updating view ($emitter) with $leftValue and $rightValue")
                             val result = glance.compose(context, DpSize.Unspecified) {
-                                NumberWithIcon(leftValue, rightValue, settings.customleft2.icon, settings.customright2.icon,colorleft,colorright)
+                                NumberWithIcon(leftValue, rightValue, settings.customleft2.icon, settings.customright2.icon,colorleft,colorright,settings.isvertical2)
                             }
                             emitter.updateView(result.remoteViews)
                         }

@@ -36,7 +36,7 @@ class CustomDoubleType1(
 
         val job = CoroutineScope(Dispatchers.IO).launch {
 
-            context.streamSettings(karooSystem)
+            context.streamSettings()
                 .map { settings -> settings.customleft1.action to settings.customright1.action }
                 .collect { (leftAction, rightAction) ->
                     karooSystem.streamDataFlow(leftAction)
@@ -68,7 +68,7 @@ class CustomDoubleType1(
             emitter.onNext(UpdateGraphicConfig(showHeader = false))
             awaitCancellation()
         }
-        Timber.d("Starting double type view with $emitter and config $config")
+       // Timber.d("Starting double type view with $emitter and config $config")
         fun convertValue(streamState: StreamState, convert: String, unitType: UserProfile.PreferredUnit.UnitType): Int {
             val value = if (streamState is StreamState.Streaming) streamState.dataPoint.singleValue!! else 0.0
             return when (convert) {
@@ -83,27 +83,25 @@ class CustomDoubleType1(
         val job = CoroutineScope(Dispatchers.IO).launch {
 
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
-            context.streamSettings(karooSystem)
-                .map { settings -> Triple(settings, settings.customleft1.action, settings.customright1.action) }
-                .collect { (settings, leftAction, rightAction) ->
+
+            context.streamSettings()
+                .map { setting-> Triple(setting, setting.customleft1.action, setting.customright1.action) }
+                .collect { (setting, leftAction, rightAction) ->
                     karooSystem.streamDataFlow(leftAction)
-                        .combine(karooSystem.streamDataFlow(rightAction)) { left: StreamState, right: StreamState -> Triple(settings, left, right) }
+                        .combine(karooSystem.streamDataFlow(rightAction)) { left: StreamState, right: StreamState -> Triple(setting, left, right) }
                         .collect { (settings, left: StreamState, right: StreamState) ->
 
 
                             val leftValue = convertValue(left, settings.customleft1.convert, userProfile.preferredUnit.distance)
                             val rightValue = convertValue(right, settings.customright1.convert, userProfile.preferredUnit.distance)
-
-                            val temp = if (left is StreamState.Streaming) left.dataPoint.singleValue!! else 0.0
-                            val temp2 = if (right is StreamState.Streaming) right.dataPoint.singleValue!! else 0.0
-                           // val leftValue = if (left is StreamState.Streaming) left.dataPoint.singleValue!!.toInt() % 1000 else 0
-                            //val rightValue = if (right is StreamState.Streaming) right.dataPoint.singleValue!!.toInt() % 1000 else 0
                             val colorleft = Color(ContextCompat.getColor(context,settings.customleft1.color))
                             val colorright = Color(ContextCompat.getColor(context,settings.customright1.color))
 
+
                             //Timber.d("Updating view  with LEFT Action $leftAction and values $temp and $leftValue  RIGHT action $rightAction and values $temp2 and $rightValue")
+                            Timber.d("Updating view  with vertical Field 1 is ${settings.isvertical1}")
                             val result = glance.compose(context, DpSize.Unspecified) {
-                                NumberWithIcon(leftValue, rightValue, settings.customleft1.icon, settings.customright1.icon,colorleft,colorright)
+                                NumberWithIcon(leftValue, rightValue, settings.customleft1.icon, settings.customright1.icon,colorleft,colorright, settings.isvertical1)
                             }
                             emitter.updateView(result.remoteViews)
                         }
