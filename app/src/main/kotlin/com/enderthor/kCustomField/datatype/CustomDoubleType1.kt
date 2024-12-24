@@ -16,6 +16,8 @@ import com.enderthor.kCustomField.extensions.streamDataFlow
 import kotlinx.coroutines.flow.map
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.graphics.Color
+import androidx.glance.ColorFilter
+import androidx.glance.color.ColorProvider
 import com.enderthor.kCustomField.extensions.consumerFlow
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
@@ -94,8 +96,10 @@ class CustomDoubleType1(
 
                             val leftValue = convertValue(left, settings.customleft1.convert, userProfile.preferredUnit.distance)
                             val rightValue = convertValue(right, settings.customright1.convert, userProfile.preferredUnit.distance)
-                            val colorleft = Color(ContextCompat.getColor(context,settings.customleft1.color))
-                            val colorright = Color(ContextCompat.getColor(context,settings.customright1.color))
+
+
+                            val colorleft= ColorFilter.tint(ColorProvider(day = Color(ContextCompat.getColor(context, settings.customleft1.colorday)), night = Color(ContextCompat.getColor(context, settings.customleft1.colornight))))
+                            val colorright= ColorFilter.tint(ColorProvider(day = Color(ContextCompat.getColor(context,settings.customright1.colorday)), night = Color(ContextCompat.getColor(context,settings.customright1.colornight))))
 
 
                             //Timber.d("Updating view  with LEFT Action $leftAction and values $temp and $leftValue  RIGHT action $rightAction and values $temp2 and $rightValue")

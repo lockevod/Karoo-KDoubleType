@@ -28,13 +28,14 @@ import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.height
 import androidx.glance.layout.width
+import androidx.glance.unit.ColorProvider
 import timber.log.Timber
 
 
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun NumberWithIcon(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: Int, iconColorLeft: Color, iconColorRight: Color,isVertical:Boolean) {
+fun NumberWithIcon(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: Int, iconColorLeft: ColorFilter, iconColorRight: ColorFilter,isVertical:Boolean) {
 
     Timber.d("NumberWithIcon isvertical: $isVertical")
     if (isVertical) {
@@ -86,7 +87,7 @@ fun NumberWithIcon(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: 
                         provider = ImageProvider(leftIcon),
                         contentDescription = "Left Icon",
                         modifier = GlanceModifier.size(20.dp),
-                        colorFilter = ColorFilter.tint(ColorProvider(day = iconColorLeft, night = iconColorLeft))
+                        colorFilter = iconColorLeft
                     )
                 }
                 Spacer(modifier = GlanceModifier.height(5.dp))
@@ -119,7 +120,7 @@ fun NumberWithIcon(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: 
                         provider = ImageProvider(rightIcon),
                         contentDescription = "Right Icon",
                         modifier = GlanceModifier.size(20.dp),
-                        colorFilter = ColorFilter.tint(ColorProvider(day = iconColorRight, night = iconColorRight))
+                        colorFilter = iconColorRight
                     )
                 }
                 Spacer(modifier = GlanceModifier.height(5.dp))

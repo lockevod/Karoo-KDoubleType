@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.core.content.ContextCompat
+import androidx.glance.ColorFilter
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import androidx.glance.appwidget.GlanceRemoteViews
+import androidx.glance.color.ColorProvider
 import com.enderthor.kCustomField.extensions.consumerFlow
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.DataTypeImpl
@@ -91,10 +93,10 @@ class CustomDoubleType2(
 
                             val leftValue = convertValue(left, settings.customleft2.convert, userProfile.preferredUnit.distance)
                             val rightValue = convertValue(right, settings.customright2.convert, userProfile.preferredUnit.distance)
-                          //  val leftValue = if (left is StreamState.Streaming) left.dataPoint.singleValue!!.toInt() % 1000 else 0
-                           // val rightValue = if (right is StreamState.Streaming) right.dataPoint.singleValue!!.toInt() % 1000 else 0
-                            val colorleft = Color(ContextCompat.getColor(context,settings.customleft2.color))
-                            val colorright = Color(ContextCompat.getColor(context,settings.customright2.color))
+
+                            val colorleft= ColorFilter.tint(ColorProvider(day = Color(ContextCompat.getColor(context,settings.customleft2.colorday)), night = Color(ContextCompat.getColor(context,settings.customleft2.colornight))))
+                            val colorright= ColorFilter.tint(ColorProvider(day = Color(ContextCompat.getColor(context,settings.customright2.colorday)), night = Color(ContextCompat.getColor(context,settings.customright2.colornight))))
+
 
                             //Timber.d("Updating view ($emitter) with $leftValue and $rightValue")
                             val result = glance.compose(context, DpSize.Unspecified) {
