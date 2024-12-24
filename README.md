@@ -2,13 +2,12 @@
 
 > [!WARNING]  
 > This app is currently in beta stage and its main features might not work at all.
-> There is a bug in version 1.0 and 1.1 with speed and distance. I'll solve next day and update the apk
-
 
 KDoubleType allows to use custom fields with double types (HR,Power,etc)
 
 ## Requirements
 - Karoo (tested on last Karoo ) with version 1.524.2003 or later
+- Tested with Karoo 3 and metric configuration
 
 ## Installation
 
