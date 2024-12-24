@@ -16,7 +16,10 @@ import com.enderthor.kCustomField.extensions.streamDataFlow
 import kotlinx.coroutines.flow.map
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.graphics.Color
+import com.enderthor.kCustomField.extensions.consumerFlow
+import kotlinx.coroutines.flow.first
 import timber.log.Timber
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
 class CustomDoubleType1(
@@ -30,8 +33,10 @@ class CustomDoubleType1(
 
     override fun startStream(emitter: Emitter<StreamState>) {
         Timber.d("start double type stream")
+
         val job = CoroutineScope(Dispatchers.IO).launch {
-            context.streamSettings()
+
+            context.streamSettings(karooSystem)
                 .map { settings -> settings.customleft1.action to settings.customright1.action }
                 .collect { (leftAction, rightAction) ->
                     karooSystem.streamDataFlow(leftAction)
@@ -41,7 +46,7 @@ class CustomDoubleType1(
                             val rightValue = if (right is StreamState.Streaming) right.dataPoint.singleValue!! else 0.0
                                    // val value = leftValue + rightValue
 
-                            Timber.d("Updating stream with $leftValue and $rightValue")
+                            //Timber.d("Updating stream with $leftValue and $rightValue")
                             emitter.onNext(
                                 StreamState.Streaming(
                                     DataPoint(
@@ -64,20 +69,39 @@ class CustomDoubleType1(
             awaitCancellation()
         }
         Timber.d("Starting double type view with $emitter and config $config")
+        fun convertValue(streamState: StreamState, convert: String, unitType: UserProfile.PreferredUnit.UnitType): Int {
+            val value = if (streamState is StreamState.Streaming) streamState.dataPoint.singleValue!! else 0.0
+            return when (convert) {
+                "distance", "speed" -> when (unitType) {
+                    UserProfile.PreferredUnit.UnitType.METRIC -> if (convert == "distance") (value / 1000).roundToInt() else (value * 18 / 5).roundToInt()
+                    UserProfile.PreferredUnit.UnitType.IMPERIAL -> if (convert == "distance") (value / 1609.345).roundToInt() else (value * 0.0568182).roundToInt()
+                }
+                else -> value.roundToInt()
+            }
+        }
 
         val job = CoroutineScope(Dispatchers.IO).launch {
-            context.streamSettings()
+
+            val userProfile = karooSystem.consumerFlow<UserProfile>().first()
+            context.streamSettings(karooSystem)
                 .map { settings -> Triple(settings, settings.customleft1.action, settings.customright1.action) }
                 .collect { (settings, leftAction, rightAction) ->
                     karooSystem.streamDataFlow(leftAction)
                         .combine(karooSystem.streamDataFlow(rightAction)) { left: StreamState, right: StreamState -> Triple(settings, left, right) }
                         .collect { (settings, left: StreamState, right: StreamState) ->
-                            val leftValue = if (left is StreamState.Streaming) left.dataPoint.singleValue!!.toInt() % 1000 else 0
-                            val rightValue = if (right is StreamState.Streaming) right.dataPoint.singleValue!!.toInt() % 1000 else 0
+
+
+                            val leftValue = convertValue(left, settings.customleft1.convert, userProfile.preferredUnit.distance)
+                            val rightValue = convertValue(right, settings.customright1.convert, userProfile.preferredUnit.distance)
+
+                            val temp = if (left is StreamState.Streaming) left.dataPoint.singleValue!! else 0.0
+                            val temp2 = if (right is StreamState.Streaming) right.dataPoint.singleValue!! else 0.0
+                           // val leftValue = if (left is StreamState.Streaming) left.dataPoint.singleValue!!.toInt() % 1000 else 0
+                            //val rightValue = if (right is StreamState.Streaming) right.dataPoint.singleValue!!.toInt() % 1000 else 0
                             val colorleft = Color(ContextCompat.getColor(context,settings.customleft1.color))
                             val colorright = Color(ContextCompat.getColor(context,settings.customright1.color))
 
-                            Timber.d("Updating view ($emitter) with $leftValue and $rightValue")
+                            //Timber.d("Updating view  with LEFT Action $leftAction and values $temp and $leftValue  RIGHT action $rightAction and values $temp2 and $rightValue")
                             val result = glance.compose(context, DpSize.Unspecified) {
                                 NumberWithIcon(leftValue, rightValue, settings.customleft1.icon, settings.customright1.icon,colorleft,colorright)
                             }

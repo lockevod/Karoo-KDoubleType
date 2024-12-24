@@ -1,5 +1,6 @@
 package com.enderthor.kCustomField.datatype
 
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -8,6 +9,7 @@ import androidx.glance.ColorFilter
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -26,6 +28,7 @@ import androidx.glance.color.ColorProvider
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.height
+import androidx.glance.layout.width
 
 
 @OptIn(ExperimentalGlancePreviewApi::class)
@@ -73,6 +76,7 @@ fun NumberWithIcon(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: 
                     )
                 }
             }
+            //Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(ColorProvider(Color.Black, Color.White)))
             Column(
                 modifier = GlanceModifier.defaultWeight(),
             ) {

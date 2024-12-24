@@ -54,4 +54,14 @@
     <color name="battery_border_dark">#FFD0D0D0</color>
     <color name="battery_background_dark">#70E0E0E0</color>
 
+    <color name="zone0">#2386D9</color>
+    <color name="zone1">#00B988</color>
+    <color name="zone2">#60EEB2</color>
+    <color name="zone3">#FFF500</color>
+    <color name="zone4">#FDC84C</color>
+    <color name="zone5">#FB8C65</color>
+    <color name="zone6">#FE581F</color>
+    <color name="zone7">#D60404</color>
+    <color name="zone8">#B700A2</color>
+
 </resources>

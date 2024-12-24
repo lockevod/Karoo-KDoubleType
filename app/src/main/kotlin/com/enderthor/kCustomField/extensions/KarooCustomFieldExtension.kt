@@ -1,13 +1,15 @@
 package com.enderthor.kCustomField.extensions
 
-
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import com.enderthor.kCustomField.datatype.CustomDoubleType1
 import com.enderthor.kCustomField.datatype.CustomDoubleType2
 import com.enderthor.kCustomField.datatype.CustomFieldSettings
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
-
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +18,9 @@ import kotlinx.coroutines.Job
 
 import timber.log.Timber
 
-class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.0-beta") {
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
+class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.2") {
 
     lateinit var karooSystem: KarooSystemService
     private var serviceJob: Job? = null
@@ -33,7 +37,6 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.0-beta") {
         super.onCreate()
         karooSystem = KarooSystemService(applicationContext)
 
-
         Timber.d("Service created")
 
         serviceJob = CoroutineScope(Dispatchers.IO).launch {
@@ -42,9 +45,7 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.0-beta") {
                     Timber.d("Connected to Karoo system")
                 }
             }
-            CoroutineScope(Dispatchers.IO).launch {
-                saveSettings(applicationContext, CustomFieldSettings())
-            }
+
         }
     }
 

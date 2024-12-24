@@ -48,15 +48,13 @@ import com.enderthor.kCustomField.datatype.KarooAction
 
 import com.enderthor.kCustomField.extensions.saveSettings
 import com.enderthor.kCustomField.extensions.streamSettings
-
+import io.hammerhead.karooext.KarooSystemService
 
 import kotlinx.coroutines.launch
 
 
-
 @Composable
-fun TabLayout(
-) {
+fun TabLayout() {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf( "Conf Custom Field")
 
@@ -89,22 +87,31 @@ fun Config() {
 
     val ctx = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val karooSystem = remember { KarooSystemService(ctx) }
 
-    var bottomleft1 by remember { mutableStateOf(KarooAction.HR) }
+    var bottomleft1 by remember { mutableStateOf(KarooAction.SPEED) }
     var bottomright1 by remember { mutableStateOf(KarooAction.SPEED) }
-    var bottomleft2 by remember { mutableStateOf(KarooAction.HR) }
-    var bottomright2 by remember { mutableStateOf(KarooAction.SPEED) }
+    var bottomleft2 by remember { mutableStateOf(KarooAction.CADENCE) }
+    var bottomright2 by remember { mutableStateOf(KarooAction.SLOPE) }
+    var customleft1zone by remember { mutableStateOf(false) }
+    var customright1zone by remember { mutableStateOf(false) }
+    var customleft2zone by remember { mutableStateOf(false) }
+    var customright2zone by remember { mutableStateOf(false) }
 
 
     var savedDialogVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        ctx.streamSettings().collect { settings ->
+        ctx.streamSettings(karooSystem).collect { settings ->
 
             bottomright1 = settings.customright1
             bottomleft1 = settings.customleft1
             bottomright2 = settings.customright2
             bottomleft2 = settings.customleft2
+            customleft1zone = settings.customleft1zone
+            customright1zone = settings.customright1zone
+            customleft2zone = settings.customleft2zone
+            customright2zone = settings.customright2zone
         }
     }
 
@@ -118,7 +125,7 @@ fun Config() {
             .fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
             TopAppBar(title = { Text("Custom Field 1") })
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
                 apply {
                     val dropdownOptions = KarooAction.entries.toList()
@@ -153,7 +160,7 @@ fun Config() {
                 }
 
             TopAppBar(title = { Text("Custom Field 2") })
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
             apply {
                 val dropdownOptions = KarooAction.entries.toList()
@@ -194,7 +201,8 @@ fun Config() {
                 .height(50.dp), onClick = {
                 val newSettings =
                     CustomFieldSettings(
-                        customleft1 = bottomleft1, customright1 = bottomright1, customleft2 = bottomleft2, customright2 = bottomright2
+                        customleft1 = bottomleft1, customright1 = bottomright1, customleft2 = bottomleft2, customright2 = bottomright2,
+                        customleft1zone = customleft1zone, customright1zone = customright1zone, customleft2zone = customleft2zone, customright2zone = customright2zone
                     )
 
                 coroutineScope.launch {
