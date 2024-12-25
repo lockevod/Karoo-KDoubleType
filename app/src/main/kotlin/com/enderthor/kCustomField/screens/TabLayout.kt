@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.glance.appwidget.components.TitleBar
 
 import com.enderthor.kCustomField.datatype.CustomFieldSettings
 import com.enderthor.kCustomField.datatype.KarooAction
@@ -101,6 +102,16 @@ fun Config() {
     var customright2zone by remember { mutableStateOf(false) }
     var isverticalfield1 by remember { mutableStateOf(false) }
     var isverticalfield2 by remember { mutableStateOf(false) }
+    var bottomverticalleft1 by remember { mutableStateOf(KarooAction.SPEED) }
+    var bottomverticalright1 by remember { mutableStateOf(KarooAction.SPEED) }
+    var bottomverticalleft2 by remember { mutableStateOf(KarooAction.CADENCE) }
+    var bottomverticalright2 by remember { mutableStateOf(KarooAction.SLOPE) }
+    var customverticalleft1zone by remember { mutableStateOf(false) }
+    var customverticalright1zone by remember { mutableStateOf(false) }
+    var customverticalleft2zone by remember { mutableStateOf(false) }
+    var customverticalright2zone by remember { mutableStateOf(false) }
+    var ishorizontalfield1 by remember { mutableStateOf(false) }
+    var ishorizontalfield2 by remember { mutableStateOf(false) }
 
 
     var savedDialogVisible by remember { mutableStateOf(false) }
@@ -118,6 +129,50 @@ fun Config() {
             customright2zone = settings.customright2zone
             isverticalfield1 = settings.isvertical1
             isverticalfield2 = settings.isvertical2
+            bottomverticalright1 = settings.customverticalright1
+            bottomverticalleft1 = settings.customverticalleft1
+            bottomverticalright2 = settings.customverticalright2
+            bottomverticalleft2 = settings.customverticalleft2
+            customverticalleft1zone = settings.customverticalleft1zone
+            customverticalright1zone = settings.customverticalright1zone
+            customverticalleft2zone = settings.customverticalleft2zone
+            customverticalright2zone = settings.customverticalright2zone
+            ishorizontalfield1 = settings.ishorizontal1
+            ishorizontalfield2 = settings.ishorizontal2
+        }
+    }
+    LaunchedEffect(
+        bottomleft1, bottomleft2, bottomright1, bottomright2,
+        bottomverticalleft1, bottomverticalleft2, bottomverticalright1, bottomverticalright2,
+        customleft1zone, customright1zone, customleft2zone, customright2zone,
+        customverticalleft1zone, customverticalright1zone, customverticalleft2zone, customverticalright2zone
+    ) {
+        val actions = listOf(
+            bottomleft1 to { customleft1zone = false },
+            bottomleft2 to { customleft2zone = false },
+            bottomright1 to { customright1zone = false },
+            bottomright2 to { customright2zone = false },
+            bottomverticalleft1 to { customverticalleft1zone = false },
+            bottomverticalleft2 to { customverticalleft2zone = false },
+            bottomverticalright1 to { customverticalright1zone = false },
+            bottomverticalright2 to { customverticalright2zone = false }
+        )
+        actions.forEach { (action, applyzone) ->
+            if (action.zone == "none") applyzone()
+        }
+
+        val zones = listOf(
+            customleft1zone to { isverticalfield1 = true },
+            customright1zone to { isverticalfield1 = true },
+            customleft2zone to { isverticalfield2 = true },
+            customright2zone to { isverticalfield2 = true },
+            customverticalleft1zone to { isverticalfield1 = true },
+            customverticalright1zone to { isverticalfield1 = true },
+            customverticalleft2zone to { isverticalfield1 = true },
+            customverticalright2zone to { isverticalfield1 = true }
+        )
+        zones.forEach { (zone, setVerticalField) ->
+            if (zone) setVerticalField()
         }
     }
 
@@ -130,7 +185,7 @@ fun Config() {
             .verticalScroll(rememberScrollState())
             .fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
-            TopAppBar(title = { Text("Custom Field 1") })
+            TopAppBar(title = { Text("Horizontal Field 1") })
 
                 apply {
                     val dropdownOptions = KarooAction.entries.toList()
@@ -147,7 +202,13 @@ fun Config() {
                             KarooAction.entries.find { unit -> unit.action == selectedOption.id }!!
                     }
                 }
-
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = customleft1zone, onCheckedChange = {
+                        customleft1zone = it
+                    },enabled = bottomleft1.zone != "none")
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text("Coloured zone?")
+                }
                 apply {
                     val dropdownOptions = KarooAction.entries.toList()
                         .map { unit -> DropdownOption(unit.action.toString(), unit.label) }
@@ -165,14 +226,21 @@ fun Config() {
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = customright1zone, onCheckedChange = {
+                        customright1zone = it
+                    },enabled = bottomright1.zone != "none")
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text("Coloured zone?")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(checked = isverticalfield1, onCheckedChange = {
                         isverticalfield1 = it
-                    })
+                    }, enabled = !(customleft1zone || customright1zone))
                     Spacer(modifier = Modifier.width(10.dp))
                     Text("Vertical Divider?")
                 }
             Spacer(modifier = Modifier.height(2.dp))
-            TopAppBar(title = { Text("Custom Field 2") })
+            TopAppBar(title = { Text("Horizontal Field 2") })
 
                 apply {
                     val dropdownOptions = KarooAction.entries.toList()
@@ -188,6 +256,13 @@ fun Config() {
                         bottomleft2 =
                             KarooAction.entries.find { unit -> unit.action == selectedOption.id }!!
                     }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = customleft2zone, onCheckedChange = {
+                        customleft2zone = it
+                    },enabled = bottomleft2.zone != "none")
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text("Coloured zone?")
                 }
 
                 apply {
@@ -207,13 +282,133 @@ fun Config() {
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(checked = isverticalfield2, onCheckedChange = { isverticalfield2 = it })
+                    Switch(checked = customright2zone, onCheckedChange = {
+                        customright2zone = it
+                    },enabled = bottomright2.zone != "none")
                     Spacer(modifier = Modifier.width(10.dp))
-                    Timber.d("isverticalfield2: $isverticalfield2")
+                    Text("Coloured zone?")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = isverticalfield2, onCheckedChange = {
+                        isverticalfield2 = it
+                    }, enabled = !(customleft2zone || customright2zone))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text("Vertical Divider?")
                 }
-            Timber.d("isverticalfield1: $isverticalfield1")
-            Timber.d("isverticalfield2 LATER: $isverticalfield2")
+
+            TopAppBar(title = { Text("Vertical Field 1") })
+
+            apply {
+                val dropdownOptions = KarooAction.entries.toList()
+                    .map { unit -> DropdownOption(unit.action.toString(), unit.label) }
+                val dropdownInitialSelection by remember(bottomverticalleft1) {
+                    mutableStateOf(dropdownOptions.find { option -> option.id == bottomverticalleft1.action.toString() }!!)
+                }
+                KarooKeyDropdown(
+                    remotekey = "Left",
+                    options = dropdownOptions,
+                    selectedOption = dropdownInitialSelection
+                ) { selectedOption ->
+                    bottomverticalleft1 =
+                        KarooAction.entries.find { unit -> unit.action == selectedOption.id }!!
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = customverticalleft1zone, onCheckedChange = {
+                    customverticalleft1zone = it
+                },enabled = bottomverticalleft1.zone != "none")
+                Spacer(modifier = Modifier.width(10.dp))
+                Text("Coloured zone?")
+            }
+
+            apply {
+                val dropdownOptions = KarooAction.entries.toList()
+                    .map { unit -> DropdownOption(unit.action.toString(), unit.label) }
+                val dropdownInitialSelection by remember(bottomverticalright1) {
+                    mutableStateOf(dropdownOptions.find { option -> option.id == bottomverticalright1.action.toString() }!!)
+                }
+                KarooKeyDropdown(
+                    remotekey = "Right",
+                    options = dropdownOptions,
+                    selectedOption = dropdownInitialSelection
+                ) { selectedOption ->
+                    bottomverticalright1 =
+                        KarooAction.entries.find { unit -> unit.action == selectedOption.id }!!
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = customverticalright1zone, onCheckedChange = {
+                   customverticalright1zone = it
+                },enabled = bottomverticalright1.zone != "none")
+                Spacer(modifier = Modifier.width(10.dp))
+                Text("Coloured zone?")
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = ishorizontalfield1, onCheckedChange = {
+                    ishorizontalfield1 = it
+                }, enabled = !(customverticalright1zone || customverticalleft1zone))
+                Spacer(modifier = Modifier.width(10.dp))
+                Text("Horizontal Divider?")
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            TopAppBar(title = { Text("Vertical Field 2") })
+
+            apply {
+                val dropdownOptions = KarooAction.entries.toList()
+                    .map { unit -> DropdownOption(unit.action.toString(), unit.label) }
+                val dropdownInitialSelection by remember(bottomverticalleft2) {
+                    mutableStateOf(dropdownOptions.find { option -> option.id == bottomverticalleft2.action.toString() }!!)
+                }
+                KarooKeyDropdown(
+                    remotekey = "Left",
+                    options = dropdownOptions,
+                    selectedOption = dropdownInitialSelection
+                ) { selectedOption ->
+                    bottomverticalleft2 =
+                        KarooAction.entries.find { unit -> unit.action == selectedOption.id }!!
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = customverticalleft2zone, onCheckedChange = {
+                    customverticalleft2zone = it
+                },enabled = bottomverticalleft2.zone != "none")
+                Spacer(modifier = Modifier.width(10.dp))
+                Text("Coloured zone?")
+            }
+
+            apply {
+                val dropdownOptions = KarooAction.entries.toList()
+                    .map { unit -> DropdownOption(unit.action.toString(), unit.label) }
+                val dropdownInitialSelection by remember(bottomverticalright2) {
+                    mutableStateOf(dropdownOptions.find { option -> option.id == bottomverticalright2.action.toString() }!!)
+                }
+                KarooKeyDropdown(
+                    remotekey = "Right",
+                    options = dropdownOptions,
+                    selectedOption = dropdownInitialSelection
+                ) { selectedOption ->
+                    bottomverticalright2 =
+                        KarooAction.entries.find { unit -> unit.action == selectedOption.id }!!
+                }
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = customverticalright2zone, onCheckedChange = {
+                    customverticalright2zone = it
+                },enabled = bottomverticalright2.zone != "none")
+                Spacer(modifier = Modifier.width(10.dp))
+                Text("Coloured zone?")
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = ishorizontalfield2, onCheckedChange = {
+                    ishorizontalfield2 = it
+                }, enabled = !(customverticalright2zone || customverticalleft2zone))
+                Spacer(modifier = Modifier.width(10.dp))
+                Text("Horizontal Divider?")
+            }
+
             FilledTonalButton(modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp), onClick = {
@@ -221,7 +416,10 @@ fun Config() {
                     CustomFieldSettings(
                         customleft1 = bottomleft1, customright1 = bottomright1, customleft2 = bottomleft2, customright2 = bottomright2,
                         customleft1zone = customleft1zone, customright1zone = customright1zone, customleft2zone = customleft2zone, customright2zone = customright2zone,
-                        isvertical1 = isverticalfield1, isvertical2 = isverticalfield2
+                        isvertical1 = isverticalfield1, isvertical2 = isverticalfield2,
+                        customverticalleft1 = bottomverticalleft1, customverticalright1 = bottomverticalright1, customverticalleft2 = bottomverticalleft2, customverticalright2 = bottomverticalright2,
+                        customverticalleft1zone = customverticalleft1zone, customverticalright1zone = customverticalright1zone, customverticalleft2zone = customverticalleft2zone, customverticalright2zone = customverticalright2zone,
+                        ishorizontal1 = ishorizontalfield1, ishorizontal2 = ishorizontalfield2
                     )
 
                 coroutineScope.launch {

@@ -16,4 +16,16 @@
         graphical="true"
         icon="@drawable/ic_launcher"
         typeId="custom-two" />
+    <DataType
+        description="@string/custom_double_vertical_description1"
+        displayName="@string/custom_vertical_double1"
+        graphical="true"
+        icon="@drawable/ic_launcher"
+        typeId="custom-one" />
+    <DataType
+        description="@string/custom_double_vertical_description2"
+        displayName="@string/custom_vertical_double2"
+        graphical="true"
+        icon="@drawable/ic_launcher"
+        typeId="custom-two" />
 </ExtensionInfo>

@@ -5,4 +5,8 @@
     <string name="custom_double_description1">Karoo DualType One</string>
     <string name="custom_double_description2">Karoo DualType Two</string>
     <string name="custom_double2">Custom Field Two</string>
+    <string name="custom_vertical_double1">Vertical Field One</string>
+    <string name="custom_double_vertical_description1">Vertical DualType One</string>
+    <string name="custom_double_vertical_description2">Vertical DualType Two</string>
+    <string name="custom_vertical_double2">Vertical Field Two</string>
 </resources>
