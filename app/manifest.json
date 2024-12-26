@@ -3,9 +3,9 @@
   "packageName": "com.enderthor.kCustomField",
   "latestApkUrl": "https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.apk",
   "iconUrl": "https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.png",
-  "latestVersion": "1.2",
-  "latestVersionCode": 202412241,
+  "latestVersion": "1.3",
+  "latestVersionCode": 202412261,
   "developer": "Enderthor",
   "description": "This extension for Karoo allows to use custom fields with double types (HR,Power,etc).",
-  "releaseNotes": "Added more types and solve metric/imperial bug. Added option to vertical divider"
+  "releaseNotes": "Horizontal and vertical layout support. Added support for zones (HR, Power and Slope) "
 }

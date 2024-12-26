@@ -45,7 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.glance.appwidget.components.TitleBar
+
 
 import com.enderthor.kCustomField.datatype.CustomFieldSettings
 import com.enderthor.kCustomField.datatype.KarooAction
@@ -54,7 +54,7 @@ import com.enderthor.kCustomField.extensions.saveSettings
 import com.enderthor.kCustomField.extensions.streamSettings
 
 import kotlinx.coroutines.launch
-import timber.log.Timber
+
 
 
 @Composable
@@ -166,10 +166,10 @@ fun Config() {
             customright1zone to { isverticalfield1 = true },
             customleft2zone to { isverticalfield2 = true },
             customright2zone to { isverticalfield2 = true },
-            customverticalleft1zone to { isverticalfield1 = true },
-            customverticalright1zone to { isverticalfield1 = true },
-            customverticalleft2zone to { isverticalfield1 = true },
-            customverticalright2zone to { isverticalfield1 = true }
+            customverticalleft1zone to { ishorizontalfield1 = true },
+            customverticalright1zone to { ishorizontalfield1 = true },
+            customverticalleft2zone to { ishorizontalfield1 = true },
+            customverticalright2zone to { ishorizontalfield1 = true }
         )
         zones.forEach { (zone, setVerticalField) ->
             if (zone) setVerticalField()

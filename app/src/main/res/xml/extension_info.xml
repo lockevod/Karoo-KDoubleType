@@ -21,11 +21,11 @@
         displayName="@string/custom_vertical_double1"
         graphical="true"
         icon="@drawable/ic_launcher"
-        typeId="custom-one" />
+        typeId="vertical-one" />
     <DataType
         description="@string/custom_double_vertical_description2"
         displayName="@string/custom_vertical_double2"
         graphical="true"
         icon="@drawable/ic_launcher"
-        typeId="custom-two" />
+        typeId="vertical-two" />
 </ExtensionInfo>

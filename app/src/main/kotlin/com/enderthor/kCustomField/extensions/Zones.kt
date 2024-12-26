@@ -2,6 +2,10 @@ package com.enderthor.kCustomField.extensions
 
 import io.hammerhead.karooext.models.UserProfile
 import com.enderthor.kCustomField.R
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class zoneslope(val min: Double, val max: Double)
 
 enum class Zone(val colorResource: Int){
     Zone0(R.color.zone0),
@@ -15,6 +19,16 @@ enum class Zone(val colorResource: Int){
     Zone8(R.color.zone8),
 }
 
+val slopeZones = listOf(
+    zoneslope(min = 0.0, max = 4.6),
+    zoneslope(min = 4.601, max = 7.5),
+    zoneslope(min = 7.501, max = 12.5),
+    zoneslope(min = 12.501, max = 15.5),
+    zoneslope(min = 15.501, max = 19.5),
+    zoneslope(min = 19.501, max = 23.5),
+    zoneslope(min = 23.501, max = 99.5)
+)
+
 val zones = mapOf(
     1 to listOf(Zone.Zone7),
     2 to listOf(Zone.Zone1, Zone.Zone7),
@@ -27,11 +41,21 @@ val zones = mapOf(
     9 to listOf(Zone.Zone0, Zone.Zone1, Zone.Zone2, Zone.Zone3, Zone.Zone4, Zone.Zone5, Zone.Zone6, Zone.Zone7, Zone.Zone8)
 )
 
-fun getZone(userZones: List<UserProfile.Zone>, value: Int): Zone? {
+inline fun <reified T> getZone(userZones: List<T>, value: Double): Zone? {
     val zoneList = zones[userZones.size] ?: return null
 
     userZones.forEachIndexed { index, zone ->
-        if (value in zone.min..zone.max) {
+        val min = when (zone) {
+            is UserProfile.Zone -> zone.min.toDouble()
+            is zoneslope -> zone.min
+            else -> return null
+        }
+        val max = when (zone) {
+            is UserProfile.Zone -> zone.max.toDouble()
+            is zoneslope -> zone.max
+            else -> return null
+        }
+        if (value in min..max) {
             return zoneList.getOrNull(index) ?: Zone.Zone7
         }
     }

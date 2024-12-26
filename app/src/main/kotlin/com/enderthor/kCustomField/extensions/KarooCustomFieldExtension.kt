@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.enderthor.kCustomField.datatype.CustomDoubleType1
 import com.enderthor.kCustomField.datatype.CustomDoubleType2
 import com.enderthor.kCustomField.datatype.CustomDoubleVerticalType1
+import com.enderthor.kCustomField.datatype.CustomDoubleVerticalType2
 //import com.enderthor.kCustomField.datatype.CustomDoubleType2
 
 
@@ -32,7 +33,7 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.3") {
             CustomDoubleType1(karooSystem, extension, applicationContext),
             CustomDoubleType2(karooSystem, extension, applicationContext),
             CustomDoubleVerticalType1(karooSystem, extension, applicationContext),
-           // CustomDoubleVerticalType2(karooSystem, extension, applicationContext),
+            CustomDoubleVerticalType2(karooSystem, extension, applicationContext),
         )
     }
 
