@@ -125,7 +125,7 @@ class CustomDoubleType2(
 
                             //Timber.d("Updating view ($emitter) with $leftValue and $rightValue")
                             val result = glance.compose(context, DpSize.Unspecified) {
-                                DoubleTypesScreen(leftValue.roundToInt(), rightValue.roundToInt(), settings.customleft2.icon, settings.customright2.icon,colorleft,colorright,settings.isvertical2,colorzoneleft,colorzoneright,config.gridSize.second > 18,karooSystem.hardwareType == HardwareType.KAROO)
+                                DoubleTypesScreen(leftValue.roundToInt(), rightValue.roundToInt(), settings.customleft2.icon, settings.customright2.icon,colorleft,colorright,settings.isvertical2,colorzoneleft,colorzoneright,config.gridSize.second > 18,karooSystem.hardwareType == HardwareType.KAROO,settings.iscenteralign)
                             }
                             emitter.updateView(result.remoteViews)
                         }

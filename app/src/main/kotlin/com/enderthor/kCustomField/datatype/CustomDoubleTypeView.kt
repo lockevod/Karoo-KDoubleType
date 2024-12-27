@@ -38,7 +38,7 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: Int, iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean, zonecolor1: ColorProvider, zonecolor2: ColorProvider, isbigfield: Boolean, iskaroo3: Boolean) {
+fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: Int, iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean, zonecolor1: ColorProvider, zonecolor2: ColorProvider, isbigfield: Boolean, iskaroo3: Boolean, iscenter:Boolean) {
 
    // Timber.d("NumberWithIcon isvertical: $isVertical")
     if (isVertical) {
@@ -83,7 +83,7 @@ fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIco
                 Row(
                     modifier = GlanceModifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalAlignment = Alignment.End
+                    horizontalAlignment = if (iscenter) Alignment.CenterHorizontally else Alignment.End
                 ) {
                     Image(
                         provider = ImageProvider(leftIcon),
@@ -96,7 +96,7 @@ fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIco
                 Row(
                     modifier = GlanceModifier.fillMaxHeight().fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                    horizontalAlignment =  if (iscenter) Alignment.CenterHorizontally else Alignment.End
 
                 ) {
                     Text(
@@ -118,7 +118,7 @@ fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIco
                 Row(
                     modifier = GlanceModifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                    horizontalAlignment =  if (iscenter) Alignment.CenterHorizontally else Alignment.End,
                 ) {
                     Image(
                         provider = ImageProvider(rightIcon),
@@ -131,7 +131,7 @@ fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIco
                 Row(
                     modifier = GlanceModifier.fillMaxHeight().fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
-                    horizontalAlignment = Alignment.End
+                    horizontalAlignment =  if (iscenter) Alignment.CenterHorizontally else Alignment.End
                 ) {
                     Text(
                         text = rightNumber.toString().take(3),

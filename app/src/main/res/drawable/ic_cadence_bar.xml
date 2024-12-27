@@ -8,4 +8,9 @@
         android:pathData="M4,0 H20 V1 H4 Z"
         android:fillColor="#000000"
         android:strokeColor="#000000"/>
+    <path
+        android:strokeWidth="1"
+        android:pathData="M4,23 H20 V24 H4 Z"
+        android:fillColor="#000000"
+        android:strokeColor="#000000"/>
 </vector>

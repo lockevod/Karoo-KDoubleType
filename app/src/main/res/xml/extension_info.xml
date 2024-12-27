@@ -17,6 +17,12 @@
         icon="@drawable/ic_launcher"
         typeId="custom-two" />
     <DataType
+        description="@string/custom_double_description3"
+        displayName="@string/custom_double3"
+        graphical="true"
+        icon="@drawable/ic_launcher"
+        typeId="custom-three" />
+    <DataType
         description="@string/custom_double_vertical_description1"
         displayName="@string/custom_vertical_double1"
         graphical="true"
@@ -28,4 +34,10 @@
         graphical="true"
         icon="@drawable/ic_launcher"
         typeId="vertical-two" />
+    <DataType
+        description="@string/custom_double_vertical_description3"
+        displayName="@string/custom_vertical_double3"
+        graphical="true"
+        icon="@drawable/ic_launcher"
+        typeId="vertical-three" />
 </ExtensionInfo>
