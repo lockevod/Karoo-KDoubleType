@@ -5,6 +5,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 
 import com.enderthor.kCustomField.datatype.CustomFieldSettings
+import com.enderthor.kCustomField.datatype.GeneralSettings
+import com.enderthor.kCustomField.datatype.defaultGeneralSettings
 import com.enderthor.kCustomField.datatype.defaultSettings
 
 import io.hammerhead.karooext.KarooSystemService
@@ -25,6 +27,7 @@ import timber.log.Timber
 
 val jsonWithUnknownKeys = Json { ignoreUnknownKeys = true }
 val settingsKey = stringPreferencesKey("settings")
+val generalsettingsKey = stringPreferencesKey("generalsettings")
 
 suspend fun saveSettings(context: Context, settings: CustomFieldSettings) {
     Timber.d("saveSettings IN $settings")
@@ -47,6 +50,30 @@ fun Context.streamSettings(): Flow<CustomFieldSettings> {
         }
     }.distinctUntilChanged()
 }
+
+
+suspend fun saveGeneralSettings(context: Context, settings: GeneralSettings) {
+    Timber.d("saveSettings IN $settings")
+    context.dataStore.edit { t ->
+        t[generalsettingsKey] = Json.encodeToString(settings)
+    }
+}
+
+
+fun Context.streamGeneralSettings(): Flow<GeneralSettings> {
+    Timber.d("streamSettings IN")
+    return dataStore.data.map { settingsJson ->
+        try {
+            jsonWithUnknownKeys.decodeFromString<GeneralSettings>(
+                settingsJson[generalsettingsKey] ?: defaultSettings
+            )
+        } catch (e: Throwable) {
+            Timber.tag("KarooDualTypeExtension").e(e, "Failed to read preferences")
+            jsonWithUnknownKeys.decodeFromString< GeneralSettings>(defaultGeneralSettings)
+        }
+    }.distinctUntilChanged()
+}
+
 
 fun KarooSystemService.streamDataFlow(dataTypeId: String): Flow<StreamState> {
     return callbackFlow<StreamState> {

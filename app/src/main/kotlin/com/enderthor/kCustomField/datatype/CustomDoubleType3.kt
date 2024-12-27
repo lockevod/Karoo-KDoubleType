@@ -31,7 +31,7 @@ class CustomDoubleType3(
     private val karooSystem: KarooSystemService,
     extension: String,
     context: Context
-) : DataTypeImpl(extension, "custom-two") {
+) : DataTypeImpl(extension, "custom-three") {
     private val glance = GlanceRemoteViews()
     private val context = context.applicationContext
 

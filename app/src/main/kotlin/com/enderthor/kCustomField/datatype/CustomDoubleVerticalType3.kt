@@ -30,7 +30,7 @@ class CustomDoubleVerticalType3(
     private val karooSystem: KarooSystemService,
     extension: String,
     context: Context
-) : DataTypeImpl(extension, "vertical-two") {
+) : DataTypeImpl(extension, "vertical-three") {
     private val glance = GlanceRemoteViews()
     private val context = context.applicationContext
 
@@ -124,7 +124,7 @@ class CustomDoubleVerticalType3(
 
                             //Timber.d("Updating view ($emitter) with $leftValue and $rightValue")
                             val result = glance.compose(context, DpSize.Unspecified) {
-                                DoubleTypesVerticalScreen(leftValue, rightValue, settings.customverticalleft3.icon, settings.customverticalright3.icon,colorleft,colorright,settings.ishorizontal2,colorzoneleft,colorzoneright,config.gridSize.second > 18,karooSystem.hardwareType == HardwareType.KAROO,!(settings.customverticalleft3.convert == "speed" || settings.customverticalleft3.zone=="slopeZones"),!(settings.customverticalright3.convert == "speed" || settings.customverticalright3.zone=="slopeZones"))
+                                DoubleTypesVerticalScreen(leftValue, rightValue, settings.customverticalleft3.icon, settings.customverticalright3.icon,colorleft,colorright,settings.ishorizontal2,colorzoneleft,colorzoneright,config.gridSize.second > 18,karooSystem.hardwareType == HardwareType.KAROO,!(settings.customverticalleft3.convert == "speed" || settings.customverticalleft3.zone=="slopeZones"),!(settings.customverticalright3.convert == "speed" || settings.customverticalright3.zone=="slopeZones"),settings.iscentervertical)
                             }
                             emitter.updateView(result.remoteViews)
                         }

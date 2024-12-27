@@ -179,7 +179,7 @@ fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIco
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun DoubleTypesVerticalScreen(leftNumber: Double, rightNumber: Double, leftIcon: Int, rightIcon: Int, iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean, zonecolor1: ColorProvider, zonecolor2: ColorProvider, isbigfield: Boolean,isKaroo3: Boolean,isLeftInt: Boolean, isRightInt: Boolean) {
+fun DoubleTypesVerticalScreen(leftNumber: Double, rightNumber: Double, leftIcon: Int, rightIcon: Int, iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean, zonecolor1: ColorProvider, zonecolor2: ColorProvider, isbigfield: Boolean,isKaroo3: Boolean,isLeftInt: Boolean, isRightInt: Boolean, iscentervertical:Boolean) {
 
 
     val newleft = if (isLeftInt) leftNumber.roundToInt().toString().take(5) else String.format("%.1f", leftNumber).take(5)

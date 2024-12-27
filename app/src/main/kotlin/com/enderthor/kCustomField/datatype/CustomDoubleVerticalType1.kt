@@ -127,7 +127,7 @@ class CustomDoubleVerticalType1(
 
 
                             val result = glance.compose(context, DpSize.Unspecified) {
-                                DoubleTypesVerticalScreen(leftValue, rightValue, settings.customverticalleft1.icon, settings.customverticalright1.icon,colorleft,colorright, settings.ishorizontal1,colorzoneleft,colorzoneright,config.gridSize.second > 18,karooSystem.hardwareType == HardwareType.KAROO, !(settings.customverticalleft1.convert == "speed" || settings.customverticalleft1.zone=="slopeZones"),!(settings.customverticalright1.convert == "speed" || settings.customverticalright1.zone=="slopeZones"))
+                                DoubleTypesVerticalScreen(leftValue, rightValue, settings.customverticalleft1.icon, settings.customverticalright1.icon,colorleft,colorright, settings.ishorizontal1,colorzoneleft,colorzoneright,config.gridSize.second > 18,karooSystem.hardwareType == HardwareType.KAROO, !(settings.customverticalleft1.convert == "speed" || settings.customverticalleft1.zone=="slopeZones"),!(settings.customverticalright1.convert == "speed" || settings.customverticalright1.zone=="slopeZones"),settings.iscentervertical)
                             }
                             emitter.updateView(result.remoteViews)
                         }

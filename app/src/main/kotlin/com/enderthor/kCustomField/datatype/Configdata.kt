@@ -19,9 +19,10 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     POWER(DataType.Type.POWER, "Power", R.drawable.ic_power,R.color.hh_success_green_700,R.color.hh_success_green_400,"powerZones","none"),
     POWER3s(DataType.Type.SMOOTHED_3S_AVERAGE_POWER, "Power 3s", R.drawable.ic_power,R.color.hh_success_green_700,R.color.hh_success_green_400,"powerZones","none"),
     AVERAGE_POWER(DataType.Type.AVERAGE_POWER, "Avg Power", R.drawable.ic_power_average,R.color.hh_success_green_700,R.color.hh_success_green_400,"powerZones","none"),
-   // PEDAL_BALANCE(DataType.Type.PEDAL_POWER_BALANCE, "Pedal Balance",R.drawable.ic_pedal_balance,R.color.hh_success_green_400,"none"),
-    //AVERAGE_PEDAL_BALANCE(DataType.Type.AVERAGE_PEDAL_POWER_BALANCE,"Avg Pedal Balance",R.drawable.ic_pedal_balance,R.color.hh_success_green_400,"none"),
-}
+ //   ELEV_GAIN(DataType.Type.ELEVATION_GAIN, "Ascent", R.drawable.ic_ascent,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
+ //   ELEV_REMAIN(DataType.Type.ELEVATION_REMAINING, "Ascent", R.drawable.ic_ascent_remain,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
+ //   VAM(DataType.Type.VERTICAL_SPEED, "Ascent", R.drawable.ic_vam,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
+ }
 
 @Serializable
 data class CustomFieldSettings(
@@ -55,8 +56,16 @@ data class CustomFieldSettings(
     val ishorizontal1: Boolean,
     val ishorizontal2: Boolean,
     val ishorizontal3: Boolean,
-    val iscenteralign: Boolean,
 )
 
-val defaultSettings = Json.encodeToString(CustomFieldSettings(KarooAction.HR, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.SLOPE,KarooAction.CADENCE, KarooAction.SLOPE, false, false, false, false, false,false,false,false,false,KarooAction.HR, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.SLOPE, KarooAction.CADENCE, KarooAction.SLOPE,false, false, false,false, false, false, false,false,false, true))
 
+@Serializable
+data class GeneralSettings(
+    val iscenteralign: Boolean,
+    val iscentervertical: Boolean,
+    val ispalettekaroo: Boolean,
+    val iscenterkaroo: Boolean,
+)
+
+val defaultSettings = Json.encodeToString(CustomFieldSettings(KarooAction.HR, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.SLOPE,KarooAction.CADENCE, KarooAction.SLOPE, false, false, false, false, false,false,false,false,false,KarooAction.HR, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.SLOPE, KarooAction.CADENCE, KarooAction.SLOPE,false, false, false,false, false, false, false,false,false))
+val defaultGeneralSettings = Json.encodeToString(GeneralSettings(false,false,true,false))

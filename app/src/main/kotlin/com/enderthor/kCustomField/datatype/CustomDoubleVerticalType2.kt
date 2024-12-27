@@ -124,7 +124,7 @@ class CustomDoubleVerticalType2(
 
                             //Timber.d("Updating view ($emitter) with $leftValue and $rightValue")
                             val result = glance.compose(context, DpSize.Unspecified) {
-                                DoubleTypesVerticalScreen(leftValue, rightValue, settings.customverticalleft2.icon, settings.customverticalright2.icon,colorleft,colorright,settings.ishorizontal2,colorzoneleft,colorzoneright,config.gridSize.second > 18,karooSystem.hardwareType == HardwareType.KAROO,!(settings.customverticalleft2.convert == "speed" || settings.customverticalleft2.zone=="slopeZones"),!(settings.customverticalright2.convert == "speed" || settings.customverticalright2.zone=="slopeZones"))
+                                DoubleTypesVerticalScreen(leftValue, rightValue, settings.customverticalleft2.icon, settings.customverticalright2.icon,colorleft,colorright,settings.ishorizontal2,colorzoneleft,colorzoneright,config.gridSize.second > 18,karooSystem.hardwareType == HardwareType.KAROO,!(settings.customverticalleft2.convert == "speed" || settings.customverticalleft2.zone=="slopeZones"),!(settings.customverticalright2.convert == "speed" || settings.customverticalright2.zone=="slopeZones"),settings.iscentervertical)
                             }
                             emitter.updateView(result.remoteViews)
                         }
