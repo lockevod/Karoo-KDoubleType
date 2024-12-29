@@ -38,7 +38,8 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: Int, iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean, zonecolor1: ColorProvider, zonecolor2: ColorProvider, isbigfield: Boolean, iskaroo3: Boolean, iscenter:Boolean) {
+fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: Int, iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean, zonecolor1: ColorProvider, zonecolor2: ColorProvider, isbigfield: Boolean, iskaroo3: Boolean, clayout: FieldPosition) {
+
 
    // Timber.d("NumberWithIcon isvertical: $isVertical")
     if (isVertical) {
@@ -83,7 +84,7 @@ fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIco
                 Row(
                     modifier = GlanceModifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalAlignment = if (iscenter) Alignment.CenterHorizontally else Alignment.End
+                    horizontalAlignment = if (clayout.name=="CENTER") Alignment.CenterHorizontally else if (clayout.name=="RIGHT") Alignment.End else Alignment.Start
                 ) {
                     Image(
                         provider = ImageProvider(leftIcon),
@@ -96,14 +97,14 @@ fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIco
                 Row(
                     modifier = GlanceModifier.fillMaxHeight().fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
-                    horizontalAlignment =  if (iscenter) Alignment.CenterHorizontally else Alignment.End
+                    horizontalAlignment =  if (clayout.name=="CENTER") Alignment.CenterHorizontally else if (clayout.name=="RIGHT") Alignment.End else Alignment.Start
 
                 ) {
                     Text(
-                        text = leftNumber.toString().take(3),
+                        text = leftNumber.toString().take(4),
                         style = TextStyle(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 38.sp,
+                            fontSize = if (leftNumber.toString().length > 3) 32.sp else 38.sp,
                             fontFamily = FontFamily.Monospace,
                             color = ColorProvider(Color.Black, Color.White)
                         )
@@ -118,7 +119,7 @@ fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIco
                 Row(
                     modifier = GlanceModifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalAlignment =  if (iscenter) Alignment.CenterHorizontally else Alignment.End,
+                    horizontalAlignment =  if (clayout.name=="CENTER") Alignment.CenterHorizontally else if (clayout.name=="RIGHT") Alignment.End else Alignment.Start
                 ) {
                     Image(
                         provider = ImageProvider(rightIcon),
@@ -131,12 +132,12 @@ fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIco
                 Row(
                     modifier = GlanceModifier.fillMaxHeight().fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
-                    horizontalAlignment =  if (iscenter) Alignment.CenterHorizontally else Alignment.End
+                    horizontalAlignment =  if (clayout.name=="CENTER") Alignment.CenterHorizontally else if (clayout.name=="RIGHT") Alignment.End else Alignment.Start
                 ) {
                     Text(
-                        text = rightNumber.toString().take(3),
+                        text = rightNumber.toString().take(4),
                         style = TextStyle(
-                            fontSize = 38.sp,
+                            fontSize = if (leftNumber.toString().length > 3) 32.sp else 38.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
                             color = ColorProvider(Color.Black, Color.White)
@@ -147,7 +148,7 @@ fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIco
         }
     }
     if (isVertical) {
-        Box(modifier= if (isbigfield) GlanceModifier.fillMaxWidth().height(23.dp) else GlanceModifier.fillMaxWidth().height(14.dp) ) {
+        Box(modifier= if (isbigfield) GlanceModifier.fillMaxWidth().height(28.dp) else GlanceModifier.fillMaxWidth().height(14.dp) ) {
             Row(
                 modifier = GlanceModifier.fillMaxSize(),
             ) {
@@ -179,21 +180,22 @@ fun DoubleTypesScreen(leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIco
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun DoubleTypesVerticalScreen(leftNumber: Double, rightNumber: Double, leftIcon: Int, rightIcon: Int, iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean, zonecolor1: ColorProvider, zonecolor2: ColorProvider, isbigfield: Boolean,isKaroo3: Boolean,isLeftInt: Boolean, isRightInt: Boolean, iscentervertical:Boolean) {
+fun DoubleTypesVerticalScreen(leftNumber: Double, rightNumber: Double, leftIcon: Int, rightIcon: Int, iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean, zonecolor1: ColorProvider, zonecolor2: ColorProvider, isbigfield: Boolean,isKaroo3: Boolean,isLeftInt: Boolean, isRightInt: Boolean, clayout: FieldPosition) {
 
 
     val newleft = if (isLeftInt) leftNumber.roundToInt().toString().take(5) else String.format("%.1f", leftNumber).take(5)
     val newright = if (isRightInt) rightNumber.roundToInt().toString().take(5) else String.format("%.1f", rightNumber).take(5)
 
-    if (isbigfield) DoubleTypesVerticalScreen1(newleft, newright, leftIcon, rightIcon, iconColorLeft, iconColorRight, isVertical, zonecolor1, zonecolor2, isKaroo3)
-    else DoubleTypesVerticalScreen2(newleft, newright, leftIcon, rightIcon, iconColorLeft, iconColorRight, isVertical, zonecolor1, zonecolor2, isKaroo3)
+    if (isbigfield) DoubleTypesVerticalScreen1(newleft, newright, leftIcon, rightIcon, iconColorLeft, iconColorRight, isVertical, zonecolor1, zonecolor2, isKaroo3,clayout)
+    else DoubleTypesVerticalScreen2(newleft, newright, leftIcon, rightIcon, iconColorLeft, iconColorRight, isVertical, zonecolor1, zonecolor2, isKaroo3,clayout)
 }
 
 
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun DoubleTypesVerticalScreen1(leftNumber: String, rightNumber: String, leftIcon: Int, rightIcon: Int, iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean, zonecolor1: ColorProvider, zonecolor2: ColorProvider, isKaroo3: Boolean) {
+fun DoubleTypesVerticalScreen1(leftNumber: String, rightNumber: String, leftIcon: Int, rightIcon: Int, iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean, zonecolor1: ColorProvider, zonecolor2: ColorProvider, isKaroo3: Boolean, clayout: FieldPosition) {
+        Timber.d("Isvertical is $isVertical")
         Box(
             modifier = GlanceModifier.fillMaxSize()
                 .padding(start = 1.dp, end = 1.dp)
@@ -207,7 +209,7 @@ fun DoubleTypesVerticalScreen1(leftNumber: String, rightNumber: String, leftIcon
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalAlignment = Alignment.End
+                        horizontalAlignment = if (clayout.name=="LEFT") Alignment.Start else Alignment.End
                     ) {
                         Image(
                             provider = ImageProvider(leftIcon),
@@ -220,7 +222,7 @@ fun DoubleTypesVerticalScreen1(leftNumber: String, rightNumber: String, leftIcon
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
                         verticalAlignment = Alignment.Bottom,
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = if (clayout.name=="CENTER") Alignment.CenterHorizontally else if (clayout.name=="RIGHT") Alignment.End else Alignment.Start
                     ) {
                         Text(
                             text = leftNumber,
@@ -232,15 +234,16 @@ fun DoubleTypesVerticalScreen1(leftNumber: String, rightNumber: String, leftIcon
                             )
                         )
                     }
+
                 }
-                if (isVertical) Spacer(modifier = GlanceModifier.height(1.dp).background(ColorProvider(Color.Black, Color.White)))
+                if (isVertical) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.Black, Color.White)))
                 Column(
                     modifier = GlanceModifier.defaultWeight().background(zonecolor2),
                 ) {
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalAlignment = Alignment.End,
+                        horizontalAlignment = if (clayout.name=="LEFT") Alignment.Start else Alignment.End
                     ) {
                         Image(
                             provider = ImageProvider(rightIcon),
@@ -253,7 +256,7 @@ fun DoubleTypesVerticalScreen1(leftNumber: String, rightNumber: String, leftIcon
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
                         verticalAlignment = Alignment.Bottom,
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = if (clayout.name=="CENTER") Alignment.CenterHorizontally else if (clayout.name=="RIGHT") Alignment.End else Alignment.Start
                     ) {
                         Text(
                             text = rightNumber,
@@ -273,8 +276,8 @@ fun DoubleTypesVerticalScreen1(leftNumber: String, rightNumber: String, leftIcon
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun DoubleTypesVerticalScreen2(leftNumber: String, rightNumber: String, leftIcon: Int, rightIcon: Int, iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean, zonecolor1: ColorProvider, zonecolor2: ColorProvider,isKaroo3: Boolean) {
-    Timber.d("Iskaroo3 is $isKaroo3")
+fun DoubleTypesVerticalScreen2(leftNumber: String, rightNumber: String, leftIcon: Int, rightIcon: Int, iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean, zonecolor1: ColorProvider, zonecolor2: ColorProvider,isKaroo3: Boolean, clayout: FieldPosition) {
+    //Timber.d("Iskaroo3 is $isKaroo3")
     Box(
         modifier = GlanceModifier.fillMaxSize()
             .padding(start = 1.dp, end = 1.dp)
@@ -288,8 +291,17 @@ fun DoubleTypesVerticalScreen2(leftNumber: String, rightNumber: String, leftIcon
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = if (clayout.name=="CENTER") Alignment.CenterHorizontally else if (clayout.name=="RIGHT") Alignment.End else Alignment.Start
             ) {
+                if (clayout.name == "LEFT") {
+                    Image(
+                        provider = ImageProvider(leftIcon),
+                        contentDescription = "Left Icon",
+                        modifier = GlanceModifier.size(20.dp),
+                        colorFilter = iconColorLeft
+                    )
+                    Spacer(modifier = GlanceModifier.width(8.dp))
+                }
                 Text(
                     text = leftNumber,
                     style = TextStyle(
@@ -297,24 +309,36 @@ fun DoubleTypesVerticalScreen2(leftNumber: String, rightNumber: String, leftIcon
                         fontSize = 38.sp,
                         fontFamily = FontFamily.Monospace,
                         color = ColorProvider(Color.Black, Color.White),
-                        textAlign = TextAlign.Center
+                        textAlign = if (clayout.name == "CENTER") TextAlign.Center else if (clayout.name == "RIGHT") TextAlign.End else TextAlign.Start
                     ),
                     modifier = GlanceModifier.defaultWeight(),
 
-                )
-                Image(
-                    provider = ImageProvider(leftIcon),
-                    contentDescription = "Left Icon",
-                    modifier = GlanceModifier.size(20.dp),
-                    colorFilter = iconColorLeft
-                )
+                    )
+                if (clayout.name != "LEFT") {
+                    Image(
+                        provider = ImageProvider(leftIcon),
+                        contentDescription = "Left Icon",
+                        modifier = GlanceModifier.size(20.dp),
+                        colorFilter = iconColorLeft
+                    )
+                }
+                if (isVertical) Spacer(modifier = GlanceModifier.height(1.dp).background(ColorProvider(Color.Black, Color.White)))
             }
-            if (isVertical) Spacer(modifier = GlanceModifier.height(1.dp).background(ColorProvider(Color.Black, Color.White)))
+            if (isVertical) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.Black, Color.White)))
             Row(
                 modifier = GlanceModifier.fillMaxWidth().background(zonecolor2),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                if (clayout.name =="LEFT") {
+                    Image(
+                        provider = ImageProvider(rightIcon),
+                        contentDescription = "Right Icon",
+                        modifier = GlanceModifier.size(20.dp),
+                        colorFilter = iconColorRight
+                    )
+                    Spacer(modifier = GlanceModifier.width(8.dp))
+                }
                 Text(
                     text = rightNumber,
                     style = TextStyle(
@@ -322,16 +346,18 @@ fun DoubleTypesVerticalScreen2(leftNumber: String, rightNumber: String, leftIcon
                         fontSize = 38.sp,
                         fontFamily = FontFamily.Monospace,
                         color = ColorProvider(Color.Black, Color.White),
-                        textAlign = TextAlign.Center
+                        textAlign = if (clayout.name=="CENTER") TextAlign.Center else if (clayout.name=="RIGHT") TextAlign.End else TextAlign.Start
                     ),
                     modifier = GlanceModifier.defaultWeight()
                 )
-                Image(
-                    provider = ImageProvider(rightIcon),
-                    contentDescription = "Right Icon",
-                    modifier = GlanceModifier.size(20.dp),
-                    colorFilter = iconColorRight
-                )
+                if (clayout.name !="LEFT") {
+                    Image(
+                        provider = ImageProvider(rightIcon),
+                        contentDescription = "Right Icon",
+                        modifier = GlanceModifier.size(20.dp),
+                        colorFilter = iconColorRight
+                    )
+                }
             }
         }
     }

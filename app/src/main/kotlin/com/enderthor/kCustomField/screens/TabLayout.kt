@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 
 
 import com.enderthor.kCustomField.datatype.CustomFieldSettings
+import com.enderthor.kCustomField.datatype.FieldPosition
 import com.enderthor.kCustomField.datatype.GeneralSettings
 import com.enderthor.kCustomField.datatype.KarooAction
 import com.enderthor.kCustomField.extensions.saveGeneralSettings
@@ -57,6 +58,7 @@ import com.enderthor.kCustomField.extensions.streamGeneralSettings
 import com.enderthor.kCustomField.extensions.streamSettings
 
 import kotlinx.coroutines.launch
+
 
 
 
@@ -96,9 +98,10 @@ fun ConfV() {
     val ctx = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    var ispalettekaroo by remember { mutableStateOf(true) }
-    var iscenteralign by remember { mutableStateOf(true) }
-    var iscentervertical by remember { mutableStateOf(true) }
+    var ispalettezwift by remember { mutableStateOf(true) }
+    var iscenteralign by remember { mutableStateOf(FieldPosition.CENTER) }
+    var iscentervertical by remember { mutableStateOf(FieldPosition.CENTER) }
+    var iscenterkaroo by remember { mutableStateOf(false) }
 
     var bottomleft1 by remember { mutableStateOf(KarooAction.SPEED) }
     var bottomright1 by remember { mutableStateOf(KarooAction.SPEED) }
@@ -130,7 +133,7 @@ fun ConfV() {
     var ishorizontalfield1 by remember { mutableStateOf(false) }
     var ishorizontalfield2 by remember { mutableStateOf(false) }
     var ishorizontalfield3 by remember { mutableStateOf(false) }
-    var iscenterkaroo by remember { mutableStateOf(false) }
+
 
 
     LaunchedEffect(Unit) {
@@ -175,7 +178,7 @@ fun ConfV() {
     LaunchedEffect(Unit) {
         ctx.streamGeneralSettings().collect { settings ->
 
-            ispalettekaroo = settings.ispalettekaroo
+            ispalettezwift = settings.ispalettezwift
             iscenteralign = settings.iscenteralign
             iscentervertical = settings.iscentervertical
             iscenterkaroo = settings.iscenterkaroo
@@ -380,7 +383,6 @@ fun ConfV() {
                 Spacer(modifier = Modifier.width(10.dp))
                 Text("Coloured zone?")
             }
-
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = ishorizontalfield3, onCheckedChange = {
                     ishorizontalfield3 = it
@@ -404,7 +406,7 @@ fun ConfV() {
                         customverticalleft3zone = customverticalleft3zone, customverticalright3zone = customverticalright3zone,ishorizontal1 = ishorizontalfield1, ishorizontal2 = ishorizontalfield2, ishorizontal3 = ishorizontalfield3,
                     )
                 val newGeneralSettings = GeneralSettings(
-                    ispalettekaroo = ispalettekaroo,
+                    ispalettezwift = ispalettezwift,
                     iscenteralign = iscenteralign,
                     iscentervertical = iscentervertical,
                     iscenterkaroo = iscenterkaroo
@@ -440,9 +442,10 @@ fun ConfH() {
     val ctx = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    var ispalettekaroo by remember { mutableStateOf(true) }
-    var iscenteralign by remember { mutableStateOf(true) }
-    var iscentervertical by remember { mutableStateOf(true) }
+    var ispalettezwift by remember { mutableStateOf(true) }
+    var iscenteralign by remember { mutableStateOf(FieldPosition.CENTER) }
+    var iscentervertical by remember { mutableStateOf(FieldPosition.CENTER) }
+    var iscenterkaroo by remember { mutableStateOf(false) }
 
     var bottomleft1 by remember { mutableStateOf(KarooAction.SPEED) }
     var bottomright1 by remember { mutableStateOf(KarooAction.SPEED) }
@@ -474,7 +477,7 @@ fun ConfH() {
     var ishorizontalfield1 by remember { mutableStateOf(false) }
     var ishorizontalfield2 by remember { mutableStateOf(false) }
     var ishorizontalfield3 by remember { mutableStateOf(false) }
-    var iscenterkaroo by remember { mutableStateOf(false) }
+
 
 
     LaunchedEffect(Unit) {
@@ -519,7 +522,7 @@ fun ConfH() {
     LaunchedEffect(Unit) {
         ctx.streamGeneralSettings().collect { settings ->
 
-            ispalettekaroo = settings.ispalettekaroo
+            ispalettezwift = settings.ispalettezwift
             iscenteralign = settings.iscenteralign
             iscentervertical = settings.iscentervertical
             iscenterkaroo = settings.iscenterkaroo
@@ -726,6 +729,7 @@ fun ConfH() {
                 Spacer(modifier = Modifier.width(10.dp))
                 Text("Coloured zone?")
             }
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = isverticalfield3, onCheckedChange = {
                     isverticalfield3 = it
@@ -748,7 +752,7 @@ fun ConfH() {
                         customverticalleft3zone = customverticalleft3zone, customverticalright3zone = customverticalright3zone,ishorizontal1 = ishorizontalfield1, ishorizontal2 = ishorizontalfield2, ishorizontal3 = ishorizontalfield3,
                     )
                 val newGeneralSettings = GeneralSettings(
-                    ispalettekaroo = ispalettekaroo,
+                    ispalettezwift = ispalettezwift,
                     iscenteralign = iscenteralign,
                     iscentervertical = iscentervertical,
                     iscenterkaroo = iscenterkaroo
@@ -786,9 +790,14 @@ fun ConfGeneral() {
     val ctx = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    var ispalettekaroo by remember { mutableStateOf(true) }
-    var iscenteralign by remember { mutableStateOf(true) }
-    var iscentervertical by remember { mutableStateOf(true) }
+   // val alignmentOptions = listOf(FieldPosition.LEFT, FieldPosition.CENTER, FieldPosition.RIGHT)
+    val alignmentOptions = FieldPosition.entries
+   // fun FieldPosition.Companion.toList(): List<FieldPosition> = listOf(FieldPosition.LEFT, FieldPosition.CENTER, FieldPosition.RIGHT)
+
+    var ispalettezwift by remember { mutableStateOf(true) }
+    var iscenteralign by remember { mutableStateOf(FieldPosition.CENTER) }
+    var iscentervertical by remember { mutableStateOf(FieldPosition.CENTER) }
+    var iscenterkaroo by remember { mutableStateOf(false) }
 
     var bottomleft1 by remember { mutableStateOf(KarooAction.SPEED) }
     var bottomright1 by remember { mutableStateOf(KarooAction.SPEED) }
@@ -820,7 +829,7 @@ fun ConfGeneral() {
     var ishorizontalfield1 by remember { mutableStateOf(false) }
     var ishorizontalfield2 by remember { mutableStateOf(false) }
     var ishorizontalfield3 by remember { mutableStateOf(false) }
-    var iscenterkaroo by remember { mutableStateOf(false) }
+
 
 
     LaunchedEffect(Unit) {
@@ -865,7 +874,7 @@ fun ConfGeneral() {
     LaunchedEffect(Unit) {
         ctx.streamGeneralSettings().collect { settings ->
 
-            ispalettekaroo = settings.ispalettekaroo
+            ispalettezwift = settings.ispalettezwift
             iscenteralign = settings.iscenteralign
             iscentervertical = settings.iscentervertical
             iscenterkaroo = settings.iscenterkaroo
@@ -880,34 +889,42 @@ fun ConfGeneral() {
             .padding(5.dp)
             .verticalScroll(rememberScrollState())
             .fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            TopAppBar(title = { Text("Vertical Field 1") })
 
+            TopAppBar(title = { Text("Fields Alignment") })
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = false, onCheckedChange = {
+                    iscenterkaroo = it
+                },enabled = false)
+                Spacer(modifier = Modifier.width(10.dp))
+                Text("Use default Karoo Alignment ?")
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Horizontal Field alignment (icon/text) ?")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MultiToggleButton(alignmentOptions.indexOf(iscenteralign),alignmentOptions.map { it.name }, onToggleChange = { iscenteralign = alignmentOptions[it] })
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Vertical Fields alignment (icon/text) ?")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MultiToggleButton(alignmentOptions.indexOf(iscentervertical),alignmentOptions.map { it.name }, onToggleChange = { iscentervertical = alignmentOptions[it] })
+            }
 
             Spacer(modifier = Modifier.height(2.dp))
-            TopAppBar(title = { Text("Vertical Fields Alignment") })
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(checked = iscentervertical, onCheckedChange = {
-                    iscentervertical = it
-                })
-                Spacer(modifier = Modifier.width(10.dp))
-                Text("Center alignment (icon/text) ?")
-            }
+            TopAppBar(title = { Text("Color Palette") })
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(checked = iscentervertical, onCheckedChange = {
-                    iscentervertical = it
+                Switch(checked = ispalettezwift, onCheckedChange = {
+                    ispalettezwift = it
                 })
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Center alignment (icon/text) ?")
+                Text("Zwift Color palette?")
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(checked = iscentervertical, onCheckedChange = {
-                    iscentervertical = it
-                })
-                Spacer(modifier = Modifier.width(10.dp))
-                Text("Center alignment (icon/text) ?")
-            }
 
             FilledTonalButton(modifier = Modifier
                 .fillMaxWidth()
@@ -923,7 +940,7 @@ fun ConfGeneral() {
                         customverticalleft3zone = customverticalleft3zone, customverticalright3zone = customverticalright3zone,ishorizontal1 = ishorizontalfield1, ishorizontal2 = ishorizontalfield2, ishorizontal3 = ishorizontalfield3,
                     )
                 val newGeneralSettings = GeneralSettings(
-                    ispalettekaroo = ispalettekaroo,
+                    ispalettezwift = ispalettezwift,
                     iscenteralign = iscenteralign,
                     iscentervertical = iscentervertical,
                     iscenterkaroo = iscenterkaroo

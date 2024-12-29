@@ -21,6 +21,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.combine
 import com.enderthor.kCustomField.extensions.streamSettings
 import com.enderthor.kCustomField.extensions.streamDataFlow
+import com.enderthor.kCustomField.extensions.streamGeneralSettings
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
@@ -88,44 +89,46 @@ class CustomDoubleType3(
         val job = CoroutineScope(Dispatchers.IO).launch {
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
             context.streamSettings()
-                .map { settings -> Triple(settings, settings.customleft3.action, settings.customright3.action) }
-                .collect { (settings, leftAction, rightAction) ->
-                    karooSystem.streamDataFlow(leftAction)
-                        .combine(karooSystem.streamDataFlow(rightAction)) { left: StreamState, right: StreamState -> Triple(settings, left, right) }
-                        .collect { (settings, left: StreamState, right: StreamState) ->
+                .combine(context.streamGeneralSettings()) { settings, generalSettings ->
+                    settings to generalSettings
+                }
+                .collect { (settings, generalSettings) ->
+                    karooSystem.streamDataFlow(settings.customleft3.action)
+                        .combine(karooSystem.streamDataFlow(settings.customright3.action)) { left: StreamState, right: StreamState -> Quadruple(generalSettings, settings,left, right) }
+                        .collect { (generalsettings, settings, left: StreamState, right: StreamState) ->
 
-                            val leftValue = convertValue(left, settings.customleft3.convert, userProfile.preferredUnit.distance)
+                        val leftValue = convertValue(left, settings.customleft3.convert, userProfile.preferredUnit.distance)
                             val rightValue = convertValue(right, settings.customright3.convert, userProfile.preferredUnit.distance)
 
-                            val colorleft= ColorFilter.tint(ColorProvider(day = Color(ContextCompat.getColor(context,settings.customleft3.colorday)), night = Color(ContextCompat.getColor(context,settings.customleft3.colornight))))
-                            val colorright= ColorFilter.tint(ColorProvider(day = Color(ContextCompat.getColor(context,settings.customright3.colorday)), night = Color(ContextCompat.getColor(context,settings.customright3.colornight))))
+                            val colorleft= if(settings.customleft3zone == true) ColorFilter.tint(ColorProvider(Color.Black, Color.Black)) else ColorFilter.tint(ColorProvider(day = Color(ContextCompat.getColor(context, settings.customleft3.colorday)), night = Color(ContextCompat.getColor(context, settings.customleft3.colornight))))
+                            val colorright= if(settings.customright3zone == true) ColorFilter.tint(ColorProvider(Color.Black, Color.Black)) else ColorFilter.tint(ColorProvider(day = Color(ContextCompat.getColor(context,settings.customright3.colorday)), night = Color(ContextCompat.getColor(context,settings.customright3.colornight))))
 
                             val colorzoneleft = ColorProvider(
                                 day = Color(ContextCompat.getColor(context, getZone(
                                     if (settings.customleft3.zone == "heartRateZones") userProfile.heartRateZones else if (settings.customleft3.zone == "powerZones") userProfile.powerZones else slopeZones,
                                     leftValue
-                                )?.colorResource ?: R.color.zone7)),
+                                )?.let { if (generalsettings.ispalettezwift) it.colorZwift else it.colorResource} ?: R.color.zone7)),
                                 night = Color(ContextCompat.getColor(context, getZone(
                                     if (settings.customleft3.zone == "heartRateZones") userProfile.heartRateZones else if (settings.customleft3.zone == "powerZones") userProfile.powerZones else slopeZones,
                                     leftValue
-                                )?.colorResource ?: R.color.zone7))
+                                )?.let { if (generalsettings.ispalettezwift) it.colorZwift else it.colorResource} ?: R.color.zone7))
                             ).takeIf { settings.customleft3zone == true } ?: ColorProvider(Color.White, Color.Black)
 
                             val colorzoneright = ColorProvider(
                                 day = Color(ContextCompat.getColor(context, getZone(
                                     if (settings.customright3.zone == "heartRateZones") userProfile.heartRateZones else if (settings.customright3.zone == "powerZones") userProfile.powerZones else slopeZones,
                                     rightValue
-                                )?.colorResource ?: R.color.zone7)),
+                                )?.let { if (generalsettings.ispalettezwift) it.colorZwift else it.colorResource} ?: R.color.zone7)),
                                 night = Color(ContextCompat.getColor(context, getZone(
                                     if (settings.customright3.zone == "heartRateZones") userProfile.heartRateZones else if (settings.customright3.zone == "powerZones") userProfile.powerZones else slopeZones,
                                     rightValue
-                                )?.colorResource ?: R.color.zone7))
+                                )?.let { if (generalsettings.ispalettezwift) it.colorZwift else it.colorResource} ?: R.color.zone7))
                             ).takeIf { settings.customright3zone == true } ?: ColorProvider(Color.White, Color.Black)
 
 
                             //Timber.d("Updating view ($emitter) with $leftValue and $rightValue")
                             val result = glance.compose(context, DpSize.Unspecified) {
-                                DoubleTypesScreen(leftValue.roundToInt(), rightValue.roundToInt(), settings.customleft3.icon, settings.customright3.icon,colorleft,colorright,settings.isvertical2,colorzoneleft,colorzoneright,config.gridSize.second > 18,karooSystem.hardwareType == HardwareType.KAROO,settings.iscenteralign)
+                                DoubleTypesScreen(leftValue.roundToInt(), rightValue.roundToInt(), settings.customleft3.icon, settings.customright3.icon,colorleft,colorright,settings.isvertical2,colorzoneleft,colorzoneright,config.gridSize.second > 18,karooSystem.hardwareType == HardwareType.KAROO,generalsettings.iscenteralign)
                             }
                             emitter.updateView(result.remoteViews)
                         }

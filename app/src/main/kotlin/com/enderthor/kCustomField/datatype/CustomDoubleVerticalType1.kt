@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.first
 import timber.log.Timber
 import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.slopeZones
+import com.enderthor.kCustomField.extensions.streamGeneralSettings
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
 class CustomDoubleVerticalType1(
@@ -87,47 +88,44 @@ class CustomDoubleVerticalType1(
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
 
             context.streamSettings()
-                .map { setting-> Triple(setting, setting.customverticalleft1.action, setting.customverticalright1.action) }
-                .collect { (setting, leftAction, rightAction) ->
-                    karooSystem.streamDataFlow(leftAction)
-                        .combine(karooSystem.streamDataFlow(rightAction)) { left: StreamState, right: StreamState -> Triple(setting, left, right) }
-                        .collect { (settings, left: StreamState, right: StreamState) ->
+                .combine(context.streamGeneralSettings()) { settings, generalSettings ->
+                    settings to generalSettings
+                }
+                .collect { (settings, generalSettings) ->
+                    karooSystem.streamDataFlow(settings.customverticalleft1.action)
+                        .combine(karooSystem.streamDataFlow(settings.customverticalright2.action)) { left: StreamState, right: StreamState -> Quadruple(generalSettings, settings,left, right) }
+                        .collect { (generalsettings, settings, left: StreamState, right: StreamState) ->
 
-                            val leftValue = convertValue(left, settings.customverticalleft1.convert, userProfile.preferredUnit.distance)
+                        val leftValue = convertValue(left, settings.customverticalleft1.convert, userProfile.preferredUnit.distance)
                             val rightValue = convertValue(right, settings.customverticalright1.convert, userProfile.preferredUnit.distance)
 
-                            val colorleft= ColorFilter.tint(ColorProvider(day = Color(ContextCompat.getColor(context, settings.customverticalleft1.colorday)), night = Color(ContextCompat.getColor(context, settings.customverticalleft1.colornight))))
-                            val colorright= ColorFilter.tint(ColorProvider(day = Color(ContextCompat.getColor(context,settings.customverticalright1.colorday)), night = Color(ContextCompat.getColor(context,settings.customverticalright1.colornight))))
+                            val colorleft= if(settings.customverticalleft1zone == true) ColorFilter.tint(ColorProvider(Color.Black, Color.Black)) else ColorFilter.tint(ColorProvider(day = Color(ContextCompat.getColor(context, settings.customverticalleft1.colorday)), night = Color(ContextCompat.getColor(context, settings.customverticalleft1.colornight))))
+                            val colorright= if(settings.customverticalright1zone == true) ColorFilter.tint(ColorProvider(Color.Black, Color.Black)) else ColorFilter.tint(ColorProvider(day = Color(ContextCompat.getColor(context,settings.customverticalright1.colorday)), night = Color(ContextCompat.getColor(context,settings.customverticalright1.colornight))))
 
                             val colorzoneleft = ColorProvider(
                                 day = Color(ContextCompat.getColor(context, getZone(
                                     if (settings.customverticalleft1.zone == "heartRateZones") userProfile.heartRateZones else if (settings.customverticalleft1.zone == "powerZones") userProfile.powerZones else slopeZones,
                                     leftValue
-                                )?.colorResource ?: R.color.zone7)),
+                                )?.let { if (generalsettings.ispalettezwift) it.colorZwift else it.colorResource} ?: R.color.zone7)),
                                 night = Color(ContextCompat.getColor(context, getZone(
                                     if (settings.customverticalleft1.zone == "heartRateZones") userProfile.heartRateZones else if (settings.customverticalleft1.zone == "powerZones") userProfile.powerZones else slopeZones,
                                     leftValue
-                                )?.colorResource ?: R.color.zone7))
+                                )?.let { if (generalsettings.ispalettezwift) it.colorZwift else it.colorResource} ?: R.color.zone7))
                             ).takeIf { settings.customverticalleft1zone == true } ?: ColorProvider(Color.White, Color.Black)
 
                             val colorzoneright = ColorProvider(
                                 day = Color(ContextCompat.getColor(context, getZone(
                                     if (settings.customverticalright1.zone == "heartRateZones") userProfile.heartRateZones else if (settings.customverticalright1.zone == "powerZones") userProfile.powerZones else slopeZones,
                                     rightValue
-                                )?.colorResource ?: R.color.zone7)),
+                                )?.let { if (generalsettings.ispalettezwift) it.colorZwift else it.colorResource} ?: R.color.zone7)),
                                 night = Color(ContextCompat.getColor(context, getZone(
                                     if (settings.customverticalright1.zone == "heartRateZones") userProfile.heartRateZones else if (settings.customverticalright1.zone == "powerZones") userProfile.powerZones else slopeZones,
                                     rightValue
-                                )?.colorResource ?: R.color.zone7))
+                                )?.let { if (generalsettings.ispalettezwift) it.colorZwift else it.colorResource} ?: R.color.zone7))
                             ).takeIf { settings.customverticalright1zone == true } ?: ColorProvider(Color.White, Color.Black)
 
-
-                            //Timber.d("Updating view  with LEFT Action $leftAction and values $temp and $leftValue  RIGHT action $rightAction and values $temp2 and $rightValue")
-                            //Timber.d("Updating view  with vertical Field 1 is ${settings.ishorizontal1}")
-
-
                             val result = glance.compose(context, DpSize.Unspecified) {
-                                DoubleTypesVerticalScreen(leftValue, rightValue, settings.customverticalleft1.icon, settings.customverticalright1.icon,colorleft,colorright, settings.ishorizontal1,colorzoneleft,colorzoneright,config.gridSize.second > 18,karooSystem.hardwareType == HardwareType.KAROO, !(settings.customverticalleft1.convert == "speed" || settings.customverticalleft1.zone=="slopeZones"),!(settings.customverticalright1.convert == "speed" || settings.customverticalright1.zone=="slopeZones"),settings.iscentervertical)
+                                DoubleTypesVerticalScreen(leftValue, rightValue, settings.customverticalleft1.icon, settings.customverticalright1.icon,colorleft,colorright, settings.ishorizontal1,colorzoneleft,colorzoneright,config.gridSize.second > 18,karooSystem.hardwareType == HardwareType.KAROO, !(settings.customverticalleft1.convert == "speed" || settings.customverticalleft1.zone=="slopeZones"),!(settings.customverticalright1.convert == "speed" || settings.customverticalright1.zone=="slopeZones"),generalsettings.iscentervertical)
                             }
                             emitter.updateView(result.remoteViews)
                         }

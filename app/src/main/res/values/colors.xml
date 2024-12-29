@@ -65,4 +65,12 @@
     <color name="zone8">#B700A2</color>
     <color name="zone9">#94D8E0</color>
 
+    <color name="zone1switft">#929292</color>
+    <color name="zone2switft">@color/zone1switft</color>
+    <color name="zone3switft">@color/zone1switft</color>
+    <color name="zone4switft">#FFF000</color>
+    <color name="zone5switft">#FF7A00</color>
+    <color name="zone6switft">#FF0000</color>
+    <color name="zone7switft">#FF0000</color>
+
 </resources>

@@ -8,18 +8,19 @@ import kotlin.math.absoluteValue
 @Serializable
 data class zoneslope(val min: Double, val max: Double)
 
-enum class Zone(val colorResource: Int){
-    Zone0(R.color.zone0),
-    Zone1(R.color.zone1),
-    Zone2(R.color.zone2),
-    Zone3(R.color.zone3),
-    Zone4(R.color.zone4),
-    Zone5(R.color.zone5),
-    Zone6(R.color.zone6),
-    Zone7(R.color.zone7),
-    Zone8(R.color.zone8),
-    Zone9(R.color.zone9)
+enum class Zone(val colorResource: Int, val colorZwift: Int) {
+    Zone0(R.color.zone0, R.color.zone1switft),
+    Zone1(R.color.zone9, R.color.zone1switft),
+    Zone2(R.color.zone2, R.color.zone2switft),
+    Zone3(R.color.zone3, R.color.zone3switft),
+    Zone4(R.color.zone4, R.color.zone4switft),
+    Zone5(R.color.zone5, R.color.zone5switft),
+    Zone6(R.color.zone6, R.color.zone6switft),
+    Zone7(R.color.zone7, R.color.zone7switft),
+    Zone8(R.color.zone8, R.color.zone7switft)
+    //Zone9(R.color.zone1)
 }
+
 
 val slopeZones = listOf(
     zoneslope(min = 0.0, max = 4.6),
@@ -33,14 +34,14 @@ val slopeZones = listOf(
 
 val zones = mapOf(
     1 to listOf(Zone.Zone7),
-    2 to listOf(Zone.Zone9, Zone.Zone7),
-    3 to listOf(Zone.Zone9, Zone.Zone3, Zone.Zone7),
-    4 to listOf(Zone.Zone9, Zone.Zone3, Zone.Zone5, Zone.Zone7),
-    5 to listOf(Zone.Zone9, Zone.Zone2, Zone.Zone3, Zone.Zone5, Zone.Zone7),
-    6 to listOf(Zone.Zone9, Zone.Zone2, Zone.Zone3, Zone.Zone5, Zone.Zone7, Zone.Zone8),
-    7 to listOf(Zone.Zone9, Zone.Zone2, Zone.Zone3, Zone.Zone5, Zone.Zone6, Zone.Zone7, Zone.Zone8),
-    8 to listOf(Zone.Zone9, Zone.Zone1, Zone.Zone2, Zone.Zone3, Zone.Zone5, Zone.Zone6, Zone.Zone7, Zone.Zone8),
-    9 to listOf(Zone.Zone9, Zone.Zone1, Zone.Zone2, Zone.Zone3, Zone.Zone4, Zone.Zone5, Zone.Zone6, Zone.Zone7, Zone.Zone8)
+    2 to listOf(Zone.Zone1, Zone.Zone7),
+    3 to listOf(Zone.Zone1, Zone.Zone3, Zone.Zone7),
+    4 to listOf(Zone.Zone1, Zone.Zone3, Zone.Zone5, Zone.Zone7),
+    5 to listOf(Zone.Zone1, Zone.Zone2, Zone.Zone3, Zone.Zone5, Zone.Zone7),
+    6 to listOf(Zone.Zone1, Zone.Zone2, Zone.Zone3, Zone.Zone5, Zone.Zone7, Zone.Zone8),
+    7 to listOf(Zone.Zone1, Zone.Zone2, Zone.Zone3, Zone.Zone5, Zone.Zone6, Zone.Zone7, Zone.Zone8),
+    8 to listOf(Zone.Zone1, Zone.Zone1, Zone.Zone2, Zone.Zone3, Zone.Zone5, Zone.Zone6, Zone.Zone7, Zone.Zone8),
+    9 to listOf(Zone.Zone1, Zone.Zone1, Zone.Zone2, Zone.Zone3, Zone.Zone4, Zone.Zone5, Zone.Zone6, Zone.Zone7, Zone.Zone8)
 )
 
 inline fun <reified T> getZone(userZones: List<T>, value: Double): Zone? {

@@ -7,6 +7,41 @@ import kotlinx.serialization.json.Json
 import com.enderthor.kCustomField.R
 
 
+/**
+ *
+ * There is no meaning attached to values in this class, it can be used for any purpose.
+ * Quadruple exhibits value semantics
+ *
+ * @param A type of the first value.
+ * @param B type of the second value.
+ * @param C type of the third value.
+ * @param D type of the fourth value.
+ * @property first First value.
+ * @property second Second value.
+ * @property third Third value.
+ * @property fourth Fourth value.
+ */
+
+@Serializable
+data class Quadruple<out A, out B, out C, out D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D
+)  {
+
+    /**
+     * Returns string representation of the [Quadruple] including its [first], [second], [third] and [fourth] values.
+     */
+    override fun toString(): String = "($first, $second, $third, $fourth)"
+}
+
+/**
+ * Converts this quadruple into a list.
+ */
+
+
+
 enum class KarooAction(val action: String, val label: String, val icon: Int, val colorday: Int, val colornight: Int,val zone: String, val convert: String) {
     SPEED(DataType.Type.SPEED, "Speed", R.drawable.ic_speed,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","speed"),
     AVERAGE_SPEED(DataType.Type.AVERAGE_SPEED, "Avg Speed", R.drawable.ic_speed_average,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","speed"),
@@ -19,9 +54,9 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     POWER(DataType.Type.POWER, "Power", R.drawable.ic_power,R.color.hh_success_green_700,R.color.hh_success_green_400,"powerZones","none"),
     POWER3s(DataType.Type.SMOOTHED_3S_AVERAGE_POWER, "Power 3s", R.drawable.ic_power,R.color.hh_success_green_700,R.color.hh_success_green_400,"powerZones","none"),
     AVERAGE_POWER(DataType.Type.AVERAGE_POWER, "Avg Power", R.drawable.ic_power_average,R.color.hh_success_green_700,R.color.hh_success_green_400,"powerZones","none"),
- //   ELEV_GAIN(DataType.Type.ELEVATION_GAIN, "Ascent", R.drawable.ic_ascent,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
- //   ELEV_REMAIN(DataType.Type.ELEVATION_REMAINING, "Ascent", R.drawable.ic_ascent_remain,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
- //   VAM(DataType.Type.VERTICAL_SPEED, "Ascent", R.drawable.ic_vam,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
+    ELEV_GAIN(DataType.Type.ELEVATION_GAIN, "Ascent", R.drawable.ic_elevation,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
+    ELEV_REMAIN(DataType.Type.ELEVATION_REMAINING, "Ascent", R.drawable.ic_elevation_remain,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
+    VAM(DataType.Type.VERTICAL_SPEED, "Ascent", R.drawable.ic_vam,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
  }
 
 @Serializable
@@ -60,12 +95,17 @@ data class CustomFieldSettings(
 
 
 @Serializable
+enum class FieldPosition {
+    LEFT, CENTER, RIGHT;
+}
+
+@Serializable
 data class GeneralSettings(
-    val iscenteralign: Boolean,
-    val iscentervertical: Boolean,
-    val ispalettekaroo: Boolean,
-    val iscenterkaroo: Boolean,
+    val iscenteralign: FieldPosition = FieldPosition.RIGHT,
+    val iscentervertical: FieldPosition = FieldPosition.CENTER,
+    val ispalettezwift: Boolean = false,
+    val iscenterkaroo: Boolean = false,
 )
 
 val defaultSettings = Json.encodeToString(CustomFieldSettings(KarooAction.HR, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.SLOPE,KarooAction.CADENCE, KarooAction.SLOPE, false, false, false, false, false,false,false,false,false,KarooAction.HR, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.SLOPE, KarooAction.CADENCE, KarooAction.SLOPE,false, false, false,false, false, false, false,false,false))
-val defaultGeneralSettings = Json.encodeToString(GeneralSettings(false,false,true,false))
+val defaultGeneralSettings = Json.encodeToString(GeneralSettings(FieldPosition.RIGHT,FieldPosition.CENTER,false,false))
