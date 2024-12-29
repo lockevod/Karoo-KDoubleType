@@ -186,8 +186,8 @@ fun ConfV() {
     }
 
     LaunchedEffect(
-        bottomverticalleft1, bottomverticalleft2, bottomverticalleft3,bottomverticalright1, bottomverticalright2,
-        bottomverticalright3,customverticalleft1zone, customverticalright1zone, customverticalleft2zone, customverticalright2zone,
+        bottomverticalleft1, bottomverticalleft2, bottomverticalleft3, bottomverticalright1, bottomverticalright2, bottomverticalright3,
+        customverticalleft1zone, customverticalright1zone, customverticalleft2zone, customverticalright2zone,
         customverticalleft3zone, customverticalright3zone
         ) {
         val actions = listOf(
@@ -530,11 +530,9 @@ fun ConfH() {
     }
 
     LaunchedEffect(
-        bottomleft1, bottomleft2, bottomright1, bottomright2, bottomleft3, bottomleft3,customleft3zone, customright3zone,
-        bottomverticalleft1, bottomverticalleft2, bottomverticalright1, bottomverticalright2,
-        customleft1zone, customright1zone, customleft2zone, customright2zone,
-        customverticalleft1zone, customverticalright1zone, customverticalleft2zone, customverticalright2zone
-    ) {
+        bottomleft1, bottomleft2, bottomright1, bottomright2, bottomleft3, bottomright3,
+        customleft1zone, customright1zone, customleft2zone, customright2zone,customleft3zone, customright3zone
+        ) {
         val actions = listOf(
             bottomleft1 to { customleft1zone = false },
             bottomleft2 to { customleft2zone = false },
