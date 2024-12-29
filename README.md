@@ -36,8 +36,8 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 - You can configure left and right sides in configuration tab.
 - Horizontal fields rounds to integer numbers ( ie for speed 12.6 you will see 13)
 - If you chose vertical fields you can see 5 digits (including the decimal point for speed and slope).
-- Coloured zones are based in your Karoo zones. Slope zones are based in Hammerhead climber zones.
-- You can align text/image to the left or center in horizontal fields.
+- Coloured zones are based in your Karoo zones. Slope zones are based in Hammerhead climber zones or you can chose use the Zwift colors.
+- You can align text/image to the left, center or right.
 
 ## Know Bugs
 - The max number of every field horizontal is 3 digits, but it's better if you don't mix two types with 3 digits always.

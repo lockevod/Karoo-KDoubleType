@@ -236,7 +236,9 @@ fun DoubleTypesVerticalScreen1(leftNumber: String, rightNumber: String, leftIcon
                     }
 
                 }
-                if (isVertical) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.Black, Color.White)))
+                if (isVertical)
+                    Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.Black, Color.White)))
+                Spacer(modifier = GlanceModifier.fillMaxWidth().height(2.dp).background(zonecolor2))
                 Column(
                     modifier = GlanceModifier.defaultWeight().background(zonecolor2),
                 ) {
@@ -325,6 +327,7 @@ fun DoubleTypesVerticalScreen2(leftNumber: String, rightNumber: String, leftIcon
                 if (isVertical) Spacer(modifier = GlanceModifier.height(1.dp).background(ColorProvider(Color.Black, Color.White)))
             }
             if (isVertical) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.Black, Color.White)))
+            Spacer(modifier = GlanceModifier.fillMaxWidth().height(2.dp).background(zonecolor2))
             Row(
                 modifier = GlanceModifier.fillMaxWidth().background(zonecolor2),
                 verticalAlignment = Alignment.CenterVertically,

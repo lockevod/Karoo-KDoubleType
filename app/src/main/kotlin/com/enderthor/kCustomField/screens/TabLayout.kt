@@ -371,7 +371,7 @@ fun ConfV() {
                     options = dropdownOptions,
                     selectedOption = dropdownInitialSelection
                 ) { selectedOption ->
-                    bottomverticalright2 =
+                    bottomverticalright3 =
                         KarooAction.entries.find { unit -> unit.action == selectedOption.id }!!
                 }
             }

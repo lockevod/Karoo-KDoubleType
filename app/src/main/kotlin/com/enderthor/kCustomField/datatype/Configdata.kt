@@ -55,8 +55,10 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     POWER3s(DataType.Type.SMOOTHED_3S_AVERAGE_POWER, "Power 3s", R.drawable.ic_power,R.color.hh_success_green_700,R.color.hh_success_green_400,"powerZones","none"),
     AVERAGE_POWER(DataType.Type.AVERAGE_POWER, "Avg Power", R.drawable.ic_power_average,R.color.hh_success_green_700,R.color.hh_success_green_400,"powerZones","none"),
     ELEV_GAIN(DataType.Type.ELEVATION_GAIN, "Ascent", R.drawable.ic_elevation,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
-    ELEV_REMAIN(DataType.Type.ELEVATION_REMAINING, "Ascent", R.drawable.ic_elevation_remain,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
-    VAM(DataType.Type.VERTICAL_SPEED, "Ascent", R.drawable.ic_vam,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
+    ELEV_REMAIN(DataType.Type.ELEVATION_REMAINING, "Ascent Remain", R.drawable.ic_elevation_remain,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
+    VAM(DataType.Type.VERTICAL_SPEED, "VAM", R.drawable.ic_vam,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
+    IF(DataType.Type.INTENSITY_FACTOR, "IF", R.drawable.ic_if2,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
+    TSS(DataType.Type.TRAINING_STRESS_SCORE, "TSS", R.drawable.ic_tss,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
  }
 
 @Serializable
