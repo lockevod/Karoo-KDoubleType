@@ -41,7 +41,6 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 
 ## Know Bugs
 - The max number of every field horizontal is 3 digits, but it's better if you don't mix two types with 3 digits always.
-- There isn't possible to configure alignment of the fields (currently, will be in future versions).
 - Not intensive tested with all the fields, please report any issue. For example, number adaptation for the fields is not tested with all the fields.
 
 ## Credits
