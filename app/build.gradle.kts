@@ -13,8 +13,8 @@ android {
         applicationId = "com.enderthor.kCustomField"
         minSdk = 26
         targetSdk = 34
-        versionCode = 202412293
-        versionName = "1.6.1"
+        versionCode = 202501011
+        versionName = "1.7"
     }
 
     buildTypes {
