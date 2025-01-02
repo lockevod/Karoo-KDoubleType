@@ -7,40 +7,13 @@ import kotlinx.serialization.json.Json
 import com.enderthor.kCustomField.R
 
 
-/**
- *
- * There is no meaning attached to values in this class, it can be used for any purpose.
- * Quadruple exhibits value semantics
- *
- * @param A type of the first value.
- * @param B type of the second value.
- * @param C type of the third value.
- * @param D type of the fourth value.
- * @property first First value.
- * @property second Second value.
- * @property third Third value.
- * @property fourth Fourth value.
- */
-
 @Serializable
 data class Quadruple<out A, out B, out C, out D>(
     val first: A,
     val second: B,
     val third: C,
     val fourth: D
-)  {
-
-    /**
-     * Returns string representation of the [Quadruple] including its [first], [second], [third] and [fourth] values.
-     */
-    override fun toString(): String = "($first, $second, $third, $fourth)"
-}
-
-/**
- * Converts this quadruple into a list.
- */
-
-
+)
 
 enum class KarooAction(val action: String, val label: String, val icon: Int, val colorday: Int, val colornight: Int,val zone: String, val convert: String) {
     SPEED(DataType.Type.SPEED, "Speed", R.drawable.ic_speed,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","speed"),
@@ -63,38 +36,52 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
 
 @Serializable
 data class CustomFieldSettings(
-    val customleft1: KarooAction,
-    val customright1: KarooAction,
-    val customleft2: KarooAction,
-    val customright2: KarooAction,
-    val customleft3: KarooAction,
-    val customright3: KarooAction,
-    val customleft1zone: Boolean,
-    val customright1zone: Boolean,
-    val customleft2zone: Boolean,
-    val customright2zone: Boolean,
-    val customleft3zone: Boolean,
-    val customright3zone: Boolean,
-    val isvertical1: Boolean,
-    val isvertical2: Boolean,
-    val isvertical3: Boolean,
-    val customverticalleft1: KarooAction,
-    val customverticalright1: KarooAction,
-    val customverticalleft2: KarooAction,
-    val customverticalright2: KarooAction,
-    val customverticalleft3: KarooAction,
-    val customverticalright3: KarooAction,
-    val customverticalleft1zone: Boolean,
-    val customverticalright1zone: Boolean,
-    val customverticalleft2zone: Boolean,
-    val customverticalright2zone: Boolean,
-    val customverticalleft3zone: Boolean,
-    val customverticalright3zone: Boolean,
-    val ishorizontal1: Boolean,
-    val ishorizontal2: Boolean,
-    val ishorizontal3: Boolean,
+    val customleft1: KarooAction = KarooAction.HR,
+    val customright1: KarooAction = KarooAction.SPEED,
+    val customleft2: KarooAction = KarooAction.CADENCE,
+    val customright2: KarooAction = KarooAction.SLOPE,
+    val customleft3: KarooAction = KarooAction.POWER,
+    val customright3: KarooAction = KarooAction.AVERAGE_HR,
+    val customleft1zone: Boolean = false,
+    val customright1zone: Boolean = false,
+    val customleft2zone: Boolean = false,
+    val customright2zone: Boolean = false,
+    val customleft3zone: Boolean = false,
+    val customright3zone: Boolean = false,
+    val isvertical1: Boolean = false,
+    val isvertical2: Boolean = false,
+    val isvertical3: Boolean = false,
+    val customverticalleft1: KarooAction = KarooAction.HR,
+    val customverticalright1: KarooAction = KarooAction.SPEED,
+    val customverticalleft2: KarooAction = KarooAction.CADENCE,
+    val customverticalright2: KarooAction = KarooAction.SLOPE,
+    val customverticalleft3: KarooAction= KarooAction.POWER,
+    val customverticalright3: KarooAction  = KarooAction.AVERAGE_HR,
+    val customverticalleft1zone: Boolean =false,
+    val customverticalright1zone: Boolean =false,
+    val customverticalleft2zone: Boolean = false,
+    val customverticalright2zone: Boolean = false,
+    val customverticalleft3zone: Boolean = false,
+    val customverticalright3zone: Boolean = false,
+    val ishorizontal1: Boolean = false,
+    val ishorizontal2: Boolean =false,
+    val ishorizontal3: Boolean = false,
 )
 
+
+data class FieldSizeRange(val name: FieldSize, val min: Int, val max: Int)
+
+val fieldSizeRanges = listOf(
+    FieldSizeRange(FieldSize.SMALL, Int.MIN_VALUE, 13),
+    FieldSizeRange(FieldSize.MEDIUM, 14, 15),
+    FieldSizeRange(FieldSize.LARGE, 16, 18),
+    FieldSizeRange(FieldSize.EXTRA_LARGE, 19, Int.MAX_VALUE)
+)
+
+@Serializable
+enum class FieldSize {
+   SMALL, MEDIUM, LARGE, EXTRA_LARGE;
+}
 
 @Serializable
 enum class FieldPosition {
@@ -109,5 +96,5 @@ data class GeneralSettings(
     val iscenterkaroo: Boolean = false,
 )
 
-val defaultSettings = Json.encodeToString(CustomFieldSettings(KarooAction.HR, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.SLOPE,KarooAction.CADENCE, KarooAction.SLOPE, false, false, false, false, false,false,false,false,false,KarooAction.HR, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.SLOPE, KarooAction.CADENCE, KarooAction.SLOPE,false, false, false,false, false, false, false,false,false))
+val defaultSettings = Json.encodeToString(CustomFieldSettings(KarooAction.HR, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.SLOPE,KarooAction.POWER, KarooAction.AVERAGE_HR, false, false, false, false, false,false,false,false,false,KarooAction.HR, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.SLOPE, KarooAction.POWER, KarooAction.AVERAGE_HR,false, false, false,false, false, false, false,false,false))
 val defaultGeneralSettings = Json.encodeToString(GeneralSettings(FieldPosition.RIGHT,FieldPosition.CENTER,false,false))
