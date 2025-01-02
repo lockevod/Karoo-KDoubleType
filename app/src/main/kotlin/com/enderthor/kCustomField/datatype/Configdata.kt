@@ -55,8 +55,8 @@ data class CustomFieldSettings(
     val customverticalright1: KarooAction = KarooAction.SPEED,
     val customverticalleft2: KarooAction = KarooAction.CADENCE,
     val customverticalright2: KarooAction = KarooAction.SLOPE,
-    val customverticalleft3: KarooAction= KarooAction.POWER,
-    val customverticalright3: KarooAction  = KarooAction.AVERAGE_HR,
+    val customverticalleft3: KarooAction= KarooAction.IF,
+    val customverticalright3: KarooAction  = KarooAction.TSS,
     val customverticalleft1zone: Boolean =false,
     val customverticalright1zone: Boolean =false,
     val customverticalleft2zone: Boolean = false,
@@ -96,5 +96,5 @@ data class GeneralSettings(
     val iscenterkaroo: Boolean = false,
 )
 
-val defaultSettings = Json.encodeToString(CustomFieldSettings(KarooAction.HR, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.SLOPE,KarooAction.POWER, KarooAction.AVERAGE_HR, false, false, false, false, false,false,false,false,false,KarooAction.HR, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.SLOPE, KarooAction.POWER, KarooAction.AVERAGE_HR,false, false, false,false, false, false, false,false,false))
+val defaultSettings = Json.encodeToString(CustomFieldSettings(KarooAction.SLOPE, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.POWER3s,KarooAction.SPEED, KarooAction.AVERAGE_SPEED, true, false, false, true, false,false,true,true,true,KarooAction.ELEV_GAIN, KarooAction.ELEV_REMAIN, KarooAction.SPEED, KarooAction.AVERAGE_SPEED, KarooAction.IF, KarooAction.TSS,false, false, false,false, false, false, true,true,true))
 val defaultGeneralSettings = Json.encodeToString(GeneralSettings(FieldPosition.RIGHT,FieldPosition.CENTER,false,false))

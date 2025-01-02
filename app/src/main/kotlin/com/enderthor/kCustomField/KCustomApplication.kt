@@ -12,7 +12,7 @@ class KCustomApplication : Application() {
             Timber.plant(Timber.DebugTree())
         }
 
-        Timber.plant(Timber.DebugTree())
+        //Timber.plant(Timber.DebugTree())
         Timber.Forest.d("Starting KCustom App")
     }
 }

@@ -22,6 +22,8 @@ import androidx.glance.unit.ColorProvider
 import com.enderthor.kCustomField.extensions.consumerFlow
 import com.enderthor.kCustomField.extensions.getZone
 import kotlinx.coroutines.flow.first
+
+
 import timber.log.Timber
 import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.slopeZones
@@ -44,8 +46,6 @@ abstract class CustomDoubleTypeBase(
     abstract val rightZone:  (CustomFieldSettings) -> Boolean
     abstract val showh: Boolean
 
-
-
     override fun startStream(emitter: Emitter<StreamState>) {
         Timber.d("start double type stream")
 
@@ -56,16 +56,18 @@ abstract class CustomDoubleTypeBase(
                     karooSystem.streamDataFlow(leftAction)
                         .combine(karooSystem.streamDataFlow(rightAction)) { left: StreamState, right: StreamState -> left to right }
                         .collect { (left: StreamState, right: StreamState) ->
-                            val leftValue = if (left is StreamState.Streaming) left.dataPoint.singleValue!! else 0.0
-                            val rightValue = if (right is StreamState.Streaming) right.dataPoint.singleValue!! else 0.0
+                            val leftValue = (left as? StreamState.Streaming)?.dataPoint?.singleValue ?: 0.0
+                            val rightValue= (right as? StreamState.Streaming)?.dataPoint?.singleValue ?: 0.0
 
                             emitter.onNext(
+
                                 StreamState.Streaming(
                                     DataPoint(
                                         dataTypeId,
                                         mapOf(DataType.Field.SINGLE to leftValue, DataType.Field.SINGLE to rightValue)
                                     )
                                 )
+
                             )
                         }
                 }
@@ -96,8 +98,8 @@ abstract class CustomDoubleTypeBase(
         }
 
         fun convertValue(streamState: StreamState, convert: String, unitType: UserProfile.PreferredUnit.UnitType): Double {
-            val value = if (streamState is StreamState.Streaming) streamState.dataPoint.singleValue!! else 0.0
-            return when (convert) {
+            val value = (streamState as? StreamState.Streaming)?.dataPoint?.singleValue ?: 0.0
+             return when (convert) {
                 "distance", "speed" -> when (unitType) {
                     UserProfile.PreferredUnit.UnitType.METRIC -> if (convert == "distance") (value / 1000) else (value * 18 / 5)
                     UserProfile.PreferredUnit.UnitType.IMPERIAL -> if (convert == "distance") (value / 1609.345) else (value * 0.0568182)
@@ -130,35 +132,55 @@ abstract class CustomDoubleTypeBase(
                     settings to generalSettings
                 }
                 .collect { (settings, generalSettings) ->
-                    karooSystem.streamDataFlow(leftAction(settings).action)
-                        .combine(karooSystem.streamDataFlow(rightAction(settings).action)) { left: StreamState, right: StreamState -> Quadruple(generalSettings, settings, left, right) }
-                        .collect { (generalsettings, settings, left: StreamState, right: StreamState) ->
-
-                            val leftValue = convertValue(left, leftAction(settings).convert, userProfile.preferredUnit.distance)
-                            val rightValue = convertValue(right, rightAction(settings).convert, userProfile.preferredUnit.distance)
-
-                            val colorleft = getColorFilter(context, leftAction(settings), leftZone(settings))
-                            val colorright = getColorFilter(context, rightAction(settings), rightZone(settings))
-
-                            val colorzoneleft = getColorZone(context, leftAction(settings).zone, leftValue, userProfile, generalsettings.ispalettezwift).takeIf { leftAction(settings).zone == "heartRateZones" || leftAction(settings).zone == "powerZones" || leftAction(settings).zone == "slopeZones"} ?: ColorProvider(Color.White, Color.Black)
-                            val colorzoneright= getColorZone(context, rightAction(settings).zone, leftValue, userProfile, generalsettings.ispalettezwift).takeIf { rightAction(settings).zone == "heartRateZones" || rightAction(settings).zone == "powerZones" || rightAction(settings).zone == "slopeZones"} ?: ColorProvider(Color.White, Color.Black)
-
-                            val size = getFieldSize(config.gridSize.second)
-                            /*Timber.d("UPDATING leftAction: ${leftAction(settings).action}, rightAction: ${rightAction(settings).action}")
-                            Timber.d("Leftvalue is $leftValue and RightIS $rightValue")
-                            Timber.d("leftAction.zone is ${leftAction(settings).zone} and rihhAction.zone is ${rightAction(settings).zone}")
-                            Timber.d("leftAction.convert is ${leftAction(settings).convert} and rightAction.convert is ${rightAction(settings).convert}")
-                            Timber.d("leftAction.colorday is ${leftAction(settings).colorday} and rightAction.colorday is ${rightAction(settings).colorday}")
-                            */
-                            Timber.d("Viewconfig is $config")
-
-                            val result = glance.compose(context, DpSize.Unspecified) {
-                               // DoubleScreenSelector(showh,leftValue, rightValue, leftAction(settings).icon, rightAction(settings).icon, colorleft, colorright, isVertical(settings), colorzoneleft, colorzoneright, config.gridSize.second > 18, karooSystem.hardwareType == HardwareType.KAROO, false, false, generalsettings.iscenteralign)
-                                DoubleScreenSelector(showh,leftValue, rightValue, leftAction(settings).icon, rightAction(settings).icon, colorleft, colorright, isVertical(settings), colorzoneleft, colorzoneright, size , karooSystem.hardwareType == HardwareType.KAROO, !(leftAction(settings).convert == "speed" || leftAction(settings).zone=="slopeZones"),!(rightAction(settings).convert == "speed" || rightAction(settings).zone=="slopeZones"),if(showh) generalsettings.iscenteralign else generalsettings.iscentervertical)
-
+                        karooSystem.streamDataFlow(leftAction(settings).action)
+                            .combine(karooSystem.streamDataFlow(rightAction(settings).action)) { left: StreamState, right: StreamState ->
+                                Quadruple(
+                                    generalSettings,
+                                    settings,
+                                    left,
+                                    right
+                                )
                             }
-                            emitter.updateView(result.remoteViews)
-                        }
+                            .collect { (generalsettings, settings, left: StreamState, right: StreamState) ->
+
+                                val leftValue = convertValue(left, leftAction(settings).convert, userProfile.preferredUnit.distance)
+                                val rightValue = convertValue(right, rightAction(settings).convert, userProfile.preferredUnit.distance)
+
+                                val colorleft = getColorFilter(context, leftAction(settings), leftZone(settings))
+                                val colorright = getColorFilter(context, rightAction(settings), rightZone(settings)
+                                )
+
+                                val colorzoneleft = getColorZone(context, leftAction(settings).zone, leftValue, userProfile, generalsettings.ispalettezwift
+                                ).takeIf { leftAction(settings).zone == "heartRateZones" || leftAction(settings).zone == "powerZones" || leftAction(settings).zone == "slopeZones" } ?: ColorProvider(Color.White, Color.Black)
+                                val colorzoneright = getColorZone(context, rightAction(settings).zone, leftValue, userProfile, generalsettings.ispalettezwift
+                                ).takeIf { rightAction(settings).zone == "heartRateZones" || rightAction(settings).zone == "powerZones" || rightAction(settings).zone == "slopeZones" } ?: ColorProvider(Color.White, Color.Black)
+
+                                val size = getFieldSize(config.gridSize.second)
+                              /*  Timber.d("UPDATING leftAction: ${leftAction(settings).action}, rightAction: ${rightAction(settings).action}")
+                                Timber.d("Leftvalue is $leftValue and RightIS $rightValue")
+
+                               */
+                                val result = glance.compose(context, DpSize.Unspecified) {
+                                    DoubleScreenSelector(
+                                        showh,
+                                        leftValue,
+                                        rightValue,
+                                        leftAction(settings).icon,
+                                        rightAction(settings).icon,
+                                        colorleft,
+                                        colorright,
+                                        isVertical(settings),
+                                        colorzoneleft,
+                                        colorzoneright,
+                                        size,
+                                        karooSystem.hardwareType == HardwareType.KAROO,
+                                        !(leftAction(settings).convert == "speed" || leftAction(settings).zone == "slopeZones"),
+                                        !(rightAction(settings).convert == "speed" || rightAction(settings).zone == "slopeZones"),
+                                        if (showh) generalsettings.iscenteralign else generalsettings.iscentervertical
+                                    )
+                                }
+                                emitter.updateView(result.remoteViews)
+                            }
                 }
         }
 
