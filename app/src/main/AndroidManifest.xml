@@ -5,9 +5,9 @@
     <application
         android:name=".KCustomApplication"
         android:allowBackup="true"
-        android:icon="@drawable/ic_launcher"
+        android:icon="@drawable/ic_field"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/ic_launcher"
+        android:roundIcon="@drawable/ic_field"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat">
         <activity

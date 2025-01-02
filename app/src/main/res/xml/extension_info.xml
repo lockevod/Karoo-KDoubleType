@@ -1,43 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ExtensionInfo
     displayName="@string/extension_name"
-    icon="@drawable/ic_launcher"
+    icon="@drawable/ic_field"
     id="kcustomfield"
     scansDevices="false">
     <DataType
         description="@string/custom_double_description1"
         displayName="@string/custom_double1"
         graphical="true"
-        icon="@drawable/ic_launcher"
+        icon="@drawable/ic_field"
         typeId="custom-one" />
     <DataType
         description="@string/custom_double_description2"
         displayName="@string/custom_double2"
         graphical="true"
-        icon="@drawable/ic_launcher"
+        icon="@drawable/ic_field"
         typeId="custom-two" />
     <DataType
         description="@string/custom_double_description3"
         displayName="@string/custom_double3"
         graphical="true"
-        icon="@drawable/ic_launcher"
+        icon="@drawable/ic_field"
         typeId="custom-three" />
     <DataType
         description="@string/custom_double_vertical_description1"
         displayName="@string/custom_vertical_double1"
         graphical="true"
-        icon="@drawable/ic_launcher"
+        icon="@drawable/ic_field"
         typeId="vertical-one" />
     <DataType
         description="@string/custom_double_vertical_description2"
         displayName="@string/custom_vertical_double2"
         graphical="true"
-        icon="@drawable/ic_launcher"
+        icon="@drawable/ic_field"
         typeId="vertical-two" />
     <DataType
         description="@string/custom_double_vertical_description3"
         displayName="@string/custom_vertical_double3"
         graphical="true"
-        icon="@drawable/ic_launcher"
+        icon="@drawable/ic_field"
         typeId="vertical-three" />
 </ExtensionInfo>
