@@ -13,7 +13,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.combine
 import com.enderthor.kCustomField.extensions.streamSettings
 import com.enderthor.kCustomField.extensions.streamDataFlow
-import kotlinx.coroutines.flow.map
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.graphics.Color
 import androidx.glance.ColorFilter
@@ -28,6 +27,7 @@ import timber.log.Timber
 import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.slopeZones
 import com.enderthor.kCustomField.extensions.streamGeneralSettings
+
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
 abstract class CustomDoubleTypeBase(
@@ -50,30 +50,10 @@ abstract class CustomDoubleTypeBase(
         Timber.d("start double type stream")
 
         val job = CoroutineScope(Dispatchers.IO).launch {
-            context.streamSettings()
-                .map { settings -> leftAction(settings).action to rightAction(settings).action }
-                .collect { (leftAction, rightAction) ->
-                    karooSystem.streamDataFlow(leftAction)
-                        .combine(karooSystem.streamDataFlow(rightAction)) { left: StreamState, right: StreamState -> left to right }
-                        .collect { (left: StreamState, right: StreamState) ->
-                            val leftValue = (left as? StreamState.Streaming)?.dataPoint?.singleValue ?: 0.0
-                            val rightValue= (right as? StreamState.Streaming)?.dataPoint?.singleValue ?: 0.0
-
-                            emitter.onNext(
-
-                                StreamState.Streaming(
-                                    DataPoint(
-                                        dataTypeId,
-                                        mapOf(DataType.Field.SINGLE to leftValue, DataType.Field.SINGLE to rightValue)
-                                    )
-                                )
-
-                            )
-                        }
-                }
+            emitter.onNext(StreamState.Streaming(DataPoint(dataTypeId, mapOf(DataType.Field.SINGLE to 1.0), extension)))
         }
         emitter.setCancellable {
-            Timber.d("stop double type stream")
+            Timber.d("stop speed stream")
             job.cancel()
         }
     }
@@ -90,16 +70,22 @@ abstract class CustomDoubleTypeBase(
                 "powerZones" -> userProfile.powerZones
                 else -> slopeZones
             }
+
             val colorResource = getZone(zoneData, value)?.let { if (isPaletteZwift) it.colorZwift else it.colorResource } ?: R.color.zone7
+
             return ColorProvider(
                 day = Color(ContextCompat.getColor(context, colorResource)),
                 night = Color(ContextCompat.getColor(context, colorResource))
             )
         }
 
-        fun convertValue(streamState: StreamState, convert: String, unitType: UserProfile.PreferredUnit.UnitType): Double {
-            val value = (streamState as? StreamState.Streaming)?.dataPoint?.singleValue ?: 0.0
-             return when (convert) {
+        fun convertValue(streamState: StreamState, convert: String, unitType: UserProfile.PreferredUnit.UnitType, type: String): Double {
+
+            val value = if (type == "TYPE_ELEVATION_REMAINING_ID")
+                (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_REMAINING_ID") ?: 0.0
+            else (streamState as? StreamState.Streaming)?.dataPoint?.singleValue ?: 0.0
+
+            return when (convert) {
                 "distance", "speed" -> when (unitType) {
                     UserProfile.PreferredUnit.UnitType.METRIC -> if (convert == "distance") (value / 1000) else (value * 18 / 5)
                     UserProfile.PreferredUnit.UnitType.IMPERIAL -> if (convert == "distance") (value / 1609.345) else (value * 0.0568182)
@@ -143,8 +129,8 @@ abstract class CustomDoubleTypeBase(
                             }
                             .collect { (generalsettings, settings, left: StreamState, right: StreamState) ->
 
-                                val leftValue = convertValue(left, leftAction(settings).convert, userProfile.preferredUnit.distance)
-                                val rightValue = convertValue(right, rightAction(settings).convert, userProfile.preferredUnit.distance)
+                                val leftValue = convertValue(left, leftAction(settings).convert, userProfile.preferredUnit.distance,leftAction(settings).action)
+                                var rightValue = convertValue(right, rightAction(settings).convert, userProfile.preferredUnit.distance,rightAction(settings).action)
 
                                 val colorleft = getColorFilter(context, leftAction(settings), leftZone(settings))
                                 val colorright = getColorFilter(context, rightAction(settings), rightZone(settings)
@@ -152,14 +138,11 @@ abstract class CustomDoubleTypeBase(
 
                                 val colorzoneleft = getColorZone(context, leftAction(settings).zone, leftValue, userProfile, generalsettings.ispalettezwift
                                 ).takeIf { leftAction(settings).zone == "heartRateZones" || leftAction(settings).zone == "powerZones" || leftAction(settings).zone == "slopeZones" } ?: ColorProvider(Color.White, Color.Black)
-                                val colorzoneright = getColorZone(context, rightAction(settings).zone, leftValue, userProfile, generalsettings.ispalettezwift
+                                val colorzoneright = getColorZone(context, rightAction(settings).zone, rightValue, userProfile, generalsettings.ispalettezwift
                                 ).takeIf { rightAction(settings).zone == "heartRateZones" || rightAction(settings).zone == "powerZones" || rightAction(settings).zone == "slopeZones" } ?: ColorProvider(Color.White, Color.Black)
 
                                 val size = getFieldSize(config.gridSize.second)
-                              /*  Timber.d("UPDATING leftAction: ${leftAction(settings).action}, rightAction: ${rightAction(settings).action}")
-                                Timber.d("Leftvalue is $leftValue and RightIS $rightValue")
 
-                               */
                                 val result = glance.compose(context, DpSize.Unspecified) {
                                     DoubleScreenSelector(
                                         showh,
@@ -174,8 +157,10 @@ abstract class CustomDoubleTypeBase(
                                         colorzoneright,
                                         size,
                                         karooSystem.hardwareType == HardwareType.KAROO,
-                                        !(leftAction(settings).convert == "speed" || leftAction(settings).zone == "slopeZones"),
-                                        !(rightAction(settings).convert == "speed" || rightAction(settings).zone == "slopeZones"),
+                                        !(leftAction(settings).convert == "speed" || leftAction(settings).zone == "slopeZones" || leftAction(settings).label == "IF"),
+                                        !(rightAction(settings).convert == "speed" || rightAction(settings).zone == "slopeZones" || rightAction(settings).label == "IF"),
+                                        leftAction(settings).label,
+                                        rightAction(settings).label,
                                         if (showh) generalsettings.iscenteralign else generalsettings.iscentervertical
                                     )
                                 }

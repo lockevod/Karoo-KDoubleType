@@ -68,7 +68,6 @@ data class CustomFieldSettings(
     val ishorizontal3: Boolean = false,
 )
 
-
 data class FieldSizeRange(val name: FieldSize, val min: Int, val max: Int)
 
 val fieldSizeRanges = listOf(
@@ -96,5 +95,5 @@ data class GeneralSettings(
     val iscenterkaroo: Boolean = false,
 )
 
-val defaultSettings = Json.encodeToString(CustomFieldSettings(KarooAction.SLOPE, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.POWER3s,KarooAction.SPEED, KarooAction.AVERAGE_SPEED, true, false, false, true, false,false,true,true,true,KarooAction.ELEV_GAIN, KarooAction.ELEV_REMAIN, KarooAction.SPEED, KarooAction.AVERAGE_SPEED, KarooAction.IF, KarooAction.TSS,false, false, false,false, false, false, true,true,true))
+val defaultSettings = Json.encodeToString(CustomFieldSettings(KarooAction.SLOPE, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.POWER3s,KarooAction.SPEED, KarooAction.AVERAGE_SPEED, true, false, false, true, false,false,true,true,true,KarooAction.ELEV_GAIN, KarooAction.DISTANCE, KarooAction.SPEED, KarooAction.AVERAGE_SPEED, KarooAction.IF, KarooAction.TSS,false, false, false,false, false, false, true,true,true))
 val defaultGeneralSettings = Json.encodeToString(GeneralSettings(FieldPosition.RIGHT,FieldPosition.CENTER,false,false))

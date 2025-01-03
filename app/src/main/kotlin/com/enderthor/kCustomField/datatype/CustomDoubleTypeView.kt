@@ -151,18 +151,25 @@ fun DoubleScreenSelector(
     showh: Boolean, leftNumber: Double, rightNumber: Double, leftIcon: Int, rightIcon: Int,
     iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean,
     zonecolor1: ColorProvider, zonecolor2: ColorProvider, fieldsize: FieldSize,
-    isKaroo3: Boolean, isLeftInt: Boolean, isRightInt: Boolean, clayout: FieldPosition
+    isKaroo3: Boolean, isLeftInt: Boolean, isRightInt: Boolean, leftlabel: String, rightlabel: String, clayout: FieldPosition
 ) {
    // Timber.d("IN DoubleScreenSelector zonecolor1 is $zonecolor1 and zonecolor2 is $zonecolor2")
+    var newleft: String
+    var newright: String
+
     if (showh) {
+
+        val newleft = if (leftlabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString().take(3) else leftNumber.roundToInt().toString()
+        val newright = if (rightlabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString().take(3) else rightNumber.roundToInt().toString()
+
         DoubleTypesScreenHorizontal(
-            leftNumber.roundToInt(), rightNumber.roundToInt(), leftIcon, rightIcon,
+            newleft, newright, leftIcon, rightIcon,
             iconColorLeft, iconColorRight, isVertical, zonecolor1, zonecolor2,
             fieldsize, isKaroo3, clayout
         )
     } else {
-        val newleft = formatNumber(leftNumber, isLeftInt)
-        val newright = formatNumber(rightNumber, isRightInt)
+            newleft = formatNumber(leftNumber, isLeftInt)
+            newright = formatNumber(rightNumber, isRightInt)
 
         when (fieldsize) {
             FieldSize.SMALL -> DoubleTypesVerticalScreen1(newleft, newright, leftIcon, rightIcon, iconColorLeft, iconColorRight, isVertical, zonecolor1, zonecolor2, isKaroo3, clayout)
@@ -177,7 +184,7 @@ fun DoubleScreenSelector(
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
 fun DoubleTypesScreenHorizontal(
-    leftNumber: Int, rightNumber: Int, leftIcon: Int, rightIcon: Int,
+    leftNumber: String, rightNumber: String, leftIcon: Int, rightIcon: Int,
     iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean,
     zonecolor1: ColorProvider, zonecolor2: ColorProvider, fieldsize: FieldSize,
     iskaroo3: Boolean, clayout: FieldPosition
@@ -196,7 +203,7 @@ fun DoubleTypesScreenHorizontal(
                 }
                 IconRow(leftIcon, iconColorLeft, clayout)
                 Spacer(modifier = GlanceModifier.height(5.dp))
-                NumberRow(leftNumber.toString().take(4), zonecolor1, clayout, fieldsize)
+                NumberRow(leftNumber.take(4), zonecolor1, clayout, fieldsize)
             }
             if (isVertical) Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(ColorProvider(Color.Black, Color.White)))
             Column(modifier = GlanceModifier.defaultWeight().background(zonecolor2)) {
@@ -208,7 +215,7 @@ fun DoubleTypesScreenHorizontal(
                 }
                 IconRow(rightIcon, iconColorRight, clayout)
                 Spacer(modifier = GlanceModifier.height(5.dp))
-                NumberRow(rightNumber.toString().take(4), zonecolor2, clayout,fieldsize)
+                NumberRow(rightNumber.take(4), zonecolor2, clayout,fieldsize)
             }
         }
     }
