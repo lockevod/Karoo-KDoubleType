@@ -152,7 +152,7 @@ abstract class CustomDoubleTypeBase(
                                         rightAction(settings).icon,
                                         colorleft,
                                         colorright,
-                                        isVertical(settings),
+                                        true,
                                         colorzoneleft,
                                         colorzoneright,
                                         size,

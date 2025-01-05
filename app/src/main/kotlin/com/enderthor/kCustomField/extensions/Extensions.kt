@@ -6,7 +6,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 
 import com.enderthor.kCustomField.datatype.CustomFieldSettings
 import com.enderthor.kCustomField.datatype.GeneralSettings
+import com.enderthor.kCustomField.datatype.OneFieldSettings
 import com.enderthor.kCustomField.datatype.defaultGeneralSettings
+import com.enderthor.kCustomField.datatype.defaultOneFieldSettings
 import com.enderthor.kCustomField.datatype.defaultSettings
 
 import io.hammerhead.karooext.KarooSystemService
@@ -28,6 +30,7 @@ import timber.log.Timber
 val jsonWithUnknownKeys = Json { ignoreUnknownKeys = true }
 val settingsKey = stringPreferencesKey("settings")
 val generalsettingsKey = stringPreferencesKey("generalsettings")
+val onefieldKey = stringPreferencesKey("onefieldsettings")
 
 suspend fun saveSettings(context: Context, settings: CustomFieldSettings) {
     Timber.d("saveSettings IN $settings")
@@ -65,11 +68,33 @@ fun Context.streamGeneralSettings(): Flow<GeneralSettings> {
     return dataStore.data.map { settingsJson ->
         try {
             jsonWithUnknownKeys.decodeFromString<GeneralSettings>(
-                settingsJson[generalsettingsKey] ?: defaultSettings
+                settingsJson[generalsettingsKey] ?: defaultGeneralSettings
             )
         } catch (e: Throwable) {
             Timber.tag("KarooDualTypeExtension").e(e, "Failed to read preferences")
             jsonWithUnknownKeys.decodeFromString< GeneralSettings>(defaultGeneralSettings)
+        }
+    }.distinctUntilChanged()
+}
+
+suspend fun saveOneFieldSettings(context: Context, settings: MutableList<OneFieldSettings>) {
+    Timber.d("saveSettings IN $settings")
+    context.dataStore.edit { t ->
+        t[onefieldKey] = Json.encodeToString(settings)
+    }
+}
+
+
+fun Context.streamOneFieldSettings(): Flow<OneFieldSettings> {
+    Timber.d("streamSettings IN")
+    return dataStore.data.map { settingsJson ->
+        try {
+            jsonWithUnknownKeys.decodeFromString<OneFieldSettings>(
+                settingsJson[onefieldKey] ?: defaultOneFieldSettings
+            )
+        } catch (e: Throwable) {
+            Timber.tag("KarooDualTypeExtension").e(e, "Failed to read preferences")
+            jsonWithUnknownKeys.decodeFromString<OneFieldSettings>(defaultOneFieldSettings)
         }
     }.distinctUntilChanged()
 }

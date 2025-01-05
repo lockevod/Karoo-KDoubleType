@@ -12,7 +12,7 @@ class CustomDoubleVerticalType2(
     override val leftAction = { settings: CustomFieldSettings -> settings.customverticalleft2 }
     override val rightAction = { settings: CustomFieldSettings -> settings.customverticalright2 }
     override val isVertical = { settings: CustomFieldSettings -> settings.ishorizontal2 }
-    override val leftZone = { settings: CustomFieldSettings -> settings.customverticalleft1zone }
-    override val rightZone = { settings: CustomFieldSettings -> settings.customverticalright1zone }
+    override val leftZone = { settings: CustomFieldSettings -> settings.customverticalleft2zone }
+    override val rightZone = { settings: CustomFieldSettings -> settings.customverticalright2zone }
     override val showh = false
 }

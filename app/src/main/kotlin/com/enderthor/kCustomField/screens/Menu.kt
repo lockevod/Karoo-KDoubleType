@@ -77,7 +77,7 @@ fun MultiToggleButton(
                             }
                         })
             ) {
-                Text(toggleState.toCapital(), color = textColor, modifier = Modifier.padding(4.dp))
+                Text(toggleState.toCapital(),color = textColor, modifier = Modifier.padding(1.dp))
             }
 
         }

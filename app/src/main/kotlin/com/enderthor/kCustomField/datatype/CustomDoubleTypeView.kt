@@ -172,9 +172,9 @@ fun DoubleScreenSelector(
             newright = formatNumber(rightNumber, isRightInt)
 
         when (fieldsize) {
-            FieldSize.SMALL -> DoubleTypesVerticalScreen1(newleft, newright, leftIcon, rightIcon, iconColorLeft, iconColorRight, isVertical, zonecolor1, zonecolor2, isKaroo3, clayout)
-            FieldSize.MEDIUM -> DoubleTypesVerticalScreen2(newleft, newright, leftIcon, rightIcon, iconColorLeft, iconColorRight, isVertical, zonecolor1, zonecolor2, isKaroo3, clayout)
-            FieldSize.LARGE -> DoubleTypesVerticalScreen2(newleft, newright, leftIcon, rightIcon, iconColorLeft, iconColorRight, isVertical, zonecolor1, zonecolor2, isKaroo3, clayout)
+            FieldSize.SMALL -> DoubleTypesVerticalScreenSmall(newleft, newright, leftIcon, rightIcon, iconColorLeft, iconColorRight, isVertical, zonecolor1, zonecolor2, isKaroo3, clayout)
+            FieldSize.MEDIUM -> DoubleTypesVerticalScreenBig(newleft, newright, leftIcon, rightIcon, iconColorLeft, iconColorRight, isVertical, zonecolor1, zonecolor2, isKaroo3, clayout)
+            FieldSize.LARGE -> DoubleTypesVerticalScreenBig(newleft, newright, leftIcon, rightIcon, iconColorLeft, iconColorRight, isVertical, zonecolor1, zonecolor2, isKaroo3, clayout)
             FieldSize.EXTRA_LARGE -> TODO()
         }
     }
@@ -227,18 +227,17 @@ fun DoubleTypesScreenHorizontal(
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun DoubleTypesVerticalScreen1(
+fun DoubleTypesVerticalScreenSmall(
     leftNumber: String, rightNumber: String, leftIcon: Int, rightIcon: Int,
     iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean,
     zonecolor1: ColorProvider, zonecolor2: ColorProvider, isKaroo3: Boolean, clayout: FieldPosition
 ) {
-   // Timber.d("Isvertical is $isVertical")
     Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
         Column(
             modifier = if (isKaroo3) GlanceModifier.fillMaxSize().background(zonecolor1).cornerRadius(8.dp) else GlanceModifier.fillMaxSize().background(zonecolor1)
         ) {
             Column(modifier = GlanceModifier.defaultWeight().background(zonecolor1)) {
-               HorizontalScreenContent(leftNumber, leftIcon, iconColorLeft, clayout,isVertical)
+                HorizontalScreenContent(leftNumber, leftIcon, iconColorLeft, clayout,isVertical)
             }
             if (isVertical) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.Black, Color.White)))
             Spacer(modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zonecolor2))
@@ -252,7 +251,7 @@ fun DoubleTypesVerticalScreen1(
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun DoubleTypesVerticalScreen2(
+fun DoubleTypesVerticalScreenBig(
     leftNumber: String, rightNumber: String, leftIcon: Int, rightIcon: Int,
     iconColorLeft: ColorFilter, iconColorRight: ColorFilter, isVertical: Boolean,
     zonecolor1: ColorProvider, zonecolor2: ColorProvider, isKaroo3: Boolean, clayout: FieldPosition
@@ -263,10 +262,14 @@ fun DoubleTypesVerticalScreen2(
             verticalAlignment = Alignment.CenterVertically,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            HorizontalScreenContent(leftNumber, leftIcon, iconColorLeft,  clayout, isVertical)
+            Column(modifier = GlanceModifier.defaultWeight().background(zonecolor1)) {
+                HorizontalScreenContent(leftNumber, leftIcon, iconColorLeft, clayout, isVertical)
+            }
             if (isVertical) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.Black, Color.White)))
             Spacer(modifier = GlanceModifier.fillMaxWidth().height(7.dp).background(zonecolor2))
-            HorizontalScreenContent(rightNumber, rightIcon, iconColorRight, clayout, isVertical)
+            Column(modifier = GlanceModifier.defaultWeight().background(zonecolor2)) {
+                HorizontalScreenContent(rightNumber, rightIcon, iconColorRight, clayout, isVertical)
+            }
         }
     }
 }

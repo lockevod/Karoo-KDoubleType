@@ -36,23 +36,23 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
 
 @Serializable
 data class CustomFieldSettings(
-    val customleft1: KarooAction = KarooAction.HR,
-    val customright1: KarooAction = KarooAction.SPEED,
+    val customleft1: KarooAction = KarooAction.SPEED,
+    val customright1: KarooAction = KarooAction.SLOPE,
     val customleft2: KarooAction = KarooAction.CADENCE,
-    val customright2: KarooAction = KarooAction.SLOPE,
+    val customright2: KarooAction = KarooAction.POWER3s,
     val customleft3: KarooAction = KarooAction.POWER,
     val customright3: KarooAction = KarooAction.AVERAGE_HR,
     val customleft1zone: Boolean = false,
-    val customright1zone: Boolean = false,
+    val customright1zone: Boolean = true,
     val customleft2zone: Boolean = false,
-    val customright2zone: Boolean = false,
+    val customright2zone: Boolean = true,
     val customleft3zone: Boolean = false,
     val customright3zone: Boolean = false,
-    val isvertical1: Boolean = false,
-    val isvertical2: Boolean = false,
-    val isvertical3: Boolean = false,
-    val customverticalleft1: KarooAction = KarooAction.HR,
-    val customverticalright1: KarooAction = KarooAction.SPEED,
+    val isvertical1: Boolean = true,
+    val isvertical2: Boolean = true,
+    val isvertical3: Boolean = true,
+    val customverticalleft1: KarooAction = KarooAction.ELEV_GAIN,
+    val customverticalright1: KarooAction = KarooAction.ELEV_REMAIN,
     val customverticalleft2: KarooAction = KarooAction.CADENCE,
     val customverticalright2: KarooAction = KarooAction.SLOPE,
     val customverticalleft3: KarooAction= KarooAction.IF,
@@ -63,9 +63,26 @@ data class CustomFieldSettings(
     val customverticalright2zone: Boolean = false,
     val customverticalleft3zone: Boolean = false,
     val customverticalright3zone: Boolean = false,
-    val ishorizontal1: Boolean = false,
-    val ishorizontal2: Boolean =false,
-    val ishorizontal3: Boolean = false,
+    val ishorizontal1: Boolean = true,
+    val ishorizontal2: Boolean = true,
+    val ishorizontal3: Boolean = true,
+)
+
+@Serializable
+data class OneFieldType(val kaction: KarooAction, val isactive: Boolean, val iszone: Boolean)
+
+@Serializable
+enum class RollingTime ( val time: Int) {
+    ZERO(0), FOUR (4), TEN (10), TWENTY (20);
+}
+
+@Serializable
+data class OneFieldSettings(
+    val index: Int = 0,
+    val onefield: OneFieldType = OneFieldType(KarooAction.HR, true, true),
+    val secondfield: OneFieldType = OneFieldType(KarooAction.SLOPE, false,true),
+    val thirdfield: OneFieldType = OneFieldType(KarooAction.SPEED, false,false),
+    val rollingtime: RollingTime = RollingTime.ZERO
 )
 
 data class FieldSizeRange(val name: FieldSize, val min: Int, val max: Int)
@@ -95,5 +112,7 @@ data class GeneralSettings(
     val iscenterkaroo: Boolean = false,
 )
 
-val defaultSettings = Json.encodeToString(CustomFieldSettings(KarooAction.SLOPE, KarooAction.SPEED, KarooAction.CADENCE, KarooAction.POWER3s,KarooAction.SPEED, KarooAction.AVERAGE_SPEED, true, false, false, true, false,false,true,true,true,KarooAction.ELEV_GAIN, KarooAction.DISTANCE, KarooAction.SPEED, KarooAction.AVERAGE_SPEED, KarooAction.IF, KarooAction.TSS,false, false, false,false, false, false, true,true,true))
-val defaultGeneralSettings = Json.encodeToString(GeneralSettings(FieldPosition.RIGHT,FieldPosition.CENTER,false,false))
+
+val defaultSettings = Json.encodeToString(CustomFieldSettings())
+val defaultGeneralSettings = Json.encodeToString(GeneralSettings())
+val defaultOneFieldSettings = Json.encodeToString(listOf(OneFieldSettings()))

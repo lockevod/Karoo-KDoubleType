@@ -18,11 +18,12 @@ import com.enderthor.kCustomField.extensions.*
 import kotlinx.coroutines.launch
 
 val alignmentOptions = listOf(FieldPosition.LEFT, FieldPosition.CENTER, FieldPosition.RIGHT)
+val timeOptions = listOf(RollingTime.ZERO, RollingTime.FOUR, RollingTime.TEN, RollingTime.TWENTY)
 
 @Composable
 fun TabLayout() {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Horizo.", "Verti.", "General")
+    val tabs = listOf("Hor.", "Vert.","Roll.","Conf.")
 
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(
@@ -41,7 +42,8 @@ fun TabLayout() {
         when (selectedTabIndex) {
             0 -> ConfH()
             1 -> ConfV()
-            2 -> ConfGeneral()
+            2 -> ConfRolling()
+            3 -> ConfGeneral()
         }
     }
 }
@@ -194,6 +196,108 @@ fun ConfH() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun ConfRolling() {
+    val ctx = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    var ispalettezwift by remember { mutableStateOf(true) }
+    var iscenteralign by remember { mutableStateOf(FieldPosition.CENTER) }
+    var iscentervertical by remember { mutableStateOf(FieldPosition.CENTER) }
+    var iscenterkaroo by remember { mutableStateOf(false) }
+
+
+    val fieldStates = rememberFieldStates()
+
+    LaunchedEffect(Unit) {
+        ctx.streamSettings().collect { settings ->
+            fieldStates.updateFromSettings(settings)
+        }
+    }
+
+    var savedDialogVisible by remember { mutableStateOf(false) }
+
+
+    var onefield1 by remember { mutableStateOf(OneFieldType(KarooAction.HR, true,true)) }
+    var onefield2 by remember { mutableStateOf(OneFieldType(KarooAction.SLOPE, true,false)) }
+    var onefield3 by remember { mutableStateOf(OneFieldType(KarooAction.SPEED, true,false)) }
+    var onefieldtime by remember { mutableStateOf(RollingTime.ZERO) }
+
+    LaunchedEffect(Unit) {
+        ctx.streamOneFieldSettings().collect { settings ->
+            onefield1 = settings.onefield
+            onefield2 = settings.secondfield
+            onefield3 = settings.thirdfield
+            onefieldtime = settings.rollingtime
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        ctx.streamGeneralSettings().collect { settings ->
+            ispalettezwift = settings.ispalettezwift
+            iscenteralign = settings.iscenteralign
+            iscentervertical = settings.iscentervertical
+            iscenterkaroo = settings.iscenterkaroo
+        }
+    }
+
+    LaunchedEffect(fieldStates.allFields) {
+        fieldStates.updateZones()
+    }
+
+    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Column(modifier = Modifier.padding(5.dp).verticalScroll(rememberScrollState()).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            TopAppBar(title = { Text("Rolling Field 1") })
+            DropdownOneField("First Field", onefield1) { newAction -> onefield1 = newAction }
+            DropdownOneField("Second Field", onefield2) { newAction -> onefield1 = newAction }
+            DropdownOneField("Third Field", onefield3) { newAction -> onefield1 = newAction }
+
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Rolling Time (0 no rolling)?")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MultiToggleButton(timeOptions.indexOf(onefieldtime), timeOptions.map { it.name}, onToggleChange = { onefieldtime = timeOptions[it] })
+            }
+
+            FilledTonalButton(modifier = Modifier.fillMaxWidth().height(50.dp), onClick = {
+                val newSettings = fieldStates.toCustomFieldSettings()
+                val newGeneralSettings = GeneralSettings(
+                    ispalettezwift = ispalettezwift,
+                    iscenteralign = iscenteralign,
+                    iscentervertical = iscentervertical,
+                    iscenterkaroo = iscenterkaroo
+                )
+                val newOneFieldSettings = OneFieldSettings(
+                    onefield = onefield1,
+                    secondfield = onefield2,
+                    thirdfield = onefield3,
+                    rollingtime= onefieldtime
+                )
+                coroutineScope.launch {
+                    savedDialogVisible = true
+                    saveSettings(ctx, newSettings)
+                    saveGeneralSettings(ctx, newGeneralSettings)
+                    saveOneFieldSettings(ctx, newOneFieldSettings)
+                }
+            }) {
+                Icon(Icons.Default.Done, contentDescription = "Save")
+                Spacer(modifier = Modifier.width(5.dp))
+                Text("Save")
+                Spacer(modifier = Modifier.width(5.dp))
+            }
+        }
+    }
+
+    if (savedDialogVisible) {
+        AlertDialog(onDismissRequest = { savedDialogVisible = false },
+            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text("OK") } },
+            text = { Text("Settings saved successfully.") }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun ConfGeneral() {
     val ctx = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -303,15 +407,38 @@ fun FieldConfiguration(fieldStates: FieldStates, fieldIndex: Int, isVertical: Bo
     ZoneSwitch(leftZone, leftAction.zone != "none") { newZone -> fieldStates.updateLeftZone(fieldIndex, newZone, isVertical) }
     DropdownField("Right", rightAction) { newAction -> fieldStates.updateRightAction(fieldIndex, newAction, isVertical) }
     ZoneSwitch(rightZone, rightAction.zone != "none") { newZone -> fieldStates.updateRightZone(fieldIndex, newZone, isVertical) }
-    DividerSwitch(horizontalField, !(leftZone || rightZone)) { newField -> fieldStates.updateHorizontalField(fieldIndex, newField, isVertical) }
+    //DividerSwitch(horizontalField, !(leftZone || rightZone)) { newField -> fieldStates.updateHorizontalField(fieldIndex, newField, isVertical) }
 }
 
 @Composable
 fun DropdownField(label: String, action: KarooAction, onActionChange: (KarooAction) -> Unit) {
     val dropdownOptions = KarooAction.entries.toList().map { unit -> DropdownOption(unit.action.toString(), unit.label) }
-    val dropdownInitialSelection by remember(action) { mutableStateOf(dropdownOptions.find { option -> option.id == action.action.toString() }!!) }
+    val dropdownInitialSelection by remember(action) { mutableStateOf(dropdownOptions.find { option -> option.id == action.action.toString() } ?: dropdownOptions.first()) }
     KarooKeyDropdown(remotekey = label, options = dropdownOptions, selectedOption = dropdownInitialSelection) { selectedOption ->
-        onActionChange(KarooAction.entries.find { unit -> unit.action == selectedOption.id }!!)
+        onActionChange(KarooAction.entries.find { unit -> unit.action == selectedOption.id } ?: KarooAction.SPEED)
+    }
+}
+
+@Composable
+fun DropdownOneField(label: String, action: OneFieldType, onActionChange: (OneFieldType) -> Unit) {
+    val dropdownOptions = listOf(DropdownOption("none", "None")) + KarooAction.entries.toList().map { unit -> DropdownOption(unit.action.toString(), unit.label) }
+   // val dropdownOptions = KarooAction.entries.toList().map { unit -> DropdownOption(unit.action.toString(), unit.label) }
+    val dropdownInitialSelection by remember(action) { mutableStateOf(
+        if (!action.isactive) {
+            dropdownOptions.find { option -> option.id == "none" } ?: dropdownOptions.first()
+        } else {
+            dropdownOptions.find { option -> action.kaction.action.toString() == option.id } ?: dropdownOptions.first()
+        }
+    )}
+    KarooKeyDropdown(remotekey = label, options = dropdownOptions, selectedOption = dropdownInitialSelection) { selectedOption ->
+        onActionChange(
+            if (selectedOption.id == "none") {
+                action.copy(isactive = false)
+            }
+            else {
+                OneFieldType(KarooAction.entries.find { unit -> unit.action == selectedOption.id } ?: KarooAction.SPEED,true,true)
+                action.copy(isactive = true)
+            })
     }
 }
 
