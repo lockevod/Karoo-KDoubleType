@@ -26,7 +26,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 
-
 val jsonWithUnknownKeys = Json { ignoreUnknownKeys = true }
 val settingsKey = stringPreferencesKey("settings")
 val generalsettingsKey = stringPreferencesKey("generalsettings")
@@ -77,7 +76,7 @@ fun Context.streamGeneralSettings(): Flow<GeneralSettings> {
     }.distinctUntilChanged()
 }
 
-suspend fun saveOneFieldSettings(context: Context, settings: MutableList<OneFieldSettings>) {
+suspend fun saveOneFieldSettings(context: Context, settings: List<OneFieldSettings>) {
     Timber.d("saveSettings IN $settings")
     context.dataStore.edit { t ->
         t[onefieldKey] = Json.encodeToString(settings)
@@ -85,16 +84,16 @@ suspend fun saveOneFieldSettings(context: Context, settings: MutableList<OneFiel
 }
 
 
-fun Context.streamOneFieldSettings(): Flow<OneFieldSettings> {
-    Timber.d("streamSettings IN")
+fun Context.streamOneFieldSettings(): Flow<MutableList<OneFieldSettings>> {
+    Timber.d("streamSettings OneField IN")
     return dataStore.data.map { settingsJson ->
         try {
-            jsonWithUnknownKeys.decodeFromString<OneFieldSettings>(
+            jsonWithUnknownKeys.decodeFromString<MutableList<OneFieldSettings>>(
                 settingsJson[onefieldKey] ?: defaultOneFieldSettings
             )
         } catch (e: Throwable) {
             Timber.tag("KarooDualTypeExtension").e(e, "Failed to read preferences")
-            jsonWithUnknownKeys.decodeFromString<OneFieldSettings>(defaultOneFieldSettings)
+            jsonWithUnknownKeys.decodeFromString<MutableList<OneFieldSettings>>(defaultOneFieldSettings)
         }
     }.distinctUntilChanged()
 }

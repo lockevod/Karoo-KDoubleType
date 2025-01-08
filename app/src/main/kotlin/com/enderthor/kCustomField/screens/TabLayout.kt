@@ -1,5 +1,6 @@
 package com.enderthor.kCustomField.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,6 +17,8 @@ import androidx.compose.ui.unit.sp
 import com.enderthor.kCustomField.datatype.*
 import com.enderthor.kCustomField.extensions.*
 import kotlinx.coroutines.launch
+import timber.log.Timber
+
 
 val alignmentOptions = listOf(FieldPosition.LEFT, FieldPosition.CENTER, FieldPosition.RIGHT)
 val timeOptions = listOf(RollingTime.ZERO, RollingTime.FOUR, RollingTime.TEN, RollingTime.TWENTY)
@@ -24,6 +27,7 @@ val timeOptions = listOf(RollingTime.ZERO, RollingTime.FOUR, RollingTime.TEN, Ro
 fun TabLayout() {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Hor.", "Vert.","Roll.","Conf.")
+
 
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(
@@ -205,7 +209,6 @@ fun ConfRolling() {
     var iscentervertical by remember { mutableStateOf(FieldPosition.CENTER) }
     var iscenterkaroo by remember { mutableStateOf(false) }
 
-
     val fieldStates = rememberFieldStates()
 
     LaunchedEffect(Unit) {
@@ -216,19 +219,19 @@ fun ConfRolling() {
 
     var savedDialogVisible by remember { mutableStateOf(false) }
 
-
-    var onefield1 by remember { mutableStateOf(OneFieldType(KarooAction.HR, true,true)) }
-    var onefield2 by remember { mutableStateOf(OneFieldType(KarooAction.SLOPE, true,false)) }
-    var onefield3 by remember { mutableStateOf(OneFieldType(KarooAction.SPEED, true,false)) }
-    var onefieldtime by remember { mutableStateOf(RollingTime.ZERO) }
+    var oneFieldSettingsList = remember { mutableStateListOf<OneFieldSettings> (OneFieldSettings(), OneFieldSettings(), OneFieldSettings()) }
 
     LaunchedEffect(Unit) {
         ctx.streamOneFieldSettings().collect { settings ->
-            onefield1 = settings.onefield
-            onefield2 = settings.secondfield
-            onefield3 = settings.thirdfield
-            onefieldtime = settings.rollingtime
+            if (settings.isNotEmpty()) {
+                oneFieldSettingsList.clear()
+                oneFieldSettingsList.addAll(settings)
+            }
         }
+    }
+
+    val oneFieldSettingsDerived = remember {
+        derivedStateOf { oneFieldSettingsList.toList() }
     }
 
     LaunchedEffect(Unit) {
@@ -245,18 +248,39 @@ fun ConfRolling() {
     }
 
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Column(modifier = Modifier.padding(5.dp).verticalScroll(rememberScrollState()).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            TopAppBar(title = { Text("Rolling Field 1") })
-            DropdownOneField("First Field", onefield1) { newAction -> onefield1 = newAction }
-            DropdownOneField("Second Field", onefield2) { newAction -> onefield1 = newAction }
-            DropdownOneField("Third Field", onefield3) { newAction -> onefield1 = newAction }
+        Column(
+            modifier = Modifier.padding(5.dp).verticalScroll(rememberScrollState()).fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            oneFieldSettingsDerived.value.forEachIndexed { index, oneFieldSettings ->
+                TopAppBar(title = { Text("Rolling Field ${index + 1}") })
+                DropdownOneField(true,
+                    "First Field",
+                    oneFieldSettings.onefield
+                ) { newAction -> oneFieldSettingsList[index] = oneFieldSettings.copy(onefield = newAction) }
 
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Rolling Time (0 no rolling)?")
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                MultiToggleButton(timeOptions.indexOf(onefieldtime), timeOptions.map { it.name}, onToggleChange = { onefieldtime = timeOptions[it] })
+                DropdownOneField(false,
+                    "Second Field",
+                    oneFieldSettings.secondfield
+                ) { newAction -> oneFieldSettingsList[index] = oneFieldSettings.copy(secondfield = newAction) }
+
+                DropdownOneField(false,
+                    "Third Field",
+                    oneFieldSettings.thirdfield
+                ) { newAction -> oneFieldSettingsList[index] = oneFieldSettings.copy(thirdfield = newAction) }
+
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Rolling Time (0 no rolling)?")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    MultiToggleButton(
+                        timeOptions.indexOf(oneFieldSettings.rollingtime),
+                        timeOptions.map { it.name },
+                        onToggleChange = {
+                            oneFieldSettingsList[index] = oneFieldSettingsList[index].copy(rollingtime = timeOptions[it])
+                        })
+                }
             }
 
             FilledTonalButton(modifier = Modifier.fillMaxWidth().height(50.dp), onClick = {
@@ -267,17 +291,12 @@ fun ConfRolling() {
                     iscentervertical = iscentervertical,
                     iscenterkaroo = iscenterkaroo
                 )
-                val newOneFieldSettings = OneFieldSettings(
-                    onefield = onefield1,
-                    secondfield = onefield2,
-                    thirdfield = onefield3,
-                    rollingtime= onefieldtime
-                )
+
                 coroutineScope.launch {
                     savedDialogVisible = true
                     saveSettings(ctx, newSettings)
                     saveGeneralSettings(ctx, newGeneralSettings)
-                    saveOneFieldSettings(ctx, newOneFieldSettings)
+                    saveOneFieldSettings(ctx, oneFieldSettingsList)
                 }
             }) {
                 Icon(Icons.Default.Done, contentDescription = "Save")
@@ -305,6 +324,7 @@ fun ConfGeneral() {
     var ispalettezwift by remember { mutableStateOf(true) }
     var iscenteralign by remember { mutableStateOf(FieldPosition.CENTER) }
     var iscentervertical by remember { mutableStateOf(FieldPosition.CENTER) }
+    var iscenterrolling by remember { mutableStateOf(FieldPosition.CENTER) }
     var iscenterkaroo by remember { mutableStateOf(false) }
 
     val fieldStates = rememberFieldStates()
@@ -322,6 +342,7 @@ fun ConfGeneral() {
             ispalettezwift = settings.ispalettezwift
             iscenteralign = settings.iscenteralign
             iscentervertical = settings.iscentervertical
+            iscenterrolling = settings.iscenterrolling
             iscenterkaroo = settings.iscenterkaroo
         }
     }
@@ -332,7 +353,6 @@ fun ConfGeneral() {
 
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.padding(5.dp).verticalScroll(rememberScrollState()).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            TopAppBar(title = { Text("General Settings") })
 
             TopAppBar(title = { Text("Fields Alignment") })
 
@@ -348,7 +368,7 @@ fun ConfGeneral() {
                 Text("Horizontal Fields alignment (icon/text) ?")
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                MultiToggleButton(alignmentOptions.indexOf(iscenteralign), alignmentOptions.map { it.name }, onToggleChange = { iscentervertical = alignmentOptions[it] })
+                MultiToggleButton(alignmentOptions.indexOf(iscenteralign), alignmentOptions.map { it.name }, onToggleChange = { iscenteralign = alignmentOptions[it] })
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -356,6 +376,13 @@ fun ConfGeneral() {
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 MultiToggleButton(alignmentOptions.indexOf(iscentervertical), alignmentOptions.map { it.name }, onToggleChange = { iscentervertical = alignmentOptions[it] })
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Rolling Fields alignment (icon/text) ?")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MultiToggleButton(alignmentOptions.indexOf(iscenterrolling), alignmentOptions.map { it.name }, onToggleChange = { iscenterrolling = alignmentOptions[it] })
             }
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -375,6 +402,7 @@ fun ConfGeneral() {
                     ispalettezwift = ispalettezwift,
                     iscenteralign = iscenteralign,
                     iscentervertical = iscentervertical,
+                    iscenterrolling = iscenterrolling,
                     iscenterkaroo = iscenterkaroo
                 )
                 coroutineScope.launch {
@@ -401,44 +429,53 @@ fun ConfGeneral() {
 
 @Composable
 fun FieldConfiguration(fieldStates: FieldStates, fieldIndex: Int, isVertical: Boolean) {
-    val (leftAction, rightAction, leftZone, rightZone, horizontalField) = fieldStates.getField(fieldIndex, isVertical)
+    val (leftAction, rightAction, leftZone, rightZone) = fieldStates.getField(fieldIndex, isVertical)
+    var first: String = "Left"
+    var second: String = "Right"
 
-    DropdownField("Left", leftAction) { newAction -> fieldStates.updateLeftAction(fieldIndex, newAction, isVertical) }
+    if (isVertical) {
+        first = "Top"
+        second = "Bottom"
+    }
+    DropdownField(first, leftAction) { newAction -> fieldStates.updateLeftAction(fieldIndex, newAction, isVertical) }
     ZoneSwitch(leftZone, leftAction.zone != "none") { newZone -> fieldStates.updateLeftZone(fieldIndex, newZone, isVertical) }
-    DropdownField("Right", rightAction) { newAction -> fieldStates.updateRightAction(fieldIndex, newAction, isVertical) }
+    DropdownField(second, rightAction) { newAction -> fieldStates.updateRightAction(fieldIndex, newAction, isVertical) }
     ZoneSwitch(rightZone, rightAction.zone != "none") { newZone -> fieldStates.updateRightZone(fieldIndex, newZone, isVertical) }
-    //DividerSwitch(horizontalField, !(leftZone || rightZone)) { newField -> fieldStates.updateHorizontalField(fieldIndex, newField, isVertical) }
 }
 
 @Composable
 fun DropdownField(label: String, action: KarooAction, onActionChange: (KarooAction) -> Unit) {
     val dropdownOptions = KarooAction.entries.toList().map { unit -> DropdownOption(unit.action.toString(), unit.label) }
     val dropdownInitialSelection by remember(action) { mutableStateOf(dropdownOptions.find { option -> option.id == action.action.toString() } ?: dropdownOptions.first()) }
+
     KarooKeyDropdown(remotekey = label, options = dropdownOptions, selectedOption = dropdownInitialSelection) { selectedOption ->
         onActionChange(KarooAction.entries.find { unit -> unit.action == selectedOption.id } ?: KarooAction.SPEED)
     }
 }
 
 @Composable
-fun DropdownOneField(label: String, action: OneFieldType, onActionChange: (OneFieldType) -> Unit) {
-    val dropdownOptions = listOf(DropdownOption("none", "None")) + KarooAction.entries.toList().map { unit -> DropdownOption(unit.action.toString(), unit.label) }
-   // val dropdownOptions = KarooAction.entries.toList().map { unit -> DropdownOption(unit.action.toString(), unit.label) }
-    val dropdownInitialSelection by remember(action) { mutableStateOf(
+fun DropdownOneField(firstpos: Boolean, label: String, action: OneFieldType, onActionChange: (OneFieldType) -> Unit) {
+
+    var dropdownOptions = KarooAction.entries.map { DropdownOption(it.action.toString(), it.label) }
+    if (!firstpos) dropdownOptions = listOf(DropdownOption("none", "None")) + dropdownOptions
+
+    val dropdownInitialSelection by remember(action) {
+        mutableStateOf(
         if (!action.isactive) {
-            dropdownOptions.find { option -> option.id == "none" } ?: dropdownOptions.first()
+           dropdownOptions.find { it.id == "none" } ?: dropdownOptions.first()
         } else {
-            dropdownOptions.find { option -> action.kaction.action.toString() == option.id } ?: dropdownOptions.first()
+            dropdownOptions.find { it.id == action.kaction.action.toString() } ?: dropdownOptions.first()
         }
-    )}
+        )
+    }
+
     KarooKeyDropdown(remotekey = label, options = dropdownOptions, selectedOption = dropdownInitialSelection) { selectedOption ->
-        onActionChange(
-            if (selectedOption.id == "none") {
-                action.copy(isactive = false)
-            }
-            else {
-                OneFieldType(KarooAction.entries.find { unit -> unit.action == selectedOption.id } ?: KarooAction.SPEED,true,true)
-                action.copy(isactive = true)
-            })
+        val newAction = if (selectedOption.id == "none") {
+            OneFieldType(KarooAction.SPEED, false, false)
+        } else {
+            OneFieldType(KarooAction.entries.find { it.action == selectedOption.id } ?: KarooAction.SPEED, true, true)
+        }
+        onActionChange(newAction)
     }
 }
 
@@ -448,15 +485,6 @@ fun ZoneSwitch(checked: Boolean, enabled: Boolean, onCheckedChange: (Boolean) ->
         Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
         Spacer(modifier = Modifier.width(10.dp))
         Text("Coloured zone?")
-    }
-}
-
-@Composable
-fun DividerSwitch(checked: Boolean, enabled: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
-        Spacer(modifier = Modifier.width(10.dp))
-        Text("Horizontal Divider?")
     }
 }
 
@@ -657,21 +685,6 @@ class FieldStates {
         }
     }
 
-    fun updateHorizontalField(index: Int, field: Boolean, isVertical: Boolean) {
-        if (isVertical) {
-            when (index) {
-                1 -> isverticalfield1 = field
-                2 -> isverticalfield2 = field
-                3 -> isverticalfield3 = field
-            }
-        } else {
-            when (index) {
-                1 -> ishorizontalfield1 = field
-                2 -> ishorizontalfield2 = field
-                3 -> ishorizontalfield3 = field
-            }
-        }
-    }
 
     fun toCustomFieldSettings(): CustomFieldSettings {
         return CustomFieldSettings(

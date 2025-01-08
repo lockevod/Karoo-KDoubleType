@@ -40,4 +40,10 @@
         graphical="true"
         icon="@drawable/ic_field"
         typeId="vertical-three" />
+    <DataType
+        description="@string/custom_rolling_description1"
+        displayName="@string/custom_rolling1"
+        graphical="true"
+        icon="@drawable/ic_field"
+        typeId="rolling-one" />
 </ExtensionInfo>

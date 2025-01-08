@@ -13,4 +13,10 @@
     <string name="custom_vertical_double2">Vertical Field Two</string>
     <string name="custom_double_vertical_description3">Vertical DualType Three</string>
     <string name="custom_vertical_double3">Vertical Field Three</string>
+    <string name="custom_rolling1">Rolling Field One</string>
+    <string name="custom_rolling_description1">Karoo Rolling Field One</string>
+    <string name="custom_rolling2">Rolling Field Two</string>
+    <string name="custom_rolling_description2">Karoo Rolling Field Two</string>
+    <string name="custom_rolling3">Rolling Field Three</string>
+    <string name="custom_rolling_description3">Karoo Rolling Field Three</string>
 </resources>

@@ -11,6 +11,7 @@ import com.enderthor.kCustomField.datatype.CustomDoubleType3
 import com.enderthor.kCustomField.datatype.CustomDoubleVerticalType1
 import com.enderthor.kCustomField.datatype.CustomDoubleVerticalType2
 import com.enderthor.kCustomField.datatype.CustomDoubleVerticalType3
+import com.enderthor.kCustomField.datatype.CustomRollingType1
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
@@ -24,7 +25,7 @@ import timber.log.Timber
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.7") {
+class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.8") {
 
     lateinit var karooSystem: KarooSystemService
     private var serviceJob: Job? = null
@@ -37,6 +38,7 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.7") {
             CustomDoubleVerticalType1(karooSystem, extension,"vertical-one",applicationContext),
             CustomDoubleVerticalType2(karooSystem, extension, "vertical-two", applicationContext),
             CustomDoubleVerticalType3(karooSystem, extension,"vertical-three", applicationContext),
+            CustomRollingType1(karooSystem, extension, "rolling-one", applicationContext),
         )
     }
 

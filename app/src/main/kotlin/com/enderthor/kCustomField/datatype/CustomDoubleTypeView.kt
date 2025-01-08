@@ -99,6 +99,7 @@ fun NumberRow(number: String, zonecolor: ColorProvider, clayout: FieldPosition, 
 
 @Composable
 fun HorizontalScreenContent(number: String, icon: Int, colorFilter: ColorFilter, clayout: FieldPosition, isVertical: Boolean) {
+   // Timber.d("IN HorizontalScreenContent colorfilter is $colorFilter")
     Row(
         modifier = GlanceModifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -114,6 +115,7 @@ fun HorizontalScreenContent(number: String, icon: Int, colorFilter: ColorFilter,
                 contentDescription = "Icon",
                 modifier = GlanceModifier.size(20.dp),
                 colorFilter = colorFilter
+                //colorFilter = ColorFilter.tint(ColorProvider(Color.Red, Color.Red))
             )
             Spacer(modifier = GlanceModifier.width(6.dp))
         }
@@ -138,6 +140,7 @@ fun HorizontalScreenContent(number: String, icon: Int, colorFilter: ColorFilter,
                 contentDescription = "Icon",
                 modifier = GlanceModifier.size(20.dp),
                 colorFilter = colorFilter
+                //colorFilter = ColorFilter.tint(ColorProvider(Color.Black, Color.Black))
             )
         }
         if (isVertical) Spacer(modifier = GlanceModifier.height(1.dp).background(ColorProvider(Color.Black, Color.White)))
@@ -153,7 +156,7 @@ fun DoubleScreenSelector(
     zonecolor1: ColorProvider, zonecolor2: ColorProvider, fieldsize: FieldSize,
     isKaroo3: Boolean, isLeftInt: Boolean, isRightInt: Boolean, leftlabel: String, rightlabel: String, clayout: FieldPosition
 ) {
-   // Timber.d("IN DoubleScreenSelector zonecolor1 is $zonecolor1 and zonecolor2 is $zonecolor2")
+   Timber.d("IN DoubleScreenSelector iconcolorleft is $iconColorLeft and iconcolorright is $iconColorRight")
     var newleft: String
     var newright: String
 
@@ -176,6 +179,29 @@ fun DoubleScreenSelector(
             FieldSize.MEDIUM -> DoubleTypesVerticalScreenBig(newleft, newright, leftIcon, rightIcon, iconColorLeft, iconColorRight, isVertical, zonecolor1, zonecolor2, isKaroo3, clayout)
             FieldSize.LARGE -> DoubleTypesVerticalScreenBig(newleft, newright, leftIcon, rightIcon, iconColorLeft, iconColorRight, isVertical, zonecolor1, zonecolor2, isKaroo3, clayout)
             FieldSize.EXTRA_LARGE -> TODO()
+        }
+    }
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 200, heightDp = 150)
+@Composable
+fun RollingFieldScreen(number: Double, leftIcon: Int, iconColorLeft: ColorFilter, zonecolor1: ColorProvider, fieldsize: FieldSize, iskaroo3: Boolean, leftlabel: String, clayout: FieldPosition)
+{
+    val leftNumber = if (leftlabel == "IF") ((number * 10.0).roundToInt() / 10.0).toString().take(3) else number.roundToInt().toString()
+    Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
+        Row(modifier = if (iskaroo3) GlanceModifier.fillMaxSize().cornerRadius(8.dp) else GlanceModifier.fillMaxSize()) {
+            Column(modifier = GlanceModifier.defaultWeight().background(zonecolor1)) {
+                when (fieldsize) {
+                    FieldSize.LARGE -> Spacer(modifier = GlanceModifier.height(12.dp))
+                    FieldSize.SMALL -> Spacer(modifier = GlanceModifier.height(6.dp))
+                    FieldSize.MEDIUM -> Spacer(modifier = GlanceModifier.height(9.dp))
+                    FieldSize.EXTRA_LARGE -> TODO()
+                }
+                IconRow(leftIcon, iconColorLeft, clayout)
+                Spacer(modifier = GlanceModifier.height(5.dp))
+                NumberRow(leftNumber.take(4), zonecolor1, clayout, fieldsize)
+            }
         }
     }
 }

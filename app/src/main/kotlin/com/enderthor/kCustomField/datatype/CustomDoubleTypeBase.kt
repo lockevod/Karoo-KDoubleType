@@ -64,52 +64,7 @@ abstract class CustomDoubleTypeBase(
             awaitCancellation()
         }
 
-        fun getColorZone(context: Context, zone: String, value: Double, userProfile: UserProfile, isPaletteZwift: Boolean): ColorProvider {
-            val zoneData = when (zone) {
-                "heartRateZones" -> userProfile.heartRateZones
-                "powerZones" -> userProfile.powerZones
-                else -> slopeZones
-            }
 
-            val colorResource = getZone(zoneData, value)?.let { if (isPaletteZwift) it.colorZwift else it.colorResource } ?: R.color.zone7
-
-            return ColorProvider(
-                day = Color(ContextCompat.getColor(context, colorResource)),
-                night = Color(ContextCompat.getColor(context, colorResource))
-            )
-        }
-
-        fun convertValue(streamState: StreamState, convert: String, unitType: UserProfile.PreferredUnit.UnitType, type: String): Double {
-
-            val value = if (type == "TYPE_ELEVATION_REMAINING_ID")
-                (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_REMAINING_ID") ?: 0.0
-            else (streamState as? StreamState.Streaming)?.dataPoint?.singleValue ?: 0.0
-
-            return when (convert) {
-                "distance", "speed" -> when (unitType) {
-                    UserProfile.PreferredUnit.UnitType.METRIC -> if (convert == "distance") (value / 1000) else (value * 18 / 5)
-                    UserProfile.PreferredUnit.UnitType.IMPERIAL -> if (convert == "distance") (value / 1609.345) else (value * 0.0568182)
-                }
-                else -> value
-            }
-        }
-
-        fun getColorFilter(context: Context, action: KarooAction, colorzone: Boolean): ColorFilter {
-            return if (colorzone) {
-                ColorFilter.tint(ColorProvider(Color.Black, Color.Black))
-            } else {
-                ColorFilter.tint(
-                    ColorProvider(
-                        day = Color(ContextCompat.getColor(context, action.colorday)),
-                        night = Color(ContextCompat.getColor(context, action.colornight))
-                    )
-                )
-            }
-        }
-
-        fun getFieldSize(size: Int): FieldSize {
-            return fieldSizeRanges.first { size in it.min..it.max }.name
-        }
 
         val job = CoroutineScope(Dispatchers.IO).launch {
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
@@ -130,16 +85,16 @@ abstract class CustomDoubleTypeBase(
                             .collect { (generalsettings, settings, left: StreamState, right: StreamState) ->
 
                                 val leftValue = convertValue(left, leftAction(settings).convert, userProfile.preferredUnit.distance,leftAction(settings).action)
-                                var rightValue = convertValue(right, rightAction(settings).convert, userProfile.preferredUnit.distance,rightAction(settings).action)
+                                val rightValue = convertValue(right, rightAction(settings).convert, userProfile.preferredUnit.distance,rightAction(settings).action)
 
-                                val colorleft = getColorFilter(context, leftAction(settings), leftZone(settings))
-                                val colorright = getColorFilter(context, rightAction(settings), rightZone(settings)
+                                val iconcolorleft = getColorFilter(context, leftAction(settings), leftZone(settings))
+                                val iconcolorright = getColorFilter(context, rightAction(settings), rightZone(settings)
                                 )
 
                                 val colorzoneleft = getColorZone(context, leftAction(settings).zone, leftValue, userProfile, generalsettings.ispalettezwift
-                                ).takeIf { leftAction(settings).zone == "heartRateZones" || leftAction(settings).zone == "powerZones" || leftAction(settings).zone == "slopeZones" } ?: ColorProvider(Color.White, Color.Black)
+                                ).takeIf { (leftAction(settings).zone == "heartRateZones" || leftAction(settings).zone == "powerZones" || leftAction(settings).zone == "slopeZones") && leftZone(settings) } ?: ColorProvider(Color.White, Color.Black)
                                 val colorzoneright = getColorZone(context, rightAction(settings).zone, rightValue, userProfile, generalsettings.ispalettezwift
-                                ).takeIf { rightAction(settings).zone == "heartRateZones" || rightAction(settings).zone == "powerZones" || rightAction(settings).zone == "slopeZones" } ?: ColorProvider(Color.White, Color.Black)
+                                ).takeIf { (rightAction(settings).zone == "heartRateZones" || rightAction(settings).zone == "powerZones" || rightAction(settings).zone == "slopeZones") && rightZone(settings) } ?: ColorProvider(Color.White, Color.Black)
 
                                 val size = getFieldSize(config.gridSize.second)
 
@@ -150,8 +105,8 @@ abstract class CustomDoubleTypeBase(
                                         rightValue,
                                         leftAction(settings).icon,
                                         rightAction(settings).icon,
-                                        colorleft,
-                                        colorright,
+                                        iconcolorleft,
+                                        iconcolorright,
                                         true,
                                         colorzoneleft,
                                         colorzoneright,

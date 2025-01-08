@@ -72,17 +72,17 @@ data class CustomFieldSettings(
 data class OneFieldType(val kaction: KarooAction, val isactive: Boolean, val iszone: Boolean)
 
 @Serializable
-enum class RollingTime ( val time: Int) {
-    ZERO(0), FOUR (4), TEN (10), TWENTY (20);
+enum class RollingTime ( val time: Long) {
+    ZERO(0L), FOUR (4000L), TEN (10000L), TWENTY (20000L);
 }
 
 @Serializable
 data class OneFieldSettings(
-    val index: Int = 0,
-    val onefield: OneFieldType = OneFieldType(KarooAction.HR, true, true),
-    val secondfield: OneFieldType = OneFieldType(KarooAction.SLOPE, false,true),
-    val thirdfield: OneFieldType = OneFieldType(KarooAction.SPEED, false,false),
-    val rollingtime: RollingTime = RollingTime.ZERO
+    var index: Int = 0,
+    var onefield: OneFieldType = OneFieldType(KarooAction.HR, true, true),
+    var secondfield: OneFieldType = OneFieldType(KarooAction.SLOPE, false,true),
+    var thirdfield: OneFieldType = OneFieldType(KarooAction.SPEED, false,false),
+    var rollingtime: RollingTime = RollingTime.ZERO
 )
 
 data class FieldSizeRange(val name: FieldSize, val min: Int, val max: Int)
@@ -108,6 +108,7 @@ enum class FieldPosition {
 data class GeneralSettings(
     val iscenteralign: FieldPosition = FieldPosition.RIGHT,
     val iscentervertical: FieldPosition = FieldPosition.CENTER,
+    val iscenterrolling: FieldPosition = FieldPosition.RIGHT,
     val ispalettezwift: Boolean = false,
     val iscenterkaroo: Boolean = false,
 )
@@ -115,4 +116,4 @@ data class GeneralSettings(
 
 val defaultSettings = Json.encodeToString(CustomFieldSettings())
 val defaultGeneralSettings = Json.encodeToString(GeneralSettings())
-val defaultOneFieldSettings = Json.encodeToString(listOf(OneFieldSettings()))
+val defaultOneFieldSettings = Json.encodeToString(listOf(OneFieldSettings(index=0),OneFieldSettings(index=1),OneFieldSettings(index=2)))
