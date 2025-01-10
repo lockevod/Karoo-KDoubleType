@@ -8,10 +8,9 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.enderthor.kCustomField.datatype.CustomDoubleType1
 import com.enderthor.kCustomField.datatype.CustomDoubleType2
 import com.enderthor.kCustomField.datatype.CustomDoubleType3
-import com.enderthor.kCustomField.datatype.CustomDoubleVerticalType1
-import com.enderthor.kCustomField.datatype.CustomDoubleVerticalType2
-import com.enderthor.kCustomField.datatype.CustomDoubleVerticalType3
-import com.enderthor.kCustomField.datatype.CustomRollingType1
+import com.enderthor.kCustomField.datatype.CustomDoubleType4
+import com.enderthor.kCustomField.datatype.CustomDoubleType5
+import com.enderthor.kCustomField.datatype.CustomDoubleType6
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
@@ -32,13 +31,14 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.8") {
 
    override val types by lazy {
         listOf(
-            CustomDoubleType1(karooSystem, extension, "custom-one", applicationContext),
-            CustomDoubleType2(karooSystem, extension, "custom-two", applicationContext),
-            CustomDoubleType3(karooSystem, extension, "custom-three", applicationContext),
-            CustomDoubleVerticalType1(karooSystem, extension,"vertical-one",applicationContext),
-            CustomDoubleVerticalType2(karooSystem, extension, "vertical-two", applicationContext),
-            CustomDoubleVerticalType3(karooSystem, extension,"vertical-three", applicationContext),
-            CustomRollingType1(karooSystem, extension, "rolling-one", applicationContext),
+            CustomDoubleType1(karooSystem, extension, "custom-one"),
+            CustomDoubleType2(karooSystem, extension, "custom-two"),
+            CustomDoubleType3(karooSystem, extension, "custom-three"),
+            CustomDoubleType4(karooSystem, extension,"vertical-one"),
+            CustomDoubleType5(karooSystem, extension, "vertical-two"),
+            CustomDoubleType6(karooSystem, extension,"vertical-three"),
+
+
         )
     }
 

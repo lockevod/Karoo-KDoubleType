@@ -74,7 +74,7 @@ fun IconRow(icon: Int, colorFilter: ColorFilter, clayout: FieldPosition) {
 }
 
 @Composable
-fun NumberRow(number: String, zonecolor: ColorProvider, clayout: FieldPosition, fieldsize: FieldSize ) {
+fun NumberRow(number: String, zonecolor: ColorProvider, clayout: FieldPosition, fieldsize: FieldSize, onlyone: Boolean ) {
     Row(
         modifier = if (fieldsize == FieldSize.LARGE) GlanceModifier.fillMaxHeight().fillMaxWidth().padding(bottom= 8.dp) else  GlanceModifier.fillMaxHeight().fillMaxWidth().padding(bottom= 2.dp),
         verticalAlignment = Alignment.Bottom,
@@ -88,7 +88,7 @@ fun NumberRow(number: String, zonecolor: ColorProvider, clayout: FieldPosition, 
             text = number,
             style = TextStyle(
                 fontWeight = FontWeight.Bold,
-                fontSize = if (number.length > 3) 32.sp else 38.sp,
+                fontSize = if(onlyone) 42.sp else if (number.length > 3) 32.sp else 38.sp,
                 fontFamily = FontFamily.Monospace,
                 color = ColorProvider(Color.Black, Color.White)
             )
@@ -200,7 +200,7 @@ fun RollingFieldScreen(number: Double, leftIcon: Int, iconColorLeft: ColorFilter
                 }
                 IconRow(leftIcon, iconColorLeft, clayout)
                 Spacer(modifier = GlanceModifier.height(5.dp))
-                NumberRow(leftNumber.take(4), zonecolor1, clayout, fieldsize)
+                NumberRow(leftNumber.take(5), zonecolor1, clayout, fieldsize, true)
             }
         }
     }
@@ -229,7 +229,7 @@ fun DoubleTypesScreenHorizontal(
                 }
                 IconRow(leftIcon, iconColorLeft, clayout)
                 Spacer(modifier = GlanceModifier.height(5.dp))
-                NumberRow(leftNumber.take(4), zonecolor1, clayout, fieldsize)
+                NumberRow(leftNumber.take(4), zonecolor1, clayout, fieldsize, false)
             }
             if (isVertical) Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(ColorProvider(Color.Black, Color.White)))
             Column(modifier = GlanceModifier.defaultWeight().background(zonecolor2)) {
@@ -241,7 +241,7 @@ fun DoubleTypesScreenHorizontal(
                 }
                 IconRow(rightIcon, iconColorRight, clayout)
                 Spacer(modifier = GlanceModifier.height(5.dp))
-                NumberRow(rightNumber.take(4), zonecolor2, clayout,fieldsize)
+                NumberRow(rightNumber.take(4), zonecolor2, clayout,fieldsize, false)
             }
         }
     }
@@ -263,6 +263,7 @@ fun DoubleTypesVerticalScreenSmall(
             modifier = if (isKaroo3) GlanceModifier.fillMaxSize().background(zonecolor1).cornerRadius(8.dp) else GlanceModifier.fillMaxSize().background(zonecolor1)
         ) {
             Column(modifier = GlanceModifier.defaultWeight().background(zonecolor1)) {
+                Spacer(modifier = GlanceModifier.fillMaxWidth().height(2.dp).background(zonecolor1))
                 HorizontalScreenContent(leftNumber, leftIcon, iconColorLeft, clayout,isVertical)
             }
             if (isVertical) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.Black, Color.White)))
@@ -289,6 +290,7 @@ fun DoubleTypesVerticalScreenBig(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Column(modifier = GlanceModifier.defaultWeight().background(zonecolor1)) {
+                Spacer(modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zonecolor1))
                 HorizontalScreenContent(leftNumber, leftIcon, iconColorLeft, clayout, isVertical)
             }
             if (isVertical) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.Black, Color.White)))

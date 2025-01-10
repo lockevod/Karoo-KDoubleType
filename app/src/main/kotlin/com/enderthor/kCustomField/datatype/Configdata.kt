@@ -24,6 +24,7 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     AVERAGE_CADENCE(DataType.Type.AVERAGE_CADENCE, "Avg Cadence",R.drawable.ic_cadence_average,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
     SLOPE(DataType.Type.ELEVATION_GRADE, "Grade",R.drawable.ic_slope,R.color.hh_success_green_700,R.color.hh_success_green_400,"slopeZones","none"),
     DISTANCE(DataType.Type.DISTANCE, "Distance",R.drawable.ic_distance,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","distance"),
+    DISTANCE_REMAIN(DataType.Type.DISTANCE_TO_DESTINATION, "Distance Remain",R.drawable.ic_distance,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","distance"),
     POWER(DataType.Type.POWER, "Power", R.drawable.ic_power,R.color.hh_success_green_700,R.color.hh_success_green_400,"powerZones","none"),
     POWER3s(DataType.Type.SMOOTHED_3S_AVERAGE_POWER, "Power 3s", R.drawable.ic_power,R.color.hh_success_green_700,R.color.hh_success_green_400,"powerZones","none"),
     AVERAGE_POWER(DataType.Type.AVERAGE_POWER, "Avg Power", R.drawable.ic_power_average,R.color.hh_success_green_700,R.color.hh_success_green_400,"powerZones","none"),
@@ -32,6 +33,7 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     VAM(DataType.Type.VERTICAL_SPEED, "VAM", R.drawable.ic_vam,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
     IF(DataType.Type.INTENSITY_FACTOR, "IF", R.drawable.ic_if,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
     TSS(DataType.Type.TRAINING_STRESS_SCORE, "TSS", R.drawable.ic_tss,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
+   //HEADWIND(DataType.Type., "Headwind", R.drawable.ic_tss,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
  }
 
 @Serializable
@@ -69,22 +71,17 @@ data class CustomFieldSettings(
 )
 
 @Serializable
-data class OneFieldType(val kaction: KarooAction, val isactive: Boolean, val iszone: Boolean)
+data class DoubleFieldType(val kaction: KarooAction,  val iszone: Boolean)
 
 @Serializable
-enum class RollingTime ( val time: Long) {
-    ZERO(0L), FOUR (4000L), TEN (10000L), TWENTY (20000L);
-}
-
-@Serializable
-data class OneFieldSettings(
+data class DoubleFieldSettings(
     var index: Int = 0,
-    var onefield: OneFieldType = OneFieldType(KarooAction.HR, true, true),
-    var secondfield: OneFieldType = OneFieldType(KarooAction.SLOPE, false,true),
-    var thirdfield: OneFieldType = OneFieldType(KarooAction.SPEED, false,false),
-    var rollingtime: RollingTime = RollingTime.ZERO
-)
+    var onefield: DoubleFieldType = DoubleFieldType(KarooAction.SPEED, false),
+    var secondfield: DoubleFieldType = DoubleFieldType(KarooAction.SLOPE, true),
+    val ishorizontal: Boolean = true,
+    val isenabled: Boolean = true
 
+)
 data class FieldSizeRange(val name: FieldSize, val min: Int, val max: Int)
 
 val fieldSizeRanges = listOf(
@@ -116,4 +113,4 @@ data class GeneralSettings(
 
 val defaultSettings = Json.encodeToString(CustomFieldSettings())
 val defaultGeneralSettings = Json.encodeToString(GeneralSettings())
-val defaultOneFieldSettings = Json.encodeToString(listOf(OneFieldSettings(index=0),OneFieldSettings(index=1),OneFieldSettings(index=2)))
+val defaultDoubleFieldSettings = Json.encodeToString(listOf(DoubleFieldSettings(index=0),DoubleFieldSettings(1, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(2, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(3, DoubleFieldType(KarooAction.ELEV_GAIN, false),DoubleFieldType(KarooAction.ELEV_REMAIN, false),false,true),DoubleFieldSettings(4, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.SLOPE, true),false,true),DoubleFieldSettings(5, DoubleFieldType(KarooAction.IF, false),DoubleFieldType(KarooAction.TSS, false),false,true)))
