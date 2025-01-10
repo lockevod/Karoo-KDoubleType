@@ -2,10 +2,10 @@ package com.enderthor.kCustomField.datatype
 
 import io.hammerhead.karooext.KarooSystemService
 
-class CustomDoubleType1(
+class CustomDoubleType(
     karooSystem: KarooSystemService,
     extension: String,
-    datatype: String
-) : CustomDoubleTypeBase(karooSystem, extension, datatype) {
-    override val index = 0
+    datatype: String,
+    value: Int
+) : CustomDoubleTypeBase(karooSystem, extension, datatype, value) {
 }

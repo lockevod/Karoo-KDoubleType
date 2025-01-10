@@ -4,13 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
-
-import com.enderthor.kCustomField.datatype.CustomDoubleType1
-import com.enderthor.kCustomField.datatype.CustomDoubleType2
-import com.enderthor.kCustomField.datatype.CustomDoubleType3
-import com.enderthor.kCustomField.datatype.CustomDoubleType4
-import com.enderthor.kCustomField.datatype.CustomDoubleType5
-import com.enderthor.kCustomField.datatype.CustomDoubleType6
+import com.enderthor.kCustomField.datatype.CustomDoubleType
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
@@ -29,17 +23,9 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.8") {
     lateinit var karooSystem: KarooSystemService
     private var serviceJob: Job? = null
 
-   override val types by lazy {
-        listOf(
-            CustomDoubleType1(karooSystem, extension, "custom-one"),
-            CustomDoubleType2(karooSystem, extension, "custom-two"),
-            CustomDoubleType3(karooSystem, extension, "custom-three"),
-            CustomDoubleType4(karooSystem, extension,"vertical-one"),
-            CustomDoubleType5(karooSystem, extension, "vertical-two"),
-            CustomDoubleType6(karooSystem, extension,"vertical-three"),
-
-
-        )
+    override val types by lazy {
+        val names = listOf("custom-one", "custom-two", "custom-three", "vertical-one", "vertical-two", "vertical-three")
+        names.mapIndexed { index, name -> CustomDoubleType(karooSystem, extension, name, index) }
     }
 
     override fun onCreate() {

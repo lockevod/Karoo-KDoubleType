@@ -25,18 +25,13 @@ abstract class CustomDoubleTypeBase(
     private val karooSystem: KarooSystemService,
     extension: String,
     datatype: String,
+    protected val index: Int
 ) : DataTypeImpl(extension, datatype) {
     protected val glance = GlanceRemoteViews()
     protected val firstField = { settings: DoubleFieldSettings -> settings.onefield }
     protected val secondField = { settings: DoubleFieldSettings -> settings.secondfield }
     protected val ishorizontal= { settings: DoubleFieldSettings -> settings.ishorizontal}
-    //protected val isenabled = { settings: DoubleFieldSettings -> settings.isenabled }
 
-    //abstract val firstField: (DoubleFieldSettings) -> DoubleFieldType
-    //abstract val secondField: (DoubleFieldSettings) -> DoubleFieldType
-    //abstract val showh: (DoubleFieldSettings) -> Boolean
-    abstract val index: Int
-    //abstract val isenabled: Boolean
 
     override fun startStream(emitter: Emitter<StreamState>) {
         Timber.d("start double type stream")
@@ -134,8 +129,19 @@ override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitte
                             ).iszone
                         } ?: ColorProvider(Color.White, Color.Black)
 
-                        Timber.d("Index: $index first value: $firstvalue AND second value: $secondvalue AND first action is ${firstField(settings[index]).kaction.action} AND second action is ${secondField(settings[index]).kaction.action}")
-                        val result = glance.compose(context, DpSize.Unspecified) {
+                            val clayout = if (generalSettings.iscenterkaroo) {
+                                when (config.alignment)
+                                {
+                                    ViewConfig.Alignment.CENTER -> FieldPosition.CENTER
+                                    ViewConfig.Alignment.LEFT -> FieldPosition.LEFT
+                                    ViewConfig.Alignment.RIGHT -> FieldPosition.RIGHT
+                                }
+                            } else {
+                                if (ishorizontal(settings[index])) generalSettings.iscenteralign else generalSettings.iscentervertical
+                            }
+
+                            Timber.d("Index: $index first value: $firstvalue AND second value: $secondvalue AND first action is ${firstField(settings[index]).kaction.action} AND second action is ${secondField(settings[index]).kaction.action}")
+                            val result = glance.compose(context, DpSize.Unspecified) {
                             DoubleScreenSelector(
                                 ishorizontal(settings[index]),
                                 firstvalue,
@@ -153,7 +159,7 @@ override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitte
                                 !(secondField(settings[index]).kaction.convert == "speed" || secondField(settings[index]).kaction.zone == "slopeZones" || secondField(settings[index]).kaction.label == "IF"),
                                 firstField(settings[index]).kaction.label,
                                 secondField(settings[index]).kaction.label,
-                                if (ishorizontal(settings[index])) generalSettings.iscenteralign else generalSettings.iscentervertical
+                                clayout
                             )
                         }
                         emitter.updateView(result.remoteViews)

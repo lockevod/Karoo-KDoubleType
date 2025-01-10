@@ -296,7 +296,7 @@ fun ConfGeneral() {
             TopAppBar(title = { Text("Fields Alignment") })
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(checked = false, onCheckedChange = {
+                Switch(checked = iscenterkaroo, onCheckedChange = {
                     iscenterkaroo = it
                 })
                 Spacer(modifier = Modifier.width(10.dp))
@@ -334,14 +334,6 @@ fun ConfGeneral() {
                         onToggleChange = { iscentervertical = alignmentOptions[it] }
                     )
                 }
-            }
-
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Rolling Fields alignment (icon/text) ?")
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                MultiToggleButton(alignmentOptions.indexOf(iscenterrolling), alignmentOptions.map { it.name }, onToggleChange = { iscenterrolling = alignmentOptions[it] })
             }
 
             Spacer(modifier = Modifier.height(2.dp))
