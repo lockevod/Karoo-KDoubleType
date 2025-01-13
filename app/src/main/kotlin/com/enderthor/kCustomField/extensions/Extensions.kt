@@ -8,9 +8,11 @@ import com.enderthor.kCustomField.datatype.CustomFieldSettings
 import com.enderthor.kCustomField.datatype.DoubleFieldSettings
 import com.enderthor.kCustomField.datatype.DoubleFieldType
 import com.enderthor.kCustomField.datatype.GeneralSettings
+import com.enderthor.kCustomField.datatype.OneFieldSettings
 import com.enderthor.kCustomField.datatype.defaultDoubleFieldSettings
 import com.enderthor.kCustomField.datatype.defaultGeneralSettings
 import com.enderthor.kCustomField.datatype.defaultSettings
+import com.enderthor.kCustomField.datatype.defaultOneFieldSettings
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.KarooEvent
@@ -31,6 +33,7 @@ val jsonWithUnknownKeys = Json { ignoreUnknownKeys = true }
 val settingsKey = stringPreferencesKey("settings")
 val generalsettingsKey = stringPreferencesKey("generalsettings")
 val doublefieldKey = stringPreferencesKey("doublefieldsettings")
+val onefieldKey = stringPreferencesKey("onefieldsettings")
 
 
 suspend fun saveGeneralSettings(context: Context, settings: GeneralSettings) {
@@ -78,7 +81,7 @@ fun Context.streamDoubleFieldSettings(): Flow<MutableList<DoubleFieldSettings>> 
                 mutableListOf(
                     DoubleFieldSettings(0, DoubleFieldType(customSettings.customleft1, customSettings.customleft1zone), DoubleFieldType(customSettings.customright1, customSettings.customright1zone),true,true),
                     DoubleFieldSettings(1, DoubleFieldType(customSettings.customleft2, customSettings.customleft2zone), DoubleFieldType(customSettings.customright2, customSettings.customright2zone),true,true),
-                    DoubleFieldSettings(2, DoubleFieldType(customSettings.customleft3, customSettings.customleft3zone,), DoubleFieldType(customSettings.customright3, customSettings.customright3zone),true,true),
+                    DoubleFieldSettings(2, DoubleFieldType(customSettings.customleft3, customSettings.customleft3zone), DoubleFieldType(customSettings.customright3, customSettings.customright3zone),true,true),
                     DoubleFieldSettings(3, DoubleFieldType(customSettings.customverticalleft1, customSettings.customverticalleft1zone), DoubleFieldType(customSettings.customverticalright1, customSettings.customright1zone),false,true),
                     DoubleFieldSettings(4, DoubleFieldType(customSettings.customverticalleft2, customSettings.customverticalleft2zone), DoubleFieldType(customSettings.customverticalright2, customSettings.customright2zone),false,true),
                     DoubleFieldSettings(5, DoubleFieldType(customSettings.customverticalleft3, customSettings.customverticalleft3zone), DoubleFieldType(customSettings.customverticalright3, customSettings.customright3zone),false,true)
@@ -89,6 +92,28 @@ fun Context.streamDoubleFieldSettings(): Flow<MutableList<DoubleFieldSettings>> 
         } catch (e: Throwable) {
             Timber.tag("KarooDualTypeExtension").e(e, "Failed to read preferences")
             jsonWithUnknownKeys.decodeFromString<MutableList<DoubleFieldSettings>>(defaultDoubleFieldSettings)
+        }
+    }.distinctUntilChanged()
+}
+
+suspend fun saveOneFieldSettings(context: Context, settings: List<OneFieldSettings>) {
+    Timber.d("saveSettings IN $settings")
+    context.dataStore.edit { t ->
+        t[onefieldKey] = Json.encodeToString(settings)
+    }
+}
+
+
+fun Context.streamOneFieldSettings(): Flow<MutableList<OneFieldSettings>> {
+    Timber.d("streamSettings OneField IN")
+    return dataStore.data.map { settingsJson ->
+        try {
+            jsonWithUnknownKeys.decodeFromString<MutableList<OneFieldSettings>>(
+                settingsJson[onefieldKey] ?: defaultOneFieldSettings
+            )
+        } catch (e: Throwable) {
+            Timber.tag("KarooDualTypeExtension").e(e, "Failed to read preferences")
+            jsonWithUnknownKeys.decodeFromString<MutableList<OneFieldSettings>>(defaultOneFieldSettings)
         }
     }.distinctUntilChanged()
 }

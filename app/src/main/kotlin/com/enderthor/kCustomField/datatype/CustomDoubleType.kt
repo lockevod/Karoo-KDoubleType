@@ -7,5 +7,4 @@ class CustomDoubleType(
     extension: String,
     datatype: String,
     value: Int
-) : CustomDoubleTypeBase(karooSystem, extension, datatype, value) {
-}
+) : CustomDoubleTypeBase(karooSystem, extension, datatype, value)

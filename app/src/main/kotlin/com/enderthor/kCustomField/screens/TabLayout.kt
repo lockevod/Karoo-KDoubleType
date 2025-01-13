@@ -18,15 +18,17 @@ import androidx.compose.ui.unit.sp
 import com.enderthor.kCustomField.datatype.*
 import com.enderthor.kCustomField.extensions.*
 import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
 import timber.log.Timber
 
 
 val alignmentOptions = listOf(FieldPosition.LEFT, FieldPosition.CENTER, FieldPosition.RIGHT)
+val timeOptions = listOf(RollingTime.ZERO, RollingTime.FOUR, RollingTime.TEN, RollingTime.TWENTY)
 
 @Composable
 fun TabLayout() {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Fields","Conf.")
+    val tabs = listOf("Fields","Rolling","Conf.")
 
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -45,23 +47,44 @@ fun TabLayout() {
 
         when (selectedTabIndex) {
             0 -> ConfFields()
-            1 -> ConfGeneral()
+            1 -> ConfRolling()
+            2 -> ConfGeneral()
         }
     }
 }
 
-
-/*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConfRolling() {
+fun ConfRolling(sharedViewModel: HeadwindSharedViewModel = viewModel()) {
     val ctx = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
     var ispalettezwift by remember { mutableStateOf(true) }
     var iscenteralign by remember { mutableStateOf(FieldPosition.CENTER) }
     var iscentervertical by remember { mutableStateOf(FieldPosition.CENTER) }
+    var iscenterrolling by remember { mutableStateOf(FieldPosition.CENTER) }
     var iscenterkaroo by remember { mutableStateOf(false) }
+
+
+
+    var isheadwindenabled by remember { mutableStateOf(false) }
+
+    var doubleFieldSettingsList = remember { mutableStateListOf<DoubleFieldSettings> (DoubleFieldSettings(), DoubleFieldSettings(), DoubleFieldSettings(),DoubleFieldSettings(), DoubleFieldSettings(), DoubleFieldSettings()) }
+
+    val isGeneralHeadwindEnabled by sharedViewModel.isGeneralHeadwindEnabled.collectAsState()
+
+    LaunchedEffect(isGeneralHeadwindEnabled) {
+        isheadwindenabled = isGeneralHeadwindEnabled
+    }
+
+    LaunchedEffect(Unit) {
+        ctx.streamDoubleFieldSettings().collect { settings ->
+            if (settings.isNotEmpty()) {
+                doubleFieldSettingsList.clear()
+                doubleFieldSettingsList.addAll(settings)
+            }
+        }
+    }
 
 
     var savedDialogVisible by remember { mutableStateOf(false) }
@@ -85,6 +108,7 @@ fun ConfRolling() {
         ctx.streamGeneralSettings().collect { settings ->
             ispalettezwift = settings.ispalettezwift
             iscenteralign = settings.iscenteralign
+            iscenterrolling = settings.iscenterrolling
             iscentervertical = settings.iscentervertical
             iscenterkaroo = settings.iscenterkaroo
         }
@@ -137,6 +161,7 @@ fun ConfRolling() {
 
                 coroutineScope.launch {
                     savedDialogVisible = true
+                    saveDoubleFieldSettings(ctx, doubleFieldSettingsList)
                     saveGeneralSettings(ctx, newGeneralSettings)
                     saveOneFieldSettings(ctx, oneFieldSettingsList)
                 }
@@ -157,20 +182,27 @@ fun ConfRolling() {
     }
 }
 
-*/
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConfFields() {
+fun ConfFields(sharedViewModel: HeadwindSharedViewModel = viewModel()) {
     val ctx = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
     var ispalettezwift by remember { mutableStateOf(true) }
     var iscenteralign by remember { mutableStateOf(FieldPosition.CENTER) }
     var iscentervertical by remember { mutableStateOf(FieldPosition.CENTER) }
+    var iscenterrolling by remember { mutableStateOf(FieldPosition.CENTER) }
     var iscenterkaroo by remember { mutableStateOf(false) }
     var savedDialogVisible by remember { mutableStateOf(false) }
+    var isheadwindenabled by remember { mutableStateOf(false) }
 
     var doubleFieldSettingsList = remember { mutableStateListOf<DoubleFieldSettings> (DoubleFieldSettings(), DoubleFieldSettings(), DoubleFieldSettings(),DoubleFieldSettings(), DoubleFieldSettings(), DoubleFieldSettings()) }
+
+    val isGeneralHeadwindEnabled by sharedViewModel.isGeneralHeadwindEnabled.collectAsState()
+
+    LaunchedEffect(isGeneralHeadwindEnabled) {
+        isheadwindenabled = isGeneralHeadwindEnabled
+    }
 
     LaunchedEffect(Unit) {
         ctx.streamDoubleFieldSettings().collect { settings ->
@@ -191,8 +223,14 @@ fun ConfFields() {
             iscenteralign = settings.iscenteralign
             iscentervertical = settings.iscentervertical
             iscenterkaroo = settings.iscenterkaroo
+            isheadwindenabled = settings.isheadwindenabled
+            iscenterrolling= settings.iscenterrolling
+            sharedViewModel.setHeadwindEnabled(isheadwindenabled)
         }
     }
+
+
+    Timber.d("isGeneralHeadwindEnabled $isGeneralHeadwindEnabled")
 
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
@@ -204,7 +242,8 @@ fun ConfFields() {
 
                 DropdownDoubleField(
                     "First Field",
-                    doubleFieldSettings.onefield
+                    doubleFieldSettings.onefield,
+                    isGeneralHeadwindEnabled
                 ) { newAction ->
                     val updatedZone = if (newAction.kaction.zone == "none") false else doubleFieldSettings.onefield.iszone
                     val updatednewAction = newAction.copy(iszone = updatedZone)
@@ -217,22 +256,20 @@ fun ConfFields() {
 
                 DropdownDoubleField(
                     "Second Field",
-                    doubleFieldSettings.secondfield
+                    doubleFieldSettings.secondfield,
+                    isGeneralHeadwindEnabled
                 ) { newAction ->
                     val updatedZone = if (newAction.kaction.zone == "none") false else doubleFieldSettings.secondfield.iszone
                     val updatednewAction = newAction.copy(iszone = updatedZone)
                     doubleFieldSettingsList[index] = doubleFieldSettings.copy(secondfield = updatednewAction)
                 }
                 ZoneMultiSwitch(0,doubleFieldSettings.secondfield.iszone, doubleFieldSettings.secondfield.kaction.zone != "none") { newZone ->
-                    val updatedZone = if (doubleFieldSettings.onefield.kaction.zone == "none") false else newZone
-                    doubleFieldSettingsList[index] = doubleFieldSettings.copy(secondfield = doubleFieldSettings.onefield.copy(iszone = updatedZone))
+                    val updatedZone = if (doubleFieldSettings.secondfield.kaction.zone == "none") false else newZone
+                    doubleFieldSettingsList[index] = doubleFieldSettings.copy(secondfield = doubleFieldSettings.secondfield.copy(iszone = updatedZone))
                 }
                 ZoneMultiSwitch(1,doubleFieldSettings.ishorizontal, true) { newHorizontal ->
                     doubleFieldSettingsList[index] = doubleFieldSettings.copy(ishorizontal = newHorizontal)
                 }
-                /*ZoneMultiSwitch(2,doubleFieldSettings.isenabled, true) { newActive ->
-                    doubleFieldSettingsList[index] = doubleFieldSettings.copy(isenabled = newActive)
-                }*/
 
             }
 
@@ -241,7 +278,8 @@ fun ConfFields() {
                     ispalettezwift = ispalettezwift,
                     iscenteralign = iscenteralign,
                     iscentervertical = iscentervertical,
-                    iscenterkaroo = iscenterkaroo
+                    iscenterkaroo = iscenterkaroo,
+                    isheadwindenabled = isheadwindenabled
                 )
                 coroutineScope.launch {
                     savedDialogVisible = true
@@ -267,15 +305,17 @@ fun ConfFields() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConfGeneral() {
+fun ConfGeneral(sharedViewModel: HeadwindSharedViewModel = viewModel()) {
     val ctx = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    val isGeneralHeadwindEnabled by sharedViewModel.isGeneralHeadwindEnabled.collectAsState()
 
     var ispalettezwift by remember { mutableStateOf(true) }
     var iscenteralign by remember { mutableStateOf(FieldPosition.CENTER) }
     var iscentervertical by remember { mutableStateOf(FieldPosition.CENTER) }
-    var iscenterrolling by remember { mutableStateOf(FieldPosition.CENTER) }
     var iscenterkaroo by remember { mutableStateOf(false) }
+    var isheadwindenabled by remember { mutableStateOf(isGeneralHeadwindEnabled) }
 
 
     var savedDialogVisible by remember { mutableStateOf(false) }
@@ -285,8 +325,9 @@ fun ConfGeneral() {
             ispalettezwift = settings.ispalettezwift
             iscenteralign = settings.iscenteralign
             iscentervertical = settings.iscentervertical
-            iscenterrolling = settings.iscenterrolling
             iscenterkaroo = settings.iscenterkaroo
+            isheadwindenabled = settings.isheadwindenabled
+            sharedViewModel.setHeadwindEnabled(isheadwindenabled)
         }
     }
 
@@ -347,13 +388,26 @@ fun ConfGeneral() {
                 Text("Zwift Color palette?")
             }
 
+            Spacer(modifier = Modifier.height(2.dp))
+            TopAppBar(title = { Text("Use Headwind DataField") })
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = isheadwindenabled, onCheckedChange = {
+                    isheadwindenabled = it
+                    sharedViewModel.setHeadwindEnabled(it)
+                })
+                Spacer(modifier = Modifier.width(10.dp))
+                Text("Enable Headwind Datafield (you need to have Headwind extension installed)?")
+            }
+
             FilledTonalButton(modifier = Modifier.fillMaxWidth().height(50.dp), onClick = {
                 val newGeneralSettings = GeneralSettings(
                     ispalettezwift = ispalettezwift,
                     iscenteralign = iscenteralign,
                     iscentervertical = iscentervertical,
-                    iscenterrolling = iscenterrolling,
-                    iscenterkaroo = iscenterkaroo
+                    iscenterkaroo = iscenterkaroo,
+                    isheadwindenabled = isheadwindenabled
+
                 )
                 coroutineScope.launch {
                     savedDialogVisible = true
@@ -377,24 +431,32 @@ fun ConfGeneral() {
 }
 
 @Composable
-fun DropdownDoubleField(label: String, action: DoubleFieldType, onActionChange: (DoubleFieldType) -> Unit) {
-
+fun DropdownDoubleField(label: String, action: DoubleFieldType, isheadwindenabled: Boolean, onActionChange: (DoubleFieldType) -> Unit) {
     var dropdownOptions = KarooAction.entries.map { DropdownOption(it.action.toString(), it.label) }
+
+    // Filtrar la opción HEADWIND si isheadwindenabled es false
+    if (!isheadwindenabled) {
+        dropdownOptions = dropdownOptions.filter { it.id != KarooAction.HEADWIND.action.toString() }
+    }
 
     val dropdownInitialSelection by remember(action) {
         mutableStateOf(
-                dropdownOptions.find { it.id == action.kaction.action.toString() } ?: dropdownOptions.first()
+            dropdownOptions.find { it.id == action.kaction.action.toString() } ?: dropdownOptions.first()
         )
     }
 
+    // Cambiar la selección a SPEED si HEADWIND estaba seleccionado y isheadwindenabled es false
+    LaunchedEffect(isheadwindenabled) {
+        if (!isheadwindenabled && action.kaction == KarooAction.HEADWIND) {
+            onActionChange(action.copy(kaction = KarooAction.SPEED))
+        }
+    }
+
     KarooKeyDropdown(remotekey = label, options = dropdownOptions, selectedOption = dropdownInitialSelection) { selectedOption ->
-        //Timber.d("IN action $action")
-        val newAction = action.copy(kaction=KarooAction.entries.find { it.action == selectedOption.id }?: KarooAction.SPEED)
-       // Timber.d("IN newAction $newAction")
+        val newAction = action.copy(kaction = KarooAction.entries.find { it.action == selectedOption.id } ?: KarooAction.SPEED)
         onActionChange(newAction)
     }
 }
-
 
 @Composable
 fun ZoneMultiSwitch(option: Int, checked: Boolean, enabled: Boolean, onCheckedChange: (Boolean) -> Unit) {

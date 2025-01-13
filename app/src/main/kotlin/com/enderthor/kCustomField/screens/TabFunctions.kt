@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,15 +20,19 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.enderthor.kCustomField.datatype.KarooAction
+import com.enderthor.kCustomField.datatype.OneFieldType
 import java.util.Locale
 
 
@@ -122,5 +127,40 @@ fun KarooKeyDropdown(remotekey: String, options: List<DropdownOption>, selectedO
                 )
             }
         }
+    }
+}
+
+@Composable
+fun DropdownOneField(firstpos: Boolean, label: String, action: OneFieldType, onActionChange: (OneFieldType) -> Unit) {
+
+    var dropdownOptions = KarooAction.entries.map { DropdownOption(it.action.toString(), it.label) }
+    if (!firstpos) dropdownOptions = listOf(DropdownOption("none", "None")) + dropdownOptions
+
+    val dropdownInitialSelection by remember(action) {
+        mutableStateOf(
+            if (!action.isactive) {
+                dropdownOptions.find { it.id == "none" } ?: dropdownOptions.first()
+            } else {
+                dropdownOptions.find { it.id == action.kaction.action.toString() } ?: dropdownOptions.first()
+            }
+        )
+    }
+
+    KarooKeyDropdown(remotekey = label, options = dropdownOptions, selectedOption = dropdownInitialSelection) { selectedOption ->
+        val newAction = if (selectedOption.id == "none") {
+            OneFieldType(KarooAction.SPEED, false, false)
+        } else {
+            OneFieldType(KarooAction.entries.find { it.action == selectedOption.id } ?: KarooAction.SPEED, true, false)
+        }
+        onActionChange(newAction)
+    }
+}
+
+@Composable
+fun ZoneSwitch(checked: Boolean, enabled: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+        Spacer(modifier = Modifier.width(10.dp))
+        Text("Coloured zone?")
     }
 }
