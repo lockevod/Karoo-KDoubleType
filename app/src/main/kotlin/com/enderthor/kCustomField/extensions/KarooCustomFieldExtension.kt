@@ -24,8 +24,10 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.8") {
     private var serviceJob: Job? = null
 
     override val types by lazy {
-        val names = listOf("custom-one", "custom-two", "custom-three", "vertical-one", "vertical-two", "vertical-three")
-        names.mapIndexed { index, name -> CustomDoubleType(karooSystem, extension, name, index) }
+        val doubles = listOf("custom-one", "custom-two", "custom-three", "vertical-one", "vertical-two", "vertical-three")
+        doubles.mapIndexed { index, name -> CustomDoubleType(karooSystem, extension, name, index) }
+        val rolling = listOf("rolling-one", "rolling-two", "rolling-three")
+        rolling.mapIndexed { index, name -> CustomDoubleType(karooSystem, extension, name, index) }
     }
 
     override fun onCreate() {

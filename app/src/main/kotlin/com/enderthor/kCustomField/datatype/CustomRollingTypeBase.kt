@@ -26,15 +26,15 @@ import timber.log.Timber
 abstract class CustomRollingTypeBase(
     private val karooSystem: KarooSystemService,
     extension: String,
-    datatype: String
+    datatype: String,
+    protected val index: Int
 ) : DataTypeImpl(extension, datatype) {
     protected val glance = GlanceRemoteViews()
 
-    abstract val firstField: (OneFieldSettings) -> OneFieldType
-    abstract val secondField: (OneFieldSettings) -> OneFieldType
-    abstract val thirdField: (OneFieldSettings) -> OneFieldType
-    abstract val time: (OneFieldSettings) -> RollingTime
-    abstract val index: Int
+    protected val firstField= { settings: OneFieldSettings -> settings.onefield }
+    protected val secondField= { settings: OneFieldSettings -> settings.secondfield }
+    protected val thirdField= { settings: OneFieldSettings -> settings.thirdfield }
+    protected val time= { settings: OneFieldSettings -> settings.rollingtime }
 
 
     override fun startStream(emitter: Emitter<StreamState>) {

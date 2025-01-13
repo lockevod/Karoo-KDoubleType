@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.enderthor.kCustomField.datatype.DoubleFieldType
 import com.enderthor.kCustomField.datatype.KarooAction
 import com.enderthor.kCustomField.datatype.OneFieldType
 import java.util.Locale
@@ -156,11 +158,56 @@ fun DropdownOneField(firstpos: Boolean, label: String, action: OneFieldType, onA
     }
 }
 
+
+
 @Composable
-fun ZoneSwitch(checked: Boolean, enabled: Boolean, onCheckedChange: (Boolean) -> Unit) {
+fun DropdownDoubleField(label: String, action: DoubleFieldType, isheadwindenabled: Boolean, onActionChange: (DoubleFieldType) -> Unit) {
+    var dropdownOptions = KarooAction.entries.map { DropdownOption(it.action.toString(), it.label) }
+
+    // Filtrar la opción HEADWIND si isheadwindenabled es false
+    if (!isheadwindenabled) {
+        dropdownOptions = dropdownOptions.filter { it.id != KarooAction.HEADWIND.action.toString() }
+    }
+
+    val dropdownInitialSelection by remember(action) {
+        mutableStateOf(
+            dropdownOptions.find { it.id == action.kaction.action.toString() } ?: dropdownOptions.first()
+        )
+    }
+
+    // Cambiar la selección a SPEED si HEADWIND estaba seleccionado y isheadwindenabled es false
+    LaunchedEffect(isheadwindenabled) {
+        if (!isheadwindenabled && action.kaction == KarooAction.HEADWIND) {
+            onActionChange(action.copy(kaction = KarooAction.SPEED))
+        }
+    }
+
+    KarooKeyDropdown(remotekey = label, options = dropdownOptions, selectedOption = dropdownInitialSelection) { selectedOption ->
+        val newAction = action.copy(kaction = KarooAction.entries.find { it.action == selectedOption.id } ?: KarooAction.SPEED)
+        onActionChange(newAction)
+    }
+}
+
+@Composable
+fun ZoneMultiSwitch(option: Int, checked: Boolean, enabled: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    var isChecked by remember { mutableStateOf(checked) }
+    LaunchedEffect(checked) {
+        isChecked = checked
+    }
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+        Switch(
+            checked = isChecked,
+            onCheckedChange = {
+                isChecked = it
+                onCheckedChange(it)
+            },
+            enabled = enabled
+        )
         Spacer(modifier = Modifier.width(10.dp))
-        Text("Coloured zone?")
+        when (option) {
+            0 -> Text("Coloured Zone?")
+            1 -> Text("Horizontal Field?")
+            2 -> Text("Enabled Field?")
+        }
     }
 }
