@@ -24,21 +24,25 @@ import com.enderthor.kCustomField.extensions.streamGeneralSettings
 import kotlinx.coroutines.flow.mapNotNull
 import timber.log.Timber
 import com.enderthor.kCustomField.R
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.buffer
+
+
+import kotlinx.coroutines.flow.Flow
+
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.stateIn
+
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.debounce
+
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
 abstract class CustomDoubleTypeBase(
     private val karooSystem: KarooSystemService,
     extension: String,
     datatype: String,
+    private val context: Context,
     protected val index: Int
 ) : DataTypeImpl(extension, datatype) {
     protected val glance = GlanceRemoteViews()
@@ -49,6 +53,7 @@ abstract class CustomDoubleTypeBase(
     override fun startStream(emitter: Emitter<StreamState>) {
         Timber.d("start double type stream")
         val job = CoroutineScope(Dispatchers.IO).launch {
+           // context.streamGeneralSettings().collect {
             emitter.onNext(
                 StreamState.Streaming(
                     DataPoint(
@@ -58,6 +63,9 @@ abstract class CustomDoubleTypeBase(
                     )
                 )
             )
+                delay(if (karooSystem.hardwareType == HardwareType.KAROO) RefreshTime.MID.time else RefreshTime.HALF.time)
+
+           // }
         }
         emitter.setCancellable {
             Timber.d("stop speed stream")
@@ -72,51 +80,46 @@ abstract class CustomDoubleTypeBase(
             awaitCancellation()
         }
 
+        //Timber.d("Starting double view with $emitter")
         data class StreamHeadWindData(val diff: Double, val windSpeed: Double)
+
+        fun createHeadwindFlow(): Flow<StreamHeadWindData> {
+            return karooSystem.streamDataFlow(Headwind.DIFF.type)
+                    .mapNotNull { (it as? StreamState.Streaming)?.dataPoint?.singleValue }
+                    .combine(karooSystem.streamDataFlow(Headwind.SPEED.type)
+                        .mapNotNull { (it as? StreamState.Streaming)?.dataPoint?.singleValue }) { headwindDiff, headwindSpeed ->
+                        StreamHeadWindData(headwindDiff, headwindSpeed)
+                    }
+                    .onStart { emit(StreamHeadWindData(0.0, 0.0)) }
+                    .distinctUntilChanged()
+                    .debounce(50)
+                    .conflate()
+                    .catch { e ->
+                        Timber.e(e, "Error in headwindFlow")
+                        emit(StreamHeadWindData(0.0, 0.0))
+                    }
+        }
+
+        fun getFieldFlow(field: DoubleFieldType, headwindFlow: Flow<StreamHeadWindData>?, generalSettings: GeneralSettings): Flow<Any> {
+            return if (field.kaction.name == "HEADWIND" && generalSettings.isheadwindenabled)
+                headwindFlow ?: karooSystem.streamDataFlow(field.kaction.action)
+            else karooSystem.streamDataFlow(field.kaction.action)
+        }
 
         val job = CoroutineScope(Dispatchers.IO).launch {
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
-            context.streamDoubleFieldSettings()
-                .combine(context.streamGeneralSettings()) { settings, generalSettings ->
-                    settings to generalSettings
-                }
+            combine(context.streamDoubleFieldSettings(), context.streamGeneralSettings()) { settings, generalSettings -> settings to generalSettings }
                 .collect { (settings, generalSettings) ->
-                    val firstFieldAction = firstField(settings[index]).kaction.action
-                    val secondFieldAction = secondField(settings[index]).kaction.action
 
-                    val headwindFlow = if (firstField(settings[index]).kaction.name == "HEADWIND" || secondField(settings[index]).kaction.name == "HEADWIND") {
-                        karooSystem.streamDataFlow(Headwind.DIFF.type)
-                            .mapNotNull { (it as? StreamState.Streaming)?.dataPoint?.singleValue }
-                            .combine(karooSystem.streamDataFlow(Headwind.SPEED.type)
-                                .mapNotNull { (it as? StreamState.Streaming)?.dataPoint?.singleValue }) { headwindDiff, headwindSpeed ->
-                                StreamHeadWindData(headwindDiff, headwindSpeed)
-                            }
-                            .onStart { emit(StreamHeadWindData(0.0, 0.0)) }
-                            .distinctUntilChanged() // Evitar valores repetidos consecutivamente
-                            .debounce(100) // Procesar valores después de un período de inactividad
-                            .buffer(capacity = Channel.BUFFERED) // Añadir buffer para evitar bloqueos
-                            .catch { e ->
-                                Timber.e(e, "Error en headwindFlow")
-                                emit(StreamHeadWindData(0.0, 0.0)) // Emitir un valor por defecto en caso de error
-                            }
-                            .stateIn(CoroutineScope(Dispatchers.IO), SharingStarted.Lazily, StreamHeadWindData(0.0, 0.0)) // Compartir el flujo
-                    } else {
-                        null
-                    }
+                    val primaryField = firstField(settings[index])
+                    val secondaryField = secondField(settings[index])
 
-                    val firstFieldFlow = if (firstField(settings[index]).kaction.name == "HEADWIND" && generalSettings.isheadwindenabled) {
-                        headwindFlow ?: karooSystem.streamDataFlow(firstFieldAction)
-                    } else {
-                        karooSystem.streamDataFlow(firstFieldAction)
-                    }
+                    val headwindFlow = if (listOf(primaryField, secondaryField).any { it.kaction.name == "HEADWIND" } && generalSettings.isheadwindenabled) createHeadwindFlow() else null
 
-                    val secondFieldFlow = if (secondField(settings[index]).kaction.name == "HEADWIND" && generalSettings.isheadwindenabled) {
-                        headwindFlow ?: karooSystem.streamDataFlow(secondFieldAction)
-                    } else {
-                        karooSystem.streamDataFlow(secondFieldAction)
-                    }
+                    val firstFieldFlow = getFieldFlow(primaryField, headwindFlow, generalSettings)
+                    val secondFieldFlow = getFieldFlow(secondaryField, headwindFlow, generalSettings)
 
-                    firstFieldFlow.combine(secondFieldFlow) { firstState, secondState ->
+                    combine( firstFieldFlow,secondFieldFlow) { firstState, secondState ->
                         Quadruple(generalSettings, settings, firstState, secondState)
                     }.collect { (generalSettings, settings, firstFieldState, secondFieldState) ->
 
@@ -144,21 +147,22 @@ abstract class CustomDoubleTypeBase(
                             windData.diff to windData.windSpeed.roundToInt().toString()
                         } else 0.0 to ""
 
-                        val clayout = if (generalSettings.iscenterkaroo) {
-                            when (config.alignment) {
-                                ViewConfig.Alignment.CENTER -> FieldPosition.CENTER
-                                ViewConfig.Alignment.LEFT -> FieldPosition.LEFT
-                                ViewConfig.Alignment.RIGHT -> FieldPosition.RIGHT
-                            }
-                        } else {
-                            if (ishorizontal(settings[index])) generalSettings.iscenteralign else generalSettings.iscentervertical
-                        }
-
                         val fieldNumber = when {
                             firstFieldState is StreamState && secondFieldState is StreamState -> 3
                             firstFieldState is StreamState -> 0
                             secondFieldState is StreamState -> 1
                             else -> 2
+                        }
+
+                        val clayout = when {
+                            fieldNumber != 3 -> FieldPosition.CENTER
+                            generalSettings.iscenterkaroo -> when (config.alignment) {
+                                ViewConfig.Alignment.CENTER -> FieldPosition.CENTER
+                                ViewConfig.Alignment.LEFT -> FieldPosition.LEFT
+                                ViewConfig.Alignment.RIGHT -> FieldPosition.RIGHT
+                            }
+                            ishorizontal(settings[index]) -> generalSettings.iscenteralign
+                            else -> generalSettings.iscentervertical
                         }
 
                         val result = glance.compose(context, DpSize.Unspecified) {

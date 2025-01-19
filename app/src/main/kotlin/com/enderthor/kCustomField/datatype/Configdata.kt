@@ -41,6 +41,17 @@ enum class Headwind (val type: String) {
     DIFF(DataType.dataTypeId("karoo-headwind", "headwind")),SPEED(DataType.dataTypeId("karoo-headwind", "headwindSpeed"))
 }
 
+data class StreamHeadWindData(val diff: Double, val windSpeed: Double)
+
+data class Decuple<A, B, C, D, E>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D,
+    val fifth: E,
+
+)
+
 @Serializable
 data class CustomFieldSettings(
     val customleft1: KarooAction = KarooAction.SPEED,
@@ -70,12 +81,21 @@ data class CustomFieldSettings(
 )
 
 
-@Serializable
-data class OneFieldType(val kaction: KarooAction, val isactive: Boolean, val iszone: Boolean)
+
 
 @Serializable
 enum class RollingTime ( val time: Long) {
     ZERO(0L), FOUR (4000L), TEN (10000L), TWENTY (20000L);
+}
+
+@Serializable
+enum class FieldType {
+   ROLLING, HORIZONTAL, VERTICAL;
+}
+
+@Serializable
+enum class RefreshTime( val time: Long) {
+    ZERO(0L), HALF (500L), ONE (1000L), MID(1500L), TWO (2000L);
 }
 
 @Serializable
@@ -91,11 +111,23 @@ data class OneFieldSettings(
 data class DoubleFieldType(val kaction: KarooAction,  val iszone: Boolean)
 
 @Serializable
+data class OneFieldType(val kaction: KarooAction, val iszone: Boolean, val isactive: Boolean )
+
+@Serializable
 data class DoubleFieldSettings(
     var index: Int = 0,
     var onefield: DoubleFieldType = DoubleFieldType(KarooAction.SPEED, false),
     var secondfield: DoubleFieldType = DoubleFieldType(KarooAction.SLOPE, true),
     val ishorizontal: Boolean = true,
+    val isenabled: Boolean = true
+
+)
+
+@Serializable
+data class FieldSettings(
+    var index: Int = 0,
+    var field: List<OneFieldType> = listOf(OneFieldType(KarooAction.CADENCE,false,true),OneFieldType(KarooAction.CADENCE,false, false),OneFieldType(KarooAction.CADENCE, false, false)),
+    val typeField: FieldType = FieldType.HORIZONTAL,
     val isenabled: Boolean = true
 
 )
@@ -126,6 +158,8 @@ data class GeneralSettings(
     val ispalettezwift: Boolean = false,
     val iscenterkaroo: Boolean = false,
     val isheadwindenabled: Boolean = false,
+    val refreshCustom: RefreshTime = RefreshTime.HALF,
+    val refreshRolling: RefreshTime = RefreshTime.HALF,
 )
 
 
@@ -133,3 +167,4 @@ val defaultSettings = Json.encodeToString(CustomFieldSettings())
 val defaultGeneralSettings = Json.encodeToString(GeneralSettings())
 val defaultDoubleFieldSettings = Json.encodeToString(listOf(DoubleFieldSettings(index=0),DoubleFieldSettings(1, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(2, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(3, DoubleFieldType(KarooAction.ELEV_GAIN, false),DoubleFieldType(KarooAction.ELEV_REMAIN, false),false,true),DoubleFieldSettings(4, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.SLOPE, true),false,true),DoubleFieldSettings(5, DoubleFieldType(KarooAction.IF, false),DoubleFieldType(KarooAction.TSS, false),false,true)))
 val defaultOneFieldSettings = Json.encodeToString(listOf(OneFieldSettings(index=0),OneFieldSettings(index=1),OneFieldSettings(index=2)))
+val defaultFieldSettings = Json.encodeToString(listOf(FieldSettings(index=0),FieldSettings(index=1),FieldSettings(index=2)))

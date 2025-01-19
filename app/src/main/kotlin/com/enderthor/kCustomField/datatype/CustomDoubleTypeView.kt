@@ -59,7 +59,7 @@ fun IconRow(icon: Int, colorFilter: ColorFilter, layout: FieldPosition) {
 }
 
 @Composable
-fun NumberRow(number: String, zoneColor: ColorProvider, layout: FieldPosition, fieldSize: FieldSize, onlyOne: Boolean) {
+fun NumberRow(number: String, zoneColor: ColorProvider, layout: FieldPosition, fieldSize: FieldSize, onlyOne: Boolean, isheadwind: Boolean = false) {
     val padding = if (fieldSize == FieldSize.LARGE) 8.dp else 2.dp
     val fontSize = when {
         onlyOne -> 42.sp
@@ -68,7 +68,7 @@ fun NumberRow(number: String, zoneColor: ColorProvider, layout: FieldPosition, f
     }
     Row(
         modifier = GlanceModifier.fillMaxHeight().fillMaxWidth().padding(bottom = padding),
-        verticalAlignment = Alignment.Bottom,
+        verticalAlignment = if (isheadwind) Alignment.CenterVertically else Alignment.Bottom,
         horizontalAlignment = when (layout.name) {
             "CENTER" -> Alignment.CenterHorizontally
             "RIGHT" -> Alignment.End
@@ -84,7 +84,7 @@ fun NumberRow(number: String, zoneColor: ColorProvider, layout: FieldPosition, f
                 color = ColorProvider(Color.Black, Color.White)
             )
         )
-        Spacer(modifier = GlanceModifier.fillMaxHeight().width(2.dp).background(zoneColor))
+       Spacer(modifier = GlanceModifier.fillMaxHeight().width(2.dp).background(zoneColor))
     }
 }
 
@@ -139,7 +139,7 @@ fun HorizontalScreenContent(number: String, icon: Int, colorFilter: ColorFilter,
 
 
 @Composable
-fun SingleHorizontalField(icon: Int, iconColor: ColorFilter, layout: FieldPosition, fieldSize: FieldSize, zoneColor: ColorProvider, number: String) {
+fun SingleHorizontalField(icon: Int, iconColor: ColorFilter, layout: FieldPosition, fieldSize: FieldSize, zoneColor: ColorProvider, number: String, isheadwind: Boolean) {
     val height = when (fieldSize) {
         FieldSize.LARGE -> 12.dp
         FieldSize.SMALL -> 6.dp
@@ -149,7 +149,9 @@ fun SingleHorizontalField(icon: Int, iconColor: ColorFilter, layout: FieldPositi
     Spacer(modifier = GlanceModifier.height(height))
     IconRow(icon, iconColor, layout)
     Spacer(modifier = GlanceModifier.height(5.dp))
-    NumberRow(number.take(4), zoneColor, layout, fieldSize, false)
+    if (isheadwind && fieldSize == FieldSize.MEDIUM) NumberRow(number.take(4), zoneColor, layout, fieldSize, false,true)
+    else NumberRow(number.take(4), zoneColor, layout, fieldSize, false)
+
 }
 
 
@@ -187,14 +189,14 @@ fun DoubleScreenSelector(
 ) {
     val newLeft = if (!showH) formatNumber(leftNumber, isLeftInt)
     else when (selector) {
-            0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString().take(3) else formatNumber(leftNumber, isLeftInt)
+            0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString().take(3) else formatNumber(leftNumber, true)
             else -> "0.0"
         }
 
 
     val newRight = if (!showH) formatNumber(rightNumber, isRightInt)
     else when (selector) {
-            1, 3 -> if (rightLabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString().take(3) else formatNumber(rightNumber, isRightInt)
+            1, 3 -> if (rightLabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString().take(3) else formatNumber(rightNumber, true)
             else -> "0.0"
         }
 
@@ -226,22 +228,24 @@ fun DoubleTypesScreenHorizontal(
     zoneColor1: ColorProvider, zoneColor2: ColorProvider, fieldSize: FieldSize,
     isKaroo3: Boolean, layout: FieldPosition, selector: Int, text: String, windDirection: Int, baseBitmap: Bitmap
 ) {
+
     VerticalDivider(true, fieldSize)
     Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
-        Row(modifier = if (isKaroo3) GlanceModifier.fillMaxSize().cornerRadius(8.dp) else GlanceModifier.fillMaxSize()) {
-            Column(modifier = GlanceModifier.defaultWeight().background(if (selector == 1 || selector == 2) ColorProvider(Color.White, Color.Black) else zoneColor1)) {
-                if (selector == 1 || selector == 2) {
-                    HeadwindDirectionDoubleType(baseBitmap, windDirection, 38, text)
-                } else {
-                    SingleHorizontalField(leftIcon, iconColorLeft, layout, fieldSize, zoneColor1, leftNumber)
+
+        Row(modifier = GlanceModifier.fillMaxSize().let { if (isKaroo3) it.cornerRadius(8.dp) else it }) {
+            Column(modifier = GlanceModifier.defaultWeight().background(if (selector in 1..2) ColorProvider(Color.White, Color.Black) else zoneColor1)) {
+                when (selector) {
+                    1, 2 -> HeadwindDirectionDoubleType(baseBitmap, windDirection, 38, text)
+                    0 -> SingleHorizontalField(leftIcon, iconColorLeft, layout, fieldSize, zoneColor1, leftNumber, true)
+                    else -> SingleHorizontalField(leftIcon, iconColorLeft, layout, fieldSize, zoneColor1, leftNumber, false)
                 }
             }
             Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(ColorProvider(Color.Black, Color.White)))
-            Column(modifier = GlanceModifier.defaultWeight().background(if (selector == 0 || selector == 2) ColorProvider(Color.White, Color.Black) else zoneColor2)) {
-                if (selector == 0 || selector == 2) {
-                    HeadwindDirectionDoubleType(baseBitmap, windDirection, 38, text)
-                } else {
-                    SingleHorizontalField(rightIcon, iconColorRight, layout, fieldSize, zoneColor2, rightNumber)
+            Column(modifier = GlanceModifier.defaultWeight().background(if (selector in listOf(0, 2)) ColorProvider(Color.White, Color.Black) else zoneColor2)) {
+                when (selector) {
+                    0, 2 -> HeadwindDirectionDoubleType(baseBitmap, windDirection, 38, text)
+                    1 -> SingleHorizontalField(rightIcon, iconColorRight, layout, fieldSize, zoneColor2, rightNumber, true)
+                    else -> SingleHorizontalField(rightIcon, iconColorRight, layout, fieldSize, zoneColor2, rightNumber, false)
                 }
             }
         }
@@ -299,8 +303,9 @@ fun DoubleTypesVerticalScreenBig(
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
 fun HeadwindDirectionDoubleType(baseBitmap: Bitmap, bearing: Int, fontSize: Int, overlayText: String) {
+    Spacer(modifier = GlanceModifier.fillMaxWidth().height(10.dp))
     Box(
-        modifier = GlanceModifier.fillMaxSize().padding(5.dp),
+        modifier = GlanceModifier.fillMaxSize().padding(2.dp),
         contentAlignment = Alignment.Center
     ) {
         Image(

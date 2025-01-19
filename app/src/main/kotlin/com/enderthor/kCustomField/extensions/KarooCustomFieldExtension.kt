@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.enderthor.kCustomField.datatype.CustomDoubleType
+import com.enderthor.kCustomField.datatype.CustomRollingType
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
@@ -24,10 +25,35 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.8") {
     private var serviceJob: Job? = null
 
     override val types by lazy {
-        val doubles = listOf("custom-one", "custom-two", "custom-three", "vertical-one", "vertical-two", "vertical-three")
-        doubles.mapIndexed { index, name -> CustomDoubleType(karooSystem, extension, name, index) }
-        val rolling = listOf("rolling-one", "rolling-two", "rolling-three")
-        rolling.mapIndexed { index, name -> CustomDoubleType(karooSystem, extension, name, index) }
+       /* listOf(
+            "custom-one",
+            "custom-two",
+            "custom-three",
+            "vertical-one",
+            "vertical-two",
+            "vertical-three",
+            "rolling-one",
+            "rolling-two",
+            "rolling-three"
+        ).mapIndexed { index, name ->
+            if (name.contains("custom") || name.contains("vertical")) {
+                CustomDoubleType(karooSystem, extension, name, index)
+            } else {
+                CustomRollingType(karooSystem, extension, name, index - 6)
+            }
+        }*/
+        listOf(
+            CustomDoubleType(karooSystem, extension, "custom-one",applicationContext, 0),
+            CustomDoubleType(karooSystem, extension, "custom-two", applicationContext,1),
+            CustomDoubleType(karooSystem, extension, "custom-three",applicationContext, 2),
+            CustomDoubleType(karooSystem, extension, "vertical-one",applicationContext, 3),
+            CustomDoubleType(karooSystem, extension, "vertical-two", applicationContext,4),
+            CustomDoubleType(karooSystem, extension, "vertical-three",applicationContext, 5),
+            CustomRollingType(karooSystem, extension, "rolling-one", applicationContext,0),
+            CustomRollingType(karooSystem, extension, "rolling-two",applicationContext, 1),
+            CustomRollingType(karooSystem, extension, "rolling-three",applicationContext, 2)
+        )
+
     }
 
     override fun onCreate() {
