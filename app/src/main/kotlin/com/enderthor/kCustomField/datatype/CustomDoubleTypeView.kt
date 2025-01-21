@@ -242,7 +242,7 @@ fun NotSupported(overlayText: String, fontSize: Int)
     ) {
         Text(
             overlayText,
-            maxLines = 1,
+            maxLines = 2,
             style = TextStyle(
                 ColorProvider(Color.Black, Color.White),
                 fontSize = (0.8 * fontSize).sp,
@@ -259,16 +259,17 @@ fun NotSupported(overlayText: String, fontSize: Int)
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , iconColor: ColorProvider, zonecolor: ColorProvider, fieldsize: FieldSize, iskaroo3: Boolean, clayout: FieldPosition,windtext: String, winddiff: Int, baseBitmap: Bitmap,selector: Boolean,textSize:Int,iszone: Boolean)
+fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , iconColor: ColorProvider, zonecolor: ColorProvider, fieldsize: FieldSize, iskaroo3: Boolean, clayout: FieldPosition,windtext: String, winddiff: Int, baseBitmap: Bitmap,selector: Boolean,textSize:Int,iszone: Boolean,ispreview:Boolean)
 {
     val icon = action.icon
     val label = action.label
 
-    if(selector)
+    if(selector || (fieldsize == FieldSize.LARGE || fieldsize == FieldSize.EXTRA_LARGE))
     {
         val number = formatNumber(dNumber, isInt)
         Box(modifier = GlanceModifier.fillMaxSize()) {
-            Row(modifier =  if (iskaroo3) GlanceModifier.fillMaxSize().cornerRadius(6.dp) else GlanceModifier.fillMaxSize()) {
+            Row(modifier =  if (iskaroo3) GlanceModifier.fillMaxSize().cornerRadius(6.dp) else GlanceModifier.fillMaxSize())
+            {
                 Column(modifier = GlanceModifier.defaultWeight().background(zonecolor)) {
                     when (fieldsize) {
 
@@ -277,11 +278,11 @@ fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , ic
                         else -> Spacer(modifier = GlanceModifier.height(1.dp))
 
                     }
-                    if (fieldsize == FieldSize.LARGE || fieldsize == FieldSize.EXTRA_LARGE) NotSupported("Size Not Supported", textSize)
+                    if (fieldsize == FieldSize.LARGE || fieldsize == FieldSize.EXTRA_LARGE) NotSupported("Size Not Supported", 24)
                     else {
                         OneIconRow(icon, iconColor, label.uppercase(),iszone,fieldsize)
                         //Spacer(modifier = GlanceModifier.height(1.dp))
-                        OneNumberRow(number.take(6), clayout, fieldsize, textSize)
+                        OneNumberRow(number.take(6), clayout, fieldsize, (textSize * (if (ispreview) 0.8 else 1.0)).roundToInt())
                     }
                 }
             }
@@ -325,7 +326,7 @@ fun DoubleScreenSelector(
         when (fieldSize) {
             FieldSize.SMALL -> DoubleTypesVerticalScreenSmall(newLeft, newRight, leftIcon, rightIcon, iconColorLeft, iconColorRight, zoneColorLeft, zoneColorRight, isKaroo3, layout)
             FieldSize.MEDIUM, FieldSize.LARGE -> DoubleTypesVerticalScreenBig(newLeft, newRight, leftIcon, rightIcon, iconColorLeft, iconColorRight, zoneColorLeft, zoneColorRight, isKaroo3, layout)
-            FieldSize.EXTRA_LARGE -> NotSupported("Size Not Supported", 30)
+            FieldSize.EXTRA_LARGE -> NotSupported("Size Not Supported", 24)
         }
     } else {
         DoubleTypesScreenHorizontal(newLeft, newRight, icon1, icon2, iconColor1, iconColor2, zoneColor1, zoneColor2, fieldSize, isKaroo3, layout, selector, text, windDirection, baseBitmap)

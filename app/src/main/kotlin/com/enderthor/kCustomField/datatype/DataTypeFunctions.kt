@@ -5,12 +5,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import androidx.glance.color.ColorProvider
 import androidx.glance.unit.ColorProvider
-import com.enderthor.kCustomField.R
-import com.enderthor.kCustomField.extensions.getZone
-import com.enderthor.kCustomField.extensions.slopeZones
-import com.enderthor.kCustomField.extensions.streamDataFlow
+
 import io.hammerhead.karooext.models.StreamState
 import io.hammerhead.karooext.models.UserProfile
+import io.hammerhead.karooext.KarooSystemService
+
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
@@ -19,8 +18,13 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
-import io.hammerhead.karooext.KarooSystemService
 import kotlinx.coroutines.FlowPreview
+
+import com.enderthor.kCustomField.R
+import com.enderthor.kCustomField.extensions.getZone
+import com.enderthor.kCustomField.extensions.slopeZones
+import com.enderthor.kCustomField.extensions.streamDataFlow
+
 import timber.log.Timber
 
 fun getColorZone(context: Context, zone: String, value: Double, userProfile: UserProfile, isPaletteZwift: Boolean): ColorProvider {
@@ -102,6 +106,7 @@ fun getFieldFlow(karooSystem: KarooSystemService, field: Any, headwindFlow: Flow
         throw IllegalArgumentException("Unsupported field type")
     }
 }
+
 
 fun updateFieldState(fieldState: StreamState, fieldSettings: Any, context: Context, userProfile: UserProfile, isPaletteZwift: Boolean): Quadruple<Double, ColorProvider, ColorProvider,Boolean> {
     val (kaction, iszone) = when (fieldSettings) {

@@ -1,6 +1,5 @@
 package com.enderthor.kCustomField.datatype
 
-import android.graphics.BitmapFactory
 import io.hammerhead.karooext.models.DataType
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -129,8 +128,11 @@ data class GeneralSettings(
 
 val defaultSettings = Json.encodeToString(CustomFieldSettings())
 val defaultGeneralSettings = Json.encodeToString(GeneralSettings())
+val previewDoubleHorizontalFieldSettings = listOf(DoubleFieldSettings(0, DoubleFieldType(KarooAction.SPEED, false),DoubleFieldType(KarooAction.HR, true),true,true))
+val previewDoubleVerticalFieldSettings = listOf(DoubleFieldSettings(0, DoubleFieldType(KarooAction.SPEED, false),DoubleFieldType(KarooAction.HR, true),false,true))
 val defaultDoubleFieldSettings = Json.encodeToString(listOf(DoubleFieldSettings(index=0),DoubleFieldSettings(1, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(2, DoubleFieldType(KarooAction.IF, false),DoubleFieldType(KarooAction.TSS, false),false,true),DoubleFieldSettings(3, DoubleFieldType(KarooAction.ELEV_GAIN, false),DoubleFieldType(KarooAction.ELEV_REMAIN, false),false,true),DoubleFieldSettings(4, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.SLOPE, true),false,true)))
-val defaultOneFieldSettings = Json.encodeToString(listOf(OneFieldSettings(index=0),OneFieldSettings(index=1, OneFieldType(KarooAction.SPEED, false, true),OneFieldType(KarooAction.SPEED, false, false),OneFieldType(KarooAction.POWER, false, false),RollingTime("ZERO", "0s", 0L))))
+val previewOneFieldSettings = listOf(OneFieldSettings(index=0),OneFieldSettings(index=1, OneFieldType(KarooAction.SPEED, false, true),OneFieldType(KarooAction.SPEED, false, false),OneFieldType(KarooAction.POWER, false, false),RollingTime("ZERO", "0s", 0L)))
+val defaultOneFieldSettings = Json.encodeToString(previewOneFieldSettings)
 val defaultRollingTimes = listOf(
     RollingTime("LOW", "5s", 5000L),
     RollingTime("LOW2","10s", 10000L),
