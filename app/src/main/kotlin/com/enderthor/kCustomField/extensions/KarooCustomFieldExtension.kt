@@ -21,7 +21,7 @@ import timber.log.Timber
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.8") {
+class KarooCustomFieldExtension : KarooExtension("kcustomfield", "2.0") {
 
     lateinit var karooSystem: KarooSystemService
     private var serviceJob: Job? = null
@@ -30,29 +30,7 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.8") {
     override val types: List<DataTypeImpl>
         get() = _types
 
-    /*
-    override val types by lazy {
-       if (karooSystem.hardwareType == HardwareType.KAROO) {
-            listOf(
-                CustomDoubleType(karooSystem, extension, "custom-one", 0),
-                CustomDoubleType(karooSystem, extension, "custom-two", 1),
-                CustomDoubleType(karooSystem, extension, "custom-three", 2),
-                CustomDoubleType(karooSystem, extension, "vertical-one", 3),
-                CustomDoubleType(karooSystem, extension, "vertical-two", 4),
-                CustomRollingType(karooSystem, extension, "rolling-one", 0),
-                CustomRollingType(karooSystem, extension, "rolling-two", 1)
-            )
-        } else {
-            listOf(
-                CustomDoubleType(karooSystem, extension, "custom-one",0),
-                CustomDoubleType(karooSystem, extension, "custom-two", 1),
-                CustomDoubleType(karooSystem, extension, "custom-three", 2),
-                CustomDoubleType(karooSystem, extension, "vertical-one", 3),
-                CustomRollingType(karooSystem, extension, "rolling-one",0)
-            )
-        }
-    }
-*/
+
     override fun onCreate() {
         super.onCreate()
         karooSystem = KarooSystemService(applicationContext)
