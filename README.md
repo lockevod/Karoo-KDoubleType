@@ -6,7 +6,7 @@
 KDoubleType allows to use custom fields with double types (HR,Power,etc)
 
 ## Requirements
-- Karoo (tested on last Karoo ) with version 1.524.2003 or later
+- Karoo (tested on last Karoo ) with version 1.527 or later
 - Tested with Karoo 3 and metric configuration
 
 ## Installation
@@ -29,20 +29,23 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 ## Instructions
 
 - Add custom fields to your profiles (HR, Power, etc).
-- You can add two horizontal fields and two vertical fields.
+- You can add horizontal or vertical fields.
+- You can add rolling fields and select de rolling period (ie. change every 5-10-20-30 seconds between three fields...)
 - You can configure the fields in the configuration tab and select if you want colored zones or not.
 
 ## Configuration
-- You can configure left and right sides in configuration tab.
-- Horizontal fields rounds to integer numbers ( ie for speed 12.6 you will see 13)
+- You can configure, for double custom fields, left/up and right/top sides in custom configuration tab.
+- Horizontal fields rounds to integer numbers ( ie for speed 12.6 you will see 13) except for IF field.
 - If you chose vertical fields you can see 5 digits (including the decimal point for speed and slope).
 - Coloured zones are based in your Karoo zones. Slope zones are based in Hammerhead climber zones or you can chose use the Zwift colors.
-- You can align text/image to the left, center or right.
+- You can align  to the left, center or right, but you can select to use Karoo default alignment (your alignment in the Karoo profile).
+- Rolling fields shows only one field (for small and medium size fields) and change every 5-10-20-30 seconds between three different measures. You can select only two if you want (or only want but I don't know if this is very useful ;) )
+- You can use Headwind Field, this is from Timklge app, and it's mandatory to install and configure the app. KDouble extension only takes the values from Timklge app and shows in the field (rolling/vertical/horizontal)
 
 ## Know Bugs
 - The max number of every field horizontal is 3 digits, but it's better if you don't mix two types with 3 digits always.
-- There isn't possible to configure alignment of the fields (currently, will be in future versions).
 - Not intensive tested with all the fields, please report any issue. For example, number adaptation for the fields is not tested with all the fields.
+- If you use several fields your Karoo can be freeze especially if you have a Karoo 2. I've made several performance improvements but be careful to use 5 fields + rolling + headwind (in the same rolling or custom fields).. it's a lot of data to process.
 
 ## Credits
 
