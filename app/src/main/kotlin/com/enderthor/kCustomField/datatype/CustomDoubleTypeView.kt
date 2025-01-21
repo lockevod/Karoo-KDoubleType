@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.*
+import androidx.glance.GlanceModifier
 import androidx.glance.appwidget.background
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.color.ColorProvider
@@ -88,6 +89,80 @@ fun NumberRow(number: String, zoneColor: ColorProvider, layout: FieldPosition, f
     }
 }
 
+
+@Composable
+fun OneIconRow(icon: Int, iconColor: ColorProvider, text:String, iszone: Boolean, fieldSize: FieldSize) {
+    Timber.d("OneIconRow text = $text icon = $icon iconColor = $iconColor iszone = $iszone fieldSize = $fieldSize")
+    Row(
+        modifier = if(fieldSize==FieldSize.SMALL) GlanceModifier.fillMaxWidth().height(31.dp) else GlanceModifier.fillMaxWidth().height(37.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.Start,
+            modifier = if(fieldSize==FieldSize.SMALL) GlanceModifier.height(20.dp).width(24.dp)else GlanceModifier.height(24.dp).width(24.dp)
+
+            ){
+            Image(
+                provider = ImageProvider(icon),
+                contentDescription = "Icon",
+                modifier = if(fieldSize==FieldSize.SMALL) GlanceModifier.size(16.dp).padding(top = (-2).dp) else GlanceModifier.size(20.dp).padding(top = (-1).dp),
+                colorFilter = ColorFilter.tint(iconColor)
+                //ColorFilter.tint(ColorProvider(Color.Black, Color.White))
+            )
+        }
+        Column(
+            modifier = if(fieldSize==FieldSize.SMALL) GlanceModifier
+                .height(32.dp).fillMaxWidth().padding(end=3.dp)else GlanceModifier
+                .height(36.dp).fillMaxWidth().padding(end=3.dp),
+            horizontalAlignment = Alignment.End,
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text =
+                if (text.length > 10) {
+                    val parts = text.split(" ", limit = 2)
+                    if (parts.size > 1) "${parts[0]}\n${parts[1]}" else text}
+                else text,
+                maxLines = 2,
+                style = TextStyle(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if(fieldSize==FieldSize.SMALL) 15.sp else 18.sp,
+                    fontFamily = FontFamily.Monospace,
+                    color = if (iszone) iconColor else ColorProvider(Color.Black, Color.White),
+                    textAlign = TextAlign.End
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun OneNumberRow(number: String, layout: FieldPosition, fieldSize: FieldSize, textSize: Int) {
+    val padding = if (fieldSize == FieldSize.LARGE) 7.dp  else 2.dp
+    Timber.d("OneNumberRow FieldSize = $fieldSize padding= $padding Text = $number")
+    Row(
+        modifier = GlanceModifier.fillMaxHeight().fillMaxWidth().padding(bottom =padding,end=4.dp),
+        verticalAlignment = Alignment.CenterVertically ,
+        horizontalAlignment = when (layout.name) {
+            "CENTER" -> Alignment.CenterHorizontally
+            "RIGHT" -> Alignment.End
+            else -> Alignment.Start
+        }
+    ) {
+        Text(
+            text = number,
+            style = TextStyle(
+                fontWeight = FontWeight.Bold,
+                fontSize = textSize.sp,
+                fontFamily = FontFamily.Monospace,
+                color = ColorProvider(Color.Black, Color.White)
+            ),
+            modifier = GlanceModifier.padding(top= -padding)
+        )
+       //Spacer(modifier = GlanceModifier.fillMaxHeight().width(2.dp).background(zoneColor))
+    }
+
+}
+
 @Composable
 fun HorizontalScreenContent(number: String, icon: Int, colorFilter: ColorFilter, layout: FieldPosition) {
     Row(
@@ -158,24 +233,34 @@ fun SingleHorizontalField(icon: Int, iconColor: ColorFilter, layout: FieldPositi
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun RollingFieldScreen(number: Double, leftIcon: Int, iconColorLeft: ColorFilter, zonecolor1: ColorProvider, fieldsize: FieldSize, iskaroo3: Boolean, leftlabel: String, clayout: FieldPosition)
+fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , iconColor: ColorProvider, zonecolor: ColorProvider, fieldsize: FieldSize, iskaroo3: Boolean, clayout: FieldPosition,windtext: String, winddiff: Int, baseBitmap: Bitmap,selector: Boolean,textSize:Int,iszone: Boolean)
 {
-    val leftNumber = if (leftlabel == "IF") ((number * 10.0).roundToInt() / 10.0).toString().take(3) else number.roundToInt().toString()
-    Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
-        Row(modifier = if (iskaroo3) GlanceModifier.fillMaxSize().cornerRadius(8.dp) else GlanceModifier.fillMaxSize()) {
-            Column(modifier = GlanceModifier.defaultWeight().background(zonecolor1)) {
-                when (fieldsize) {
-                    FieldSize.LARGE -> Spacer(modifier = GlanceModifier.height(12.dp))
-                    FieldSize.SMALL -> Spacer(modifier = GlanceModifier.height(6.dp))
-                    FieldSize.MEDIUM -> Spacer(modifier = GlanceModifier.height(9.dp))
-                    FieldSize.EXTRA_LARGE -> TODO()
+    val icon = action.icon
+    val label = action.label
+
+    if(selector)
+    {
+        val number = formatNumber(dNumber, isInt)
+        Box(modifier = GlanceModifier.fillMaxSize()) {
+            Row(modifier =  if (iskaroo3) GlanceModifier.fillMaxSize().cornerRadius(6.dp) else GlanceModifier.fillMaxSize()) {
+                Column(modifier = GlanceModifier.defaultWeight().background(zonecolor)) {
+                    when (fieldsize) {
+                        FieldSize.LARGE -> TODO()
+                        FieldSize.SMALL -> Spacer(modifier = GlanceModifier.height(2.dp))
+                        FieldSize.MEDIUM -> Spacer(modifier = GlanceModifier.height(4.dp))
+                        FieldSize.EXTRA_LARGE -> TODO()
+                    }
+                    if (fieldsize == FieldSize.LARGE || fieldsize == FieldSize.EXTRA_LARGE) TODO()
+                    else {
+                        OneIconRow(icon, iconColor, label.uppercase(),iszone,fieldsize)
+                        //Spacer(modifier = GlanceModifier.height(1.dp))
+                        OneNumberRow(number.take(6), clayout, fieldsize, textSize)
+                    }
                 }
-                IconRow(leftIcon, iconColorLeft, clayout)
-                Spacer(modifier = GlanceModifier.height(5.dp))
-                NumberRow(leftNumber.take(5), zonecolor1, clayout, fieldsize, true)
             }
         }
     }
+    else HeadwindDirection(baseBitmap, winddiff, textSize, windtext)
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
@@ -187,6 +272,7 @@ fun DoubleScreenSelector(
     zoneColorLeft: ColorProvider, zoneColorRight: ColorProvider, fieldSize: FieldSize,
     isKaroo3: Boolean, isLeftInt: Boolean, isRightInt: Boolean, leftLabel: String, rightLabel: String, layout: FieldPosition, text: String, windDirection: Int, baseBitmap: Bitmap
 ) {
+
     val newLeft = if (!showH) formatNumber(leftNumber, isLeftInt)
     else when (selector) {
             0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString().take(3) else formatNumber(leftNumber, true)

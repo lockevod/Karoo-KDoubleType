@@ -50,6 +50,7 @@ fun String.toCapital(): String {
 fun MultiToggleButton(
     currentSelection: Int,
     toggleStates: List<String>,
+    enabled: Boolean,
     onToggleChange: (Int) -> Unit
 ) {
     val selectedTint = MaterialTheme.colorScheme.primary
@@ -60,8 +61,8 @@ fun MultiToggleButton(
         .border(BorderStroke(1.dp, Color.LightGray))) {
         toggleStates.forEachIndexed { index, toggleState ->
             val isSelected = currentSelection == index
-            val backgroundTint = if (isSelected) selectedTint else unselectedTint
-            val textColor = if (isSelected) Color.White else Color.Unspecified
+            val backgroundTint = if (isSelected && enabled) selectedTint else unselectedTint
+            val textColor = if (isSelected && enabled) Color.White else Color.Unspecified
 
             if (index != 0) {
                 HorizontalDivider(
@@ -78,7 +79,7 @@ fun MultiToggleButton(
                     .padding(vertical = 6.dp, horizontal = 8.dp)
                     .toggleable(
                         value = isSelected,
-                        enabled = true,
+                        enabled = enabled,
                         onValueChange = { selected ->
                             if (selected) {
                                 onToggleChange(index)
@@ -94,7 +95,7 @@ fun MultiToggleButton(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun KarooKeyDropdown(remotekey: String, options: List<DropdownOption>, selectedOption: DropdownOption, onSelect: (selectedOption: DropdownOption) -> Unit) {
+fun KarooKeyDropdown(remotekey: String, options: List<DropdownOption>, selectedOption: DropdownOption, enabled: Boolean, onSelect: (selectedOption: DropdownOption) -> Unit) {
 
     var expanded by remember { mutableStateOf(false) }
 
@@ -123,8 +124,14 @@ fun KarooKeyDropdown(remotekey: String, options: List<DropdownOption>, selectedO
                 DropdownMenuItem(
                     text = { Text(option.name) },
                     onClick = {
-                        expanded = false
+                        if (enabled) {
+                            expanded = false
+                            onSelect(option)
+                        }
+                        /*expanded = false
                         onSelect(option)
+
+                        */
                     },
                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                 )
@@ -134,7 +141,7 @@ fun KarooKeyDropdown(remotekey: String, options: List<DropdownOption>, selectedO
 }
 
 @Composable
-fun DropdownOneField(firstpos: Boolean, label: String, action: OneFieldType, onActionChange: (OneFieldType) -> Unit) {
+fun DropdownOneField(enabled: Boolean, firstpos: Boolean, label: String, action: OneFieldType, onActionChange: (OneFieldType) -> Unit) {
 
     var dropdownOptions = KarooAction.entries.map { DropdownOption(it.action.toString(), it.label) }
     if (!firstpos) dropdownOptions = listOf(DropdownOption("none", "None")) + dropdownOptions
@@ -150,8 +157,8 @@ fun DropdownOneField(firstpos: Boolean, label: String, action: OneFieldType, onA
         )
     }
 
-    KarooKeyDropdown(remotekey = label, options = dropdownOptions, selectedOption = dropdownInitialSelection) { selectedOption ->
-        val newAction = if (selectedOption.id == "none") {
+    KarooKeyDropdown(enabled=enabled,remotekey = label, options = dropdownOptions, selectedOption = dropdownInitialSelection) { selectedOption ->
+        val newAction = if (selectedOption.id == "none" || !enabled) {
             OneFieldType(KarooAction.SPEED, false, false)
         } else {
             OneFieldType(KarooAction.entries.find { it.action == selectedOption.id } ?: KarooAction.SPEED, false, true)
@@ -185,11 +192,13 @@ fun DropdownDoubleField(label: String, action: DoubleFieldType, isheadwindenable
         }
     }
 
-    KarooKeyDropdown(remotekey = label, options = dropdownOptions, selectedOption = dropdownInitialSelection) { selectedOption ->
+    KarooKeyDropdown(enabled=true,remotekey = label, options = dropdownOptions, selectedOption = dropdownInitialSelection) { selectedOption ->
         val newAction = action.copy(kaction = KarooAction.entries.find { it.action == selectedOption.id } ?: KarooAction.SPEED)
         onActionChange(newAction)
     }
 }
+
+
 
 @Composable
 fun ZoneMultiSwitch(option: Int, checked: Boolean, enabled: Boolean, onCheckedChange: (Boolean) -> Unit) {

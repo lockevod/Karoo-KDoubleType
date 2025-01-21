@@ -1,5 +1,6 @@
 package com.enderthor.kCustomField.datatype
 
+import android.graphics.BitmapFactory
 import io.hammerhead.karooext.models.DataType
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -7,13 +8,19 @@ import kotlinx.serialization.json.Json
 import com.enderthor.kCustomField.R
 
 
-@Serializable
 data class Quadruple<out A, out B, out C, out D>(
     val first: A,
     val second: B,
     val third: C,
     val fourth: D
 )
+
+enum class Headwind (val type: String) {
+    DIFF(DataType.dataTypeId("karoo-headwind", "headwind")),SPEED(DataType.dataTypeId("karoo-headwind", "headwindSpeed"))
+}
+
+data class StreamHeadWindData(val diff: Double, val windSpeed: Double)
+
 
 enum class KarooAction(val action: String, val label: String, val icon: Int, val colorday: Int, val colornight: Int,val zone: String, val convert: String) {
     SPEED(DataType.Type.SPEED, "Speed", R.drawable.ic_speed,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","speed"),
@@ -36,21 +43,6 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     HEADWIND(DataType.dataTypeId("karoo-headwind", "headwind"), "Headwind", R.drawable.ic_tss,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
  }
 
-@Serializable
-enum class Headwind (val type: String) {
-    DIFF(DataType.dataTypeId("karoo-headwind", "headwind")),SPEED(DataType.dataTypeId("karoo-headwind", "headwindSpeed"))
-}
-
-data class StreamHeadWindData(val diff: Double, val windSpeed: Double)
-
-data class Decuple<A, B, C, D, E>(
-    val first: A,
-    val second: B,
-    val third: C,
-    val fourth: D,
-    val fifth: E,
-
-)
 
 @Serializable
 data class CustomFieldSettings(
@@ -80,38 +72,34 @@ data class CustomFieldSettings(
     val customverticalright3zone: Boolean = false,
 )
 
+enum class FieldSize {
+    SMALL, MEDIUM, LARGE, EXTRA_LARGE;
+}
+
+data class FieldSizeRange(val name: FieldSize, val min: Int, val max: Int)
 
 
-
-@Serializable
-enum class RollingTime ( val time: Long) {
-    ZERO(0L), FOUR (4000L), TEN (10000L), TWENTY (20000L);
+enum class FieldPosition {
+    LEFT, CENTER, RIGHT;
 }
 
 @Serializable
-enum class FieldType {
-   ROLLING, HORIZONTAL, VERTICAL;
-}
+data class RollingTime(val id : String, val name: String, var time: Long)
 
 @Serializable
-enum class RefreshTime( val time: Long) {
-    ZERO(0L), HALF (500L), ONE (1000L), MID(1500L), TWO (2000L);
-}
+data class OneFieldType(val kaction: KarooAction, val iszone: Boolean, val isactive: Boolean )
 
 @Serializable
 data class OneFieldSettings(
     var index: Int = 0,
     var onefield: OneFieldType = OneFieldType(KarooAction.HR, true, true),
-    var secondfield: OneFieldType = OneFieldType(KarooAction.SLOPE, true,true),
-    var thirdfield: OneFieldType = OneFieldType(KarooAction.SPEED, true,false),
-    var rollingtime: RollingTime = RollingTime.ZERO
+    var secondfield: OneFieldType = OneFieldType(KarooAction.HEADWIND, false,true),
+    var thirdfield: OneFieldType = OneFieldType(KarooAction.SPEED, false,true),
+    var rollingtime: RollingTime = RollingTime("LOW", "5s", 5000L),
 )
 
 @Serializable
 data class DoubleFieldType(val kaction: KarooAction,  val iszone: Boolean)
-
-@Serializable
-data class OneFieldType(val kaction: KarooAction, val iszone: Boolean, val isactive: Boolean )
 
 @Serializable
 data class DoubleFieldSettings(
@@ -123,41 +111,17 @@ data class DoubleFieldSettings(
 
 )
 
-@Serializable
-data class FieldSettings(
-    var index: Int = 0,
-    var field: List<OneFieldType> = listOf(OneFieldType(KarooAction.CADENCE,false,true),OneFieldType(KarooAction.CADENCE,false, false),OneFieldType(KarooAction.CADENCE, false, false)),
-    val typeField: FieldType = FieldType.HORIZONTAL,
-    val isenabled: Boolean = true
-
-)
-data class FieldSizeRange(val name: FieldSize, val min: Int, val max: Int)
-
-val fieldSizeRanges = listOf(
-    FieldSizeRange(FieldSize.SMALL, Int.MIN_VALUE, 13),
-    FieldSizeRange(FieldSize.MEDIUM, 14, 15),
-    FieldSizeRange(FieldSize.LARGE, 16, 18),
-    FieldSizeRange(FieldSize.EXTRA_LARGE, 19, Int.MAX_VALUE)
-)
-
-@Serializable
-enum class FieldSize {
-   SMALL, MEDIUM, LARGE, EXTRA_LARGE;
-}
-
-@Serializable
-enum class FieldPosition {
-    LEFT, CENTER, RIGHT;
+enum class RefreshTime( val time: Long) {
+    ZERO(0L), HALF (500L), ONE (1000L), MID(1500L), TWO (2000L);
 }
 
 @Serializable
 data class GeneralSettings(
     val iscenteralign: FieldPosition = FieldPosition.RIGHT,
     val iscentervertical: FieldPosition = FieldPosition.CENTER,
-    val iscenterrolling: FieldPosition = FieldPosition.RIGHT,
     val ispalettezwift: Boolean = false,
     val iscenterkaroo: Boolean = false,
-    val isheadwindenabled: Boolean = false,
+    val isheadwindenabled: Boolean = true,
     val refreshCustom: RefreshTime = RefreshTime.HALF,
     val refreshRolling: RefreshTime = RefreshTime.HALF,
 )
@@ -165,6 +129,18 @@ data class GeneralSettings(
 
 val defaultSettings = Json.encodeToString(CustomFieldSettings())
 val defaultGeneralSettings = Json.encodeToString(GeneralSettings())
-val defaultDoubleFieldSettings = Json.encodeToString(listOf(DoubleFieldSettings(index=0),DoubleFieldSettings(1, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(2, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(3, DoubleFieldType(KarooAction.ELEV_GAIN, false),DoubleFieldType(KarooAction.ELEV_REMAIN, false),false,true),DoubleFieldSettings(4, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.SLOPE, true),false,true),DoubleFieldSettings(5, DoubleFieldType(KarooAction.IF, false),DoubleFieldType(KarooAction.TSS, false),false,true)))
-val defaultOneFieldSettings = Json.encodeToString(listOf(OneFieldSettings(index=0),OneFieldSettings(index=1),OneFieldSettings(index=2)))
-val defaultFieldSettings = Json.encodeToString(listOf(FieldSettings(index=0),FieldSettings(index=1),FieldSettings(index=2)))
+val defaultDoubleFieldSettings = Json.encodeToString(listOf(DoubleFieldSettings(index=0),DoubleFieldSettings(1, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(2, DoubleFieldType(KarooAction.IF, false),DoubleFieldType(KarooAction.TSS, false),false,true),DoubleFieldSettings(3, DoubleFieldType(KarooAction.ELEV_GAIN, false),DoubleFieldType(KarooAction.ELEV_REMAIN, false),false,true),DoubleFieldSettings(4, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.SLOPE, true),false,true)))
+val defaultOneFieldSettings = Json.encodeToString(listOf(OneFieldSettings(index=0),OneFieldSettings(index=1, OneFieldType(KarooAction.SPEED, false, true),OneFieldType(KarooAction.SPEED, false, false),OneFieldType(KarooAction.POWER, false, false),RollingTime("ZERO", "0s", 0L))))
+val defaultRollingTimes = listOf(
+    RollingTime("LOW", "5s", 5000L),
+    RollingTime("LOW2","10s", 10000L),
+    RollingTime("MED", "20s", 20000L),
+    RollingTime("UPPER", "30s",30000L)
+)
+val fieldSizeRanges = listOf(
+    FieldSizeRange(FieldSize.SMALL, Int.MIN_VALUE, 13),
+    FieldSizeRange(FieldSize.MEDIUM, 14, 15),
+    FieldSizeRange(FieldSize.LARGE, 16, 18),
+    FieldSizeRange(FieldSize.EXTRA_LARGE, 19, Int.MAX_VALUE)
+)
+

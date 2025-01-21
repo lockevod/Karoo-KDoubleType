@@ -1,22 +1,18 @@
 <resources>
     <string name="app_name">KDouble</string>
     <string name="extension_name">Karoo Double Field</string>
-    <string name="custom_double1">KDouble Field One</string>
+    <string name="custom_double1">KDouble One</string>
     <string name="custom_double_description1">Karoo DualType One</string>
     <string name="custom_double_description2">Karoo DualType Two</string>
-    <string name="custom_double2">KDouble Field Two</string>
-    <string name="custom_double3">KDouble Field Three</string>
+    <string name="custom_double2">KDouble Two</string>
+    <string name="custom_double3">KDouble Three</string>
     <string name="custom_double_description3">Karoo DualType Three</string>
-    <string name="custom_vertical_double1">KDouble Field Four</string>
+    <string name="custom_vertical_double1">KDouble Four</string>
     <string name="custom_double_vertical_description1">Karoo DualType Four</string>
     <string name="custom_double_vertical_description2">Karoo DualType Five</string>
     <string name="custom_vertical_double2">KDouble Field Five</string>
-    <string name="custom_double_vertical_description3">Karoo DualType Six</string>
-    <string name="custom_vertical_double3">KDouble Field Six</string>
-    <string name="custom_rolling1">KDouble Rolling Field One</string>
+    <string name="custom_rolling1">KRolling One</string>
     <string name="custom_rolling_description1">Karoo Rolling Type One</string>
-    <string name="custom_rolling2">KDouble Rolling Field Two</string>
+    <string name="custom_rolling2">KRolling Two</string>
     <string name="custom_rolling_description2">Karoo Rolling Type Two</string>
-    <string name="custom_rolling3">KDouble Rolling Field Three</string>
-    <string name="custom_rolling_description3">Karoo Rolling Type Three</string>
 </resources>

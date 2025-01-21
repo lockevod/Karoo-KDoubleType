@@ -3,6 +3,29 @@ package com.enderthor.kCustomField.datatype
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.glance.ColorFilter
+import androidx.glance.GlanceModifier
+import androidx.glance.Image
+import androidx.glance.ImageProvider
+import androidx.glance.appwidget.background
+import androidx.glance.color.ColorProvider
+import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
+import androidx.glance.layout.Column
+import androidx.glance.layout.ContentScale
+import androidx.glance.layout.Row
+import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.padding
+import androidx.glance.preview.ExperimentalGlancePreviewApi
+import androidx.glance.preview.Preview
+import androidx.glance.text.FontFamily
+import androidx.glance.text.FontWeight
+import androidx.glance.text.Text
+import androidx.glance.text.TextStyle
 import kotlin.math.roundToInt
 
 // This file is from the KarooHeadwind project by Tim Kluge
@@ -38,5 +61,78 @@ fun getArrowBitmapByBearing(baseBitmap: Bitmap, bearing: Int): Bitmap {
         bitmapsByBearing[bitmapWithBearing] = bitmap
 
         return bitmap
+    }
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 200, heightDp = 150)
+@Composable
+fun HeadwindDirection(baseBitmap: Bitmap, bearing: Int, fontSize: Int, overlayText: String, overlaySubText: String? = null, dayColor: Color = Color.Black, nightColor: Color = Color.White) {
+    Box(
+        modifier = GlanceModifier.fillMaxSize().padding(5.dp),
+        contentAlignment = Alignment(
+            vertical = Alignment.Vertical.CenterVertically,
+            horizontal = Alignment.Horizontal.CenterHorizontally,
+        ),
+    ) {
+        if (overlayText.isNotEmpty()){
+            if (overlaySubText == null){
+                Image(
+                    modifier = GlanceModifier.fillMaxSize(),
+                    provider = ImageProvider(
+                        getArrowBitmapByBearing(
+                            baseBitmap,
+                            bearing
+                        )
+                    ),
+                    contentDescription = "Relative wind direction indicator",
+                    contentScale = ContentScale.Fit,
+                    colorFilter = ColorFilter.tint(ColorProvider(dayColor, nightColor))
+                )
+
+                Text(
+                    overlayText,
+                    maxLines = 1,
+                    style = TextStyle(ColorProvider(dayColor, nightColor), fontSize = (0.6 * fontSize).sp, fontFamily = FontFamily.Monospace),
+                    modifier = GlanceModifier.background(Color(1f, 1f, 1f, 0.4f), Color(0f, 0f, 0f, 0.4f)).padding(1.dp)
+                )
+            } else {
+                Row(modifier = GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = GlanceModifier.defaultWeight()){
+                        Image(
+                            provider = ImageProvider(
+                                getArrowBitmapByBearing(
+                                    baseBitmap,
+                                    bearing
+                                )
+                            ),
+                            contentDescription = "Relative wind direction indicator",
+                            contentScale = ContentScale.Fit,
+                            colorFilter = ColorFilter.tint(ColorProvider(dayColor, nightColor))
+                        )
+                    }
+
+                    Column(modifier = GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
+
+                        Text(
+                            overlayText,
+                            maxLines = 1,
+                            style = TextStyle(ColorProvider(dayColor, nightColor), fontSize = (0.7 * fontSize).sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold),
+                            modifier = GlanceModifier.background(Color(1f, 1f, 1f, 0.4f), Color(0f, 0f, 0f, 0.4f)).padding(1.dp)
+                        )
+
+                        Row(){
+                            Text(
+                                overlaySubText,
+                                maxLines = 1,
+                                style = TextStyle(ColorProvider(dayColor, nightColor), fontSize = (0.4 * fontSize).sp, fontFamily = FontFamily.Monospace),
+                                modifier = GlanceModifier.background(Color(1f, 1f, 1f, 0.4f), Color(0f, 0f, 0f, 0.4f)).padding(1.dp)
+                            )
+                        }
+                    }
+
+                }
+            }
+        }
     }
 }

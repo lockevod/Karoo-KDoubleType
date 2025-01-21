@@ -8,7 +8,9 @@ import com.enderthor.kCustomField.datatype.CustomDoubleType
 import com.enderthor.kCustomField.datatype.CustomRollingType
 
 import io.hammerhead.karooext.KarooSystemService
+import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.extension.KarooExtension
+import io.hammerhead.karooext.models.HardwareType
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,39 +25,34 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.8") {
 
     lateinit var karooSystem: KarooSystemService
     private var serviceJob: Job? = null
+    private var _types: List<DataTypeImpl> = emptyList()
 
+    override val types: List<DataTypeImpl>
+        get() = _types
+
+    /*
     override val types by lazy {
-       /* listOf(
-            "custom-one",
-            "custom-two",
-            "custom-three",
-            "vertical-one",
-            "vertical-two",
-            "vertical-three",
-            "rolling-one",
-            "rolling-two",
-            "rolling-three"
-        ).mapIndexed { index, name ->
-            if (name.contains("custom") || name.contains("vertical")) {
-                CustomDoubleType(karooSystem, extension, name, index)
-            } else {
-                CustomRollingType(karooSystem, extension, name, index - 6)
-            }
-        }*/
-        listOf(
-            CustomDoubleType(karooSystem, extension, "custom-one",applicationContext, 0),
-            CustomDoubleType(karooSystem, extension, "custom-two", applicationContext,1),
-            CustomDoubleType(karooSystem, extension, "custom-three",applicationContext, 2),
-            CustomDoubleType(karooSystem, extension, "vertical-one",applicationContext, 3),
-            CustomDoubleType(karooSystem, extension, "vertical-two", applicationContext,4),
-            CustomDoubleType(karooSystem, extension, "vertical-three",applicationContext, 5),
-            CustomRollingType(karooSystem, extension, "rolling-one", applicationContext,0),
-            CustomRollingType(karooSystem, extension, "rolling-two",applicationContext, 1),
-            CustomRollingType(karooSystem, extension, "rolling-three",applicationContext, 2)
-        )
-
+       if (karooSystem.hardwareType == HardwareType.KAROO) {
+            listOf(
+                CustomDoubleType(karooSystem, extension, "custom-one", 0),
+                CustomDoubleType(karooSystem, extension, "custom-two", 1),
+                CustomDoubleType(karooSystem, extension, "custom-three", 2),
+                CustomDoubleType(karooSystem, extension, "vertical-one", 3),
+                CustomDoubleType(karooSystem, extension, "vertical-two", 4),
+                CustomRollingType(karooSystem, extension, "rolling-one", 0),
+                CustomRollingType(karooSystem, extension, "rolling-two", 1)
+            )
+        } else {
+            listOf(
+                CustomDoubleType(karooSystem, extension, "custom-one",0),
+                CustomDoubleType(karooSystem, extension, "custom-two", 1),
+                CustomDoubleType(karooSystem, extension, "custom-three", 2),
+                CustomDoubleType(karooSystem, extension, "vertical-one", 3),
+                CustomRollingType(karooSystem, extension, "rolling-one",0)
+            )
+        }
     }
-
+*/
     override fun onCreate() {
         super.onCreate()
         karooSystem = KarooSystemService(applicationContext)
@@ -65,10 +62,30 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", "1.8") {
         serviceJob = CoroutineScope(Dispatchers.IO).launch {
             karooSystem.connect { connected ->
                 if (connected) {
-                    Timber.d("Connected to Karoo system")
-                }
-            }
+                        Timber.d("Connected to Karoo system")
+                        _types = if (karooSystem.hardwareType == HardwareType.KAROO) {
+                            listOf(
+                                CustomDoubleType(karooSystem, extension, "custom-one", 0),
+                                CustomDoubleType(karooSystem, extension, "custom-two", 1),
+                                CustomDoubleType(karooSystem, extension, "custom-three", 2),
+                                CustomDoubleType(karooSystem, extension, "vertical-one", 3),
+                                CustomDoubleType(karooSystem, extension, "vertical-two", 4),
+                                CustomRollingType(karooSystem, extension, "rolling-one", 0),
+                                CustomRollingType(karooSystem, extension, "rolling-two", 1)
+                            )
+                        } else {
+                            listOf(
+                                CustomDoubleType(karooSystem, extension, "custom-one", 0),
+                                CustomDoubleType(karooSystem, extension, "custom-two", 1),
+                                CustomDoubleType(karooSystem, extension, "custom-three", 2),
+                                CustomDoubleType(karooSystem, extension, "vertical-one", 3),
+                                CustomRollingType(karooSystem, extension, "rolling-one", 0)
+                            )
+                        }
 
+
+                    }
+            }
         }
     }
 
