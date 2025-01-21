@@ -4,7 +4,7 @@
   "latestApkUrl": "https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.apk",
   "iconUrl": "https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.png",
   "latestVersion": "2.0",
-  "latestVersionCode": 202501211,
+  "latestVersionCode": 202501221,
   "developer": "Enderthor",
   "description": "This extension for Karoo allows to use custom fields with double types (HR,Power,etc).",
   "releaseNotes": "Added support for Headwind. Added rolling fields. Major code improvements and Bug fixes. "
