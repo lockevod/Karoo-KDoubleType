@@ -40,7 +40,8 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 - Coloured zones are based in your Karoo zones. Slope zones are based in Hammerhead climber zones or you can chose use the Zwift colors.
 - You can align  to the left, center or right, but you can select to use Karoo default alignment (your alignment in the Karoo profile).
 - Rolling fields shows only one field (for small and medium size fields) and change every 5-10-20-30 seconds between three different measures. You can select only two if you want (or only want but I don't know if this is very useful ;) )
-- You can use Headwind Field, this is from Timklge app, and it's mandatory to install and configure the app. KDouble extension only takes the values from Timklge app and shows in the field (rolling/vertical/horizontal)
+- You can use Headwind Field, this is from Timklge app, and it's mandatory to install and configure the app. KDouble extension only takes the values from Timklge app and shows in the field (rolling/vertical/horizontal).
+In this case, you have to select Timklge headwind field also in this profile.
 
 ## Know Bugs
 - The max number of every field horizontal is 3 digits, but it's better if you don't mix two types with 3 digits always.

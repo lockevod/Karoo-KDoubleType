@@ -96,7 +96,7 @@ abstract class CustomDoubleTypeBase(
             emitter.onNext(UpdateGraphicConfig(showHeader = false))
             awaitCancellation()
         }
-
+        val period = if (karooSystem.hardwareType == HardwareType.K2) RefreshTime.MID.time else RefreshTime.HALF.time
         val job = scope.launch {
 
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
@@ -110,10 +110,10 @@ abstract class CustomDoubleTypeBase(
 
                     val headwindFlow =
                         if (listOf(primaryField, secondaryField).any { it.kaction.name == "HEADWIND" } && generalSettings.isheadwindenabled)
-                            createHeadwindFlow(karooSystem) else null
+                            createHeadwindFlow(karooSystem,period) else null
 
-                    val firstFieldFlow = if (!config.preview) getFieldFlow(karooSystem, primaryField, headwindFlow, generalSettings) else previewFlow()
-                    val secondFieldFlow = if (!config.preview) getFieldFlow(karooSystem, secondaryField, headwindFlow, generalSettings) else previewFlow()
+                    val firstFieldFlow = if (!config.preview) getFieldFlow(karooSystem, primaryField, headwindFlow, generalSettings,period) else previewFlow()
+                    val secondFieldFlow = if (!config.preview) getFieldFlow(karooSystem, secondaryField, headwindFlow, generalSettings,period) else previewFlow()
 
                     combine(firstFieldFlow, secondFieldFlow) { firstState, secondState ->
                         Quadruple(generalSettings, settings, firstState, secondState)
@@ -147,7 +147,7 @@ abstract class CustomDoubleTypeBase(
                         ishorizontal(settings[index]) -> generalSettings.iscenteralign
                         else -> generalSettings.iscentervertical
                     }
-
+                   // delay(if (karooSystem.hardwareType == HardwareType.K2) RefreshTime.MID.time else RefreshTime.HALF.time)
                     glance.compose(context, DpSize.Unspecified) {
                         DoubleScreenSelector(
                             fieldNumber,
@@ -175,7 +175,8 @@ abstract class CustomDoubleTypeBase(
                 }
                 .retryWhen { cause, attempt ->
                     Timber.e(cause, "Error collecting flow, retrying... (attempt $attempt)")
-                    delay(1000)
+                    val delayTime = if (attempt % 4 == 3L) 10000L else 2000L
+                    delay(delayTime)
                     true
                 }
                 .collect { result ->

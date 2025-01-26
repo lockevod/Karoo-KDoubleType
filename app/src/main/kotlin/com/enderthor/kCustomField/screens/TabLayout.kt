@@ -263,7 +263,7 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             doubleFieldSettingsDerived.value.forEachIndexed { index, doubleFieldSettings ->
-                if (index < 4 || (iskaroo3 && index == 4)  ) {
+                if (index < 3 || (iskaroo3 && index in 3..4) ) {
                     TopAppBar(title = { Text("Field ${index + 1}") })
 
                     DropdownDoubleField(

@@ -18,11 +18,13 @@ import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.KarooEvent
 import io.hammerhead.karooext.models.OnStreamState
 import io.hammerhead.karooext.models.StreamState
+import kotlinx.coroutines.FlowPreview
 
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
@@ -118,7 +120,8 @@ fun Context.streamOneFieldSettings(): Flow<MutableList<OneFieldSettings>> {
     }.distinctUntilChanged()
 }
 
-fun KarooSystemService.streamDataFlow(dataTypeId: String): Flow<StreamState> {
+@OptIn(FlowPreview::class)
+fun KarooSystemService.streamDataFlow(dataTypeId: String,period:Long=0L): Flow<StreamState> {
     return callbackFlow<StreamState> {
         val listenerId = addConsumer(OnStreamState.StartStreaming(dataTypeId)) { event: OnStreamState ->
             trySendBlocking(event.state)
@@ -126,7 +129,7 @@ fun KarooSystemService.streamDataFlow(dataTypeId: String): Flow<StreamState> {
         awaitClose {
             removeConsumer(listenerId)
         }
-    }
+    }.debounce(1000L+period)
 }
 
 inline fun <reified T : KarooEvent> KarooSystemService.consumerFlow(): Flow<T> {

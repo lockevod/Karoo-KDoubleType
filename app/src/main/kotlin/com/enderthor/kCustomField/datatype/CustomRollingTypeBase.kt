@@ -104,6 +104,8 @@ abstract class CustomRollingTypeBase(
             awaitCancellation()
         }
 
+        val period = if (karooSystem.hardwareType == HardwareType.K2) RefreshTime.MID.time else RefreshTime.HALF.time
+
         val job = scope.launch {
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
             val settings = context.streamOneFieldSettings()
@@ -160,11 +162,11 @@ abstract class CustomRollingTypeBase(
 
                 val headwindFlow =
                     if (listOf(primaryField, secondaryField,thirdField).any { it.kaction.name == "HEADWIND" } && generalSetting.isheadwindenabled && !config.preview)
-                        createHeadwindFlow(karooSystem) else null
+                        createHeadwindFlow(karooSystem,period) else null
 
-                val firstFieldFlow = if (!config.preview) getFieldFlow(karooSystem,primaryField, headwindFlow, generalSetting) else previewFlow()
-                val secondFieldFlow= if(!config.preview) getFieldFlow(karooSystem,secondaryField, headwindFlow, generalSetting) else previewFlow()
-                val thirdFieldFlow= if(!config.preview) getFieldFlow(karooSystem,thirdField, headwindFlow, generalSetting) else previewFlow()
+                val firstFieldFlow = if (!config.preview) getFieldFlow(karooSystem,primaryField, headwindFlow, generalSetting,period) else previewFlow()
+                val secondFieldFlow= if(!config.preview) getFieldFlow(karooSystem,secondaryField, headwindFlow, generalSetting,period) else previewFlow()
+                val thirdFieldFlow= if(!config.preview) getFieldFlow(karooSystem,thirdField, headwindFlow, generalSetting,period) else previewFlow()
 
 
                 combine(firstFieldFlow, secondFieldFlow, thirdFieldFlow) { firstField, secondField, thirdField ->
@@ -210,8 +212,8 @@ abstract class CustomRollingTypeBase(
                 else
                     config.viewSize.first * context.resources.displayMetrics.densityDpi / 160.0
 */
-               // Timber.d("config = $config")
 
+                   delay(if (karooSystem.hardwareType == HardwareType.K2) RefreshTime.MID.time else RefreshTime.HALF.time)
              // Timber.d("Selector = $selector Field " + field(settings[globalIndex]).kaction + " Size = $size, Value = $value, IconColor = $iconcolor, ColorZone = $colorzone, WindText = $windtext, WindDiff = $winddiff, BaseBitmap = $baseBitmap, Config = $config")
                 glance.compose(context, DpSize.Unspecified) {
                     RollingFieldScreen(value, !(field(settings[globalIndex]).kaction.convert == "speed" || field(settings[globalIndex]).kaction.zone == "slopeZones" || field(settings[globalIndex]).kaction.label == "IF"),field(settings[globalIndex]).kaction, iconcolor, colorzone, size, karooSystem.hardwareType == HardwareType.KAROO,
@@ -221,7 +223,8 @@ abstract class CustomRollingTypeBase(
 
             }.retryWhen { cause, attempt ->
                 Timber.e(cause, "Error collecting flow, retrying... (attempt $attempt)")
-                delay(1000)
+                   val delayTime = if (attempt % 4 == 3L) 10000L else 2000L
+                   delay(delayTime)
                 true
             }.collect { result ->
                 emitter.updateView(result)

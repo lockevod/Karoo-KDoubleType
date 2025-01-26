@@ -76,7 +76,7 @@ fun getFieldSize(size: Int): FieldSize {
 
 
 @OptIn(FlowPreview::class)
-fun createHeadwindFlow(karooSystem: KarooSystemService): Flow<StreamHeadWindData> {
+fun createHeadwindFlow(karooSystem: KarooSystemService,period:Long): Flow<StreamHeadWindData> {
     return karooSystem.streamDataFlow(Headwind.DIFF.type)
         .mapNotNull { (it as? StreamState.Streaming)?.dataPoint?.singleValue }
         .combine(karooSystem.streamDataFlow(Headwind.SPEED.type)
@@ -85,7 +85,7 @@ fun createHeadwindFlow(karooSystem: KarooSystemService): Flow<StreamHeadWindData
         }
         .onStart { emit(StreamHeadWindData(0.0, 0.0)) }
         .distinctUntilChanged()
-        .debounce(50)
+        .debounce(1000+period)
         .conflate()
         .catch { e ->
             Timber.e(e, "Error in headwindFlow")
@@ -93,15 +93,15 @@ fun createHeadwindFlow(karooSystem: KarooSystemService): Flow<StreamHeadWindData
         }
 }
 
-fun getFieldFlow(karooSystem: KarooSystemService, field: Any, headwindFlow: Flow<StreamHeadWindData>?, generalSettings: GeneralSettings): Flow<Any> {
+fun getFieldFlow(karooSystem: KarooSystemService, field: Any, headwindFlow: Flow<StreamHeadWindData>?, generalSettings: GeneralSettings,period:Long): Flow<Any> {
     return if (field is DoubleFieldType) {
         if (field.kaction.name == "HEADWIND" && generalSettings.isheadwindenabled)
-            headwindFlow ?: karooSystem.streamDataFlow(field.kaction.action)
-        else karooSystem.streamDataFlow(field.kaction.action)
+            headwindFlow ?: karooSystem.streamDataFlow(field.kaction.action,period)
+        else karooSystem.streamDataFlow(field.kaction.action,period)
     } else if (field is OneFieldType) {
         if (field.kaction.name == "HEADWIND" && generalSettings.isheadwindenabled)
-            headwindFlow ?: karooSystem.streamDataFlow(field.kaction.action)
-        else karooSystem.streamDataFlow(field.kaction.action)
+            headwindFlow ?: karooSystem.streamDataFlow(field.kaction.action,period)
+        else karooSystem.streamDataFlow(field.kaction.action,period)
     } else {
         throw IllegalArgumentException("Unsupported field type")
     }

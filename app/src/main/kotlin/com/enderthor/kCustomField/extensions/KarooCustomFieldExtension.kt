@@ -56,7 +56,6 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", "2.0") {
                                 CustomDoubleType(karooSystem, extension, "custom-one", 0),
                                 CustomDoubleType(karooSystem, extension, "custom-two", 1),
                                 CustomDoubleType(karooSystem, extension, "custom-three", 2),
-                                CustomDoubleType(karooSystem, extension, "vertical-one", 3),
                                 CustomRollingType(karooSystem, extension, "rolling-one", 0)
                             )
                         }

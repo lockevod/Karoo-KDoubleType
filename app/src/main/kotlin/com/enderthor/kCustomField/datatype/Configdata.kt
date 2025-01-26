@@ -111,7 +111,7 @@ data class DoubleFieldSettings(
 )
 
 enum class RefreshTime( val time: Long) {
-    ZERO(0L), HALF (500L), ONE (1000L), MID(1500L), TWO (2000L);
+    ZERO(0L), HALF (250L), ONE (1000L), MID(1000L), TWO (2000L);
 }
 
 @Serializable
