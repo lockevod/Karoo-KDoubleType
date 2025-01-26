@@ -14,9 +14,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -34,12 +32,14 @@ import io.hammerhead.karooext.internal.Emitter
 import io.hammerhead.karooext.internal.ViewEmitter
 import io.hammerhead.karooext.models.*
 
-import com.enderthor.kCustomField.extensions.streamDataFlow
 import com.enderthor.kCustomField.extensions.consumerFlow
 import com.enderthor.kCustomField.extensions.streamDoubleFieldSettings
 import com.enderthor.kCustomField.extensions.streamGeneralSettings
 import com.enderthor.kCustomField.R
-import com.enderthor.kCustomField.extensions.streamOneFieldSettings
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
 import timber.log.Timber
 
@@ -56,48 +56,64 @@ abstract class CustomDoubleTypeBase(
     protected val secondField = { settings: DoubleFieldSettings -> settings.secondfield }
     protected val ishorizontal = { settings: DoubleFieldSettings -> settings.ishorizontal }
 
-    override fun startStream(emitter: Emitter<StreamState>) {
-        Timber.d("start double type stream")
-        val job = CoroutineScope(Dispatchers.IO).launch {
-           // context.streamGeneralSettings().collect {
-            emitter.onNext(
-                StreamState.Streaming(
-                    DataPoint(
-                        dataTypeId,
-                        mapOf(DataType.Field.SINGLE to 1.0),
-                        extension
-                    )
-                )
-            )
-                delay(if (karooSystem.hardwareType == HardwareType.K2) RefreshTime.MID.time else RefreshTime.HALF.time)
-
-           // }
-        }
-        emitter.setCancellable {
-            Timber.d("stop speed stream")
-            job.cancel()
-        }
+    companion object {
+        private const val PREVIEW_DELAY = 2000L
+        private const val RETRY_DELAY_SHORT = 2000L
+        private const val RETRY_DELAY_LONG = 10000L
     }
 
-    private fun previewFlow(): Flow<StreamState> {
-        return flow {
-            while (true) {
-                emit(StreamState.Streaming(DataPoint(dataTypeId, mapOf(DataType.Field.SINGLE to (0..100).random().toDouble()), extension)))
-                delay(2_000)
+    private val refreshTime: Long
+        get() = if (karooSystem.hardwareType == HardwareType.K2)
+            RefreshTime.MID.time else RefreshTime.HALF.time
+
+    override fun startStream(emitter: Emitter<StreamState>) {
+        Timber.d("Starting double type stream")
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                while (true) {
+                    emitter.onNext(StreamState.Streaming(
+                        DataPoint(
+                            dataTypeId,
+                            mapOf(DataType.Field.SINGLE to 1.0),
+                            extension
+                        )
+                    ))
+                    delay(refreshTime)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Stream error occurred")
+                emitter.onError(e)
+            }
+        }.also { job ->
+            emitter.setCancellable {
+                Timber.d("Stopping stream")
+                job.cancel()
             }
         }
     }
 
+    private fun previewFlow(): Flow<StreamState> = flow {
+        while (true) {
+            emit(StreamState.Streaming(
+                DataPoint(
+                    dataTypeId,
+                    mapOf(DataType.Field.SINGLE to (0..100).random().toDouble()),
+                    extension
+                )
+            ))
+            delay(CustomDoubleTypeBase.PREVIEW_DELAY)
+        }
+    }.flowOn(Dispatchers.IO)
+
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
-        val scope = CoroutineScope(Dispatchers.IO)
+        val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
         val configJob = scope.launch {
             emitter.onNext(UpdateGraphicConfig(showHeader = false))
             awaitCancellation()
         }
-        val period = if (karooSystem.hardwareType == HardwareType.K2) RefreshTime.MID.time else RefreshTime.HALF.time
-        val job = scope.launch {
+         val job = scope.launch {
 
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
             val settingsFlow = if (config.preview) { if (index % 2 == 0) flowOf(previewDoubleVerticalFieldSettings)  else flowOf(previewDoubleHorizontalFieldSettings) }else context.streamDoubleFieldSettings().stateIn(scope, SharingStarted.WhileSubscribed(), listOf(DoubleFieldSettings()))
@@ -110,15 +126,15 @@ abstract class CustomDoubleTypeBase(
 
                     val headwindFlow =
                         if (listOf(primaryField, secondaryField).any { it.kaction.name == "HEADWIND" } && generalSettings.isheadwindenabled)
-                            createHeadwindFlow(karooSystem,period) else null
+                            createHeadwindFlow(karooSystem,refreshTime) else null
 
-                    val firstFieldFlow = if (!config.preview) getFieldFlow(karooSystem, primaryField, headwindFlow, generalSettings,period) else previewFlow()
-                    val secondFieldFlow = if (!config.preview) getFieldFlow(karooSystem, secondaryField, headwindFlow, generalSettings,period) else previewFlow()
+                    val firstFieldFlow = if (!config.preview) getFieldFlow(karooSystem, primaryField, headwindFlow, generalSettings,refreshTime) else previewFlow()
+                    val secondFieldFlow = if (!config.preview) getFieldFlow(karooSystem, secondaryField, headwindFlow, generalSettings,refreshTime) else previewFlow()
 
                     combine(firstFieldFlow, secondFieldFlow) { firstState, secondState ->
                         Quadruple(generalSettings, settings, firstState, secondState)
                     }
-                }
+                }.buffer()
                 .map { (generalSettings, settings, firstFieldState, secondFieldState) ->
                     val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
 
@@ -175,13 +191,13 @@ abstract class CustomDoubleTypeBase(
                 }
                 .retryWhen { cause, attempt ->
                     Timber.e(cause, "Error collecting flow, retrying... (attempt $attempt)")
-                    val delayTime = if (attempt % 4 == 3L) 10000L else 2000L
-                    delay(delayTime)
+                    delay(if (attempt % 4 == 3L) RETRY_DELAY_LONG else RETRY_DELAY_SHORT)
                     true
                 }
-                .collect { result ->
+                .onEach { result ->
                     emitter.updateView(result)
                 }
+                .launchIn(scope)
         }
 
         emitter.setCancellable {

@@ -43,6 +43,10 @@ import com.enderthor.kCustomField.extensions.consumerFlow
 import com.enderthor.kCustomField.extensions.streamGeneralSettings
 import com.enderthor.kCustomField.extensions.streamOneFieldSettings
 import com.enderthor.kCustomField.R
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
 import timber.log.Timber
 
@@ -61,50 +65,66 @@ abstract class CustomRollingTypeBase(
     protected val thirdField= { settings: OneFieldSettings -> settings.thirdfield }
     protected val rollingtime= { settings: OneFieldSettings -> settings.rollingtime }
 
+    companion object {
+        private const val PREVIEW_DELAY = 3000L
+        private const val RETRY_DELAY_SHORT = 2000L
+        private const val RETRY_DELAY_LONG = 10000L
+        private const val EXTRA_ROLLINNG = 350L
+    }
+
+    private val refreshTime: Long
+        get() = if (karooSystem.hardwareType == HardwareType.K2)
+            RefreshTime.MID.time + EXTRA_ROLLINNG else RefreshTime.HALF.time + EXTRA_ROLLINNG
+
 
     override fun startStream(emitter: Emitter<StreamState>) {
-        Timber.d("Start Rolling type stream")
-
-        val job = CoroutineScope(Dispatchers.IO).launch {
-            //context.streamGeneralSettings().collect {
-                emitter.onNext(
-                    StreamState.Streaming(
+        Timber.d("Starting double type stream")
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                while (true) {
+                    emitter.onNext(StreamState.Streaming(
                         DataPoint(
                             dataTypeId,
                             mapOf(DataType.Field.SINGLE to 1.0),
                             extension
                         )
-                    )
-                )
-            delay(if (karooSystem.hardwareType == HardwareType.K2) RefreshTime.MID.time else RefreshTime.HALF.time)
-           // }
-        }
-        emitter.setCancellable {
-            Timber.d("stop speed stream")
-            job.cancel()
-        }
-    }
-
-
-    private fun previewFlow(): Flow<StreamState> {
-        return flow {
-            while (true) {
-                emit(StreamState.Streaming(DataPoint(dataTypeId, mapOf(DataType.Field.SINGLE to (0..100).random().toDouble()), extension)))
-                delay(2_000)
+                    ))
+                    delay(refreshTime)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Stream error occurred")
+                emitter.onError(e)
+            }
+        }.also { job ->
+            emitter.setCancellable {
+                Timber.d("Stopping stream")
+                job.cancel()
             }
         }
     }
 
+
+    private fun previewFlow(): Flow<StreamState> = flow {
+        while (true) {
+            emit(StreamState.Streaming(
+                DataPoint(
+                    dataTypeId,
+                    mapOf(DataType.Field.SINGLE to (0..100).random().toDouble()),
+                    extension
+                )
+            ))
+            delay(PREVIEW_DELAY)
+        }
+    }.flowOn(Dispatchers.IO)
+
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
-        val scope = CoroutineScope(Dispatchers.IO)
+        val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
         val configJob = scope.launch {
             emitter.onNext(UpdateGraphicConfig(showHeader = false))
             awaitCancellation()
         }
-
-        val period = if (karooSystem.hardwareType == HardwareType.K2) RefreshTime.MID.time else RefreshTime.HALF.time
 
         val job = scope.launch {
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
@@ -113,7 +133,7 @@ abstract class CustomRollingTypeBase(
             val generalSettings = context.streamGeneralSettings()
                 .stateIn(scope, SharingStarted.WhileSubscribed(), GeneralSettings())
 
-                val  cyclicIndexFlow = settings.flatMapLatest { settings ->
+            val  cyclicIndexFlow = settings.flatMapLatest { settings ->
 
                     if (settings.isNotEmpty() && globalIndex in settings.indices && rollingtime(settings[globalIndex]).time > 0L) {
                         flow {
@@ -140,7 +160,7 @@ abstract class CustomRollingTypeBase(
                     } else {
                         flowOf(0)
                     }
-                }.stateIn(scope, SharingStarted.WhileSubscribed(), 0)
+            }.stateIn(scope, SharingStarted.WhileSubscribed(), 0)
 
             val combinedFlow = if (config.preview) {
                 combine(flowOf(previewOneFieldSettings), flowOf(GeneralSettings()), flowOf(0)) { settings, generalSettings, cyclicIndex ->
@@ -152,8 +172,11 @@ abstract class CustomRollingTypeBase(
                 }
             }
 
+
            combinedFlow
-            .flatMapLatest { (settings, generalSetting, cyclicIndex) ->
+               .flatMapLatest { (settings, generalSetting, cyclicIndex) ->
+
+
                 //Timber.d("IN lastflowmap")
                 val currentSetting = settings[globalIndex]
                 val primaryField = firstField(currentSetting)
@@ -162,11 +185,11 @@ abstract class CustomRollingTypeBase(
 
                 val headwindFlow =
                     if (listOf(primaryField, secondaryField,thirdField).any { it.kaction.name == "HEADWIND" } && generalSetting.isheadwindenabled && !config.preview)
-                        createHeadwindFlow(karooSystem,period) else null
+                        createHeadwindFlow(karooSystem,refreshTime) else null
 
-                val firstFieldFlow = if (!config.preview) getFieldFlow(karooSystem,primaryField, headwindFlow, generalSetting,period) else previewFlow()
-                val secondFieldFlow= if(!config.preview) getFieldFlow(karooSystem,secondaryField, headwindFlow, generalSetting,period) else previewFlow()
-                val thirdFieldFlow= if(!config.preview) getFieldFlow(karooSystem,thirdField, headwindFlow, generalSetting,period) else previewFlow()
+                val firstFieldFlow = if (!config.preview) getFieldFlow(karooSystem,primaryField, headwindFlow, generalSetting,refreshTime) else previewFlow()
+                val secondFieldFlow= if(!config.preview) getFieldFlow(karooSystem,secondaryField, headwindFlow, generalSetting,refreshTime) else previewFlow()
+                val thirdFieldFlow= if(!config.preview) getFieldFlow(karooSystem,thirdField, headwindFlow, generalSetting,refreshTime) else previewFlow()
 
 
                 combine(firstFieldFlow, secondFieldFlow, thirdFieldFlow) { firstField, secondField, thirdField ->
@@ -176,7 +199,7 @@ abstract class CustomRollingTypeBase(
                 }.catch { e ->
                     Timber.e(e, "Error in combined flow")
                     //emit(Triple<StreamState, StreamState, StreamState>(firstFieldState, secondFieldState, thirdFieldStat) to Triple(settings, generalSetting, cyclicIndex))
-                }
+                }.buffer()
             }.map { (fieldStates, settingsData) ->
 
                 val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
@@ -222,13 +245,14 @@ abstract class CustomRollingTypeBase(
 
 
             }.retryWhen { cause, attempt ->
-                Timber.e(cause, "Error collecting flow, retrying... (attempt $attempt)")
-                   val delayTime = if (attempt % 4 == 3L) 10000L else 2000L
-                   delay(delayTime)
-                true
-            }.collect { result ->
+                   Timber.e(cause, "Error collecting flow, retrying... (attempt $attempt)")
+                   delay(if (attempt % 4 == 3L) RETRY_DELAY_LONG else RETRY_DELAY_SHORT)
+                   true
+               }
+            .onEach { result ->
                 emitter.updateView(result)
             }
+            .launchIn(scope)
         }
 
         emitter.setCancellable {

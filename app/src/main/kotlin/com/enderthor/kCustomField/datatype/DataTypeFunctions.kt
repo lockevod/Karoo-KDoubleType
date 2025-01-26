@@ -25,6 +25,7 @@ import com.enderthor.kCustomField.extensions.getZone
 import com.enderthor.kCustomField.extensions.slopeZones
 import com.enderthor.kCustomField.extensions.streamDataFlow
 
+
 import timber.log.Timber
 
 fun getColorZone(context: Context, zone: String, value: Double, userProfile: UserProfile, isPaletteZwift: Boolean): ColorProvider {
@@ -124,7 +125,7 @@ fun updateFieldState(fieldState: StreamState, fieldSettings: Any, context: Conte
 }
 
 fun getFieldState(
-    fieldState: Any,
+    fieldState: Any?,
     field: Any,
     context: Context,
     userProfile: UserProfile,
