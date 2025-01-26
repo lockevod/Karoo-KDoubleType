@@ -213,7 +213,7 @@ abstract class CustomRollingTypeBase(
                     config.viewSize.first * context.resources.displayMetrics.densityDpi / 160.0
 */
 
-                   delay(if (karooSystem.hardwareType == HardwareType.K2) RefreshTime.MID.time else RefreshTime.HALF.time)
+                  // delay(if (karooSystem.hardwareType == HardwareType.K2) RefreshTime.MID.time else RefreshTime.HALF.time)
              // Timber.d("Selector = $selector Field " + field(settings[globalIndex]).kaction + " Size = $size, Value = $value, IconColor = $iconcolor, ColorZone = $colorzone, WindText = $windtext, WindDiff = $winddiff, BaseBitmap = $baseBitmap, Config = $config")
                 glance.compose(context, DpSize.Unspecified) {
                     RollingFieldScreen(value, !(field(settings[globalIndex]).kaction.convert == "speed" || field(settings[globalIndex]).kaction.zone == "slopeZones" || field(settings[globalIndex]).kaction.label == "IF"),field(settings[globalIndex]).kaction, iconcolor, colorzone, size, karooSystem.hardwareType == HardwareType.KAROO,
