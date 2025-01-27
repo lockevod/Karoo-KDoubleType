@@ -74,8 +74,6 @@ fun getFieldSize(size: Int): FieldSize {
     return fieldSizeRanges.first { size in it.min..it.max }.name
 }
 
-
-
 @OptIn(FlowPreview::class)
 fun createHeadwindFlow(karooSystem: KarooSystemService,period:Long): Flow<StreamHeadWindData> {
     return karooSystem.streamDataFlow(Headwind.DIFF.type)
@@ -94,14 +92,12 @@ fun createHeadwindFlow(karooSystem: KarooSystemService,period:Long): Flow<Stream
         }
 }
 
-fun getFieldFlow(karooSystem: KarooSystemService, field: Any, headwindFlow: Flow<StreamHeadWindData>?, generalSettings: GeneralSettings,period:Long): Flow<Any> {
+fun getFieldFlow(karooSystem: KarooSystemService, field: Any, headwindFlow: Flow<StreamHeadWindData>, generalSettings: GeneralSettings,period:Long): Flow<Any> {
     return if (field is DoubleFieldType) {
-        if (field.kaction.name == "HEADWIND" && generalSettings.isheadwindenabled)
-            headwindFlow ?: karooSystem.streamDataFlow(field.kaction.action,period)
+        if (field.kaction.name == "HEADWIND" && generalSettings.isheadwindenabled) headwindFlow
         else karooSystem.streamDataFlow(field.kaction.action,period)
     } else if (field is OneFieldType) {
-        if (field.kaction.name == "HEADWIND" && generalSettings.isheadwindenabled)
-            headwindFlow ?: karooSystem.streamDataFlow(field.kaction.action,period)
+        if (field.kaction.name == "HEADWIND" && generalSettings.isheadwindenabled) headwindFlow
         else karooSystem.streamDataFlow(field.kaction.action,period)
     } else {
         throw IllegalArgumentException("Unsupported field type")

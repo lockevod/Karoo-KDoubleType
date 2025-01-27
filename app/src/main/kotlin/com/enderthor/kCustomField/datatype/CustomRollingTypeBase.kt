@@ -2,9 +2,11 @@ package com.enderthor.kCustomField.datatype
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import androidx.glance.appwidget.GlanceRemoteViews
+import androidx.glance.color.ColorProvider
 
 import kotlinx.coroutines.CoroutineScope
 import kotlin.math.roundToInt
@@ -43,13 +45,13 @@ import com.enderthor.kCustomField.extensions.consumerFlow
 import com.enderthor.kCustomField.extensions.streamGeneralSettings
 import com.enderthor.kCustomField.extensions.streamOneFieldSettings
 import com.enderthor.kCustomField.R
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
 import timber.log.Timber
-
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
 abstract class CustomRollingTypeBase(
@@ -68,7 +70,7 @@ abstract class CustomRollingTypeBase(
     companion object {
         private const val PREVIEW_DELAY = 3000L
         private const val RETRY_DELAY_SHORT = 2000L
-        private const val RETRY_DELAY_LONG = 10000L
+        private const val RETRY_DELAY_LONG = 8000L
         private const val EXTRA_ROLLINNG = 350L
     }
 
@@ -76,9 +78,10 @@ abstract class CustomRollingTypeBase(
         get() = if (karooSystem.hardwareType == HardwareType.K2)
             RefreshTime.MID.time + EXTRA_ROLLINNG else RefreshTime.HALF.time + EXTRA_ROLLINNG
 
+    private lateinit var viewjob: Job
 
     override fun startStream(emitter: Emitter<StreamState>) {
-        Timber.d("Starting double type stream")
+        Timber.d("Starting Rolling type stream")
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 while (true) {
@@ -92,17 +95,16 @@ abstract class CustomRollingTypeBase(
                     delay(refreshTime)
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Stream error occurred")
+                Timber.e(e, "Stream Rolling error occurred")
                 emitter.onError(e)
             }
         }.also { job ->
             emitter.setCancellable {
-                Timber.d("Stopping stream")
+                Timber.d("Stopping Rolling stream")
                 job.cancel()
             }
         }
     }
-
 
     private fun previewFlow(): Flow<StreamState> = flow {
         while (true) {
@@ -119,47 +121,58 @@ abstract class CustomRollingTypeBase(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
-        val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        val scope = CoroutineScope(Dispatchers.IO)
 
         val configJob = scope.launch {
             emitter.onNext(UpdateGraphicConfig(showHeader = false))
             awaitCancellation()
         }
 
-        val job = scope.launch {
+        val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
+
+        viewjob = scope.launch {
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
             val settings = context.streamOneFieldSettings()
                 .stateIn(scope, SharingStarted.WhileSubscribed(), listOf(OneFieldSettings()))
             val generalSettings = context.streamGeneralSettings()
                 .stateIn(scope, SharingStarted.WhileSubscribed(), GeneralSettings())
 
-            val  cyclicIndexFlow = settings.flatMapLatest { settings ->
 
-                    if (settings.isNotEmpty() && globalIndex in settings.indices && rollingtime(settings[globalIndex]).time > 0L) {
-                        flow {
-                            var cyclicindex = 0
-                            while (true) {
-                                val currentSetting = settings[globalIndex]
-                                emit(cyclicindex)
-                                cyclicindex = when (cyclicindex) {
-                                    0 -> if (secondField(currentSetting).isactive) 1 else if (thirdField(
-                                            currentSetting
-                                        ).isactive
-                                    ) 2 else 0
+            // Initial view
+            combine(settings, generalSettings) { settings, generalSettings -> settings to generalSettings }
+                .firstOrNull()?.let { (settings, generalSettings) ->
+                    val initField = firstField(settings[globalIndex])
+                    val initSelector= !(initField.kaction.name == "HEADWIND" && generalSettings.isheadwindenabled)
 
-                                    1 -> if (thirdField(currentSetting).isactive) 2 else 0
-                                    else -> 0
-                                }
-                                //Timber.d("cyclicindex: $cyclicindex  RollingTime${rollingtime(currentSetting).time}")
-                                delay(rollingtime(currentSetting).time)
+                    val initialRemoteViews = glance.compose(context, DpSize.Unspecified) {
+                        RollingFieldScreen(0.0, !(initField.kaction.convert == "speed" || initField.kaction.zone == "slopeZones" || initField.kaction.label == "IF"), initField.kaction,  ColorProvider(Color.Black, Color.White), ColorProvider(Color.White, Color.Black), getFieldSize(config.gridSize.second), karooSystem.hardwareType == HardwareType.KAROO,
+                            generalSettings.iscenteralign, "", 0, baseBitmap, initSelector, config.textSize, false, config.preview)
+                    }.remoteViews
+                    emitter.updateView(initialRemoteViews)
+                }
+
+            // start rolling view
+            val cyclicIndexFlow = settings.flatMapLatest { settings ->
+                if (settings.isNotEmpty() && globalIndex in settings.indices && rollingtime(settings[globalIndex]).time > 0L) {
+                    flow {
+                        var cyclicindex = 0
+                        while (true) {
+                            val currentSetting = settings.getOrNull(globalIndex) ?: return@flow
+                            emit(cyclicindex)
+                            cyclicindex = when (cyclicindex) {
+                                0 -> if (secondField(currentSetting).isactive) 1 else if (thirdField(currentSetting).isactive) 2 else 0
+                                1 -> if (thirdField(currentSetting).isactive) 2 else 0
+                                else -> 0
                             }
-                        }.flowOn(Dispatchers.IO).distinctUntilChanged().catch { e ->
-                            Timber.e(e, "Error in cyclicIndexFlow")
-                            emit(0)
+                            delay(rollingtime(settings[globalIndex]).time)
                         }
-                    } else {
-                        flowOf(0)
+                    }.flowOn(Dispatchers.IO).distinctUntilChanged().catch { e ->
+                        Timber.e(e, "Error in cyclicIndexFlow")
+                        emit(0)
                     }
+                } else {
+                    flowOf(0)
+                }
             }.stateIn(scope, SharingStarted.WhileSubscribed(), 0)
 
             val combinedFlow = if (config.preview) {
@@ -172,93 +185,88 @@ abstract class CustomRollingTypeBase(
                 }
             }
 
+            combinedFlow
+                .flatMapLatest { (settings, generalSetting, cyclicIndex) ->
+                    val currentSetting = settings.getOrNull(globalIndex) ?: return@flatMapLatest flowOf(Triple(previewOneFieldSettings, GeneralSettings(), 0) to Triple(settings, generalSetting, cyclicIndex))
 
-           combinedFlow
-               .flatMapLatest { (settings, generalSetting, cyclicIndex) ->
+                    val primaryField = firstField(currentSetting)
+                    val secondaryField = secondField(currentSetting)
+                    val thirdField = thirdField(currentSetting)
 
+                    val headwindFlow =
+                        if (listOf(primaryField, secondaryField, thirdField).any { it.kaction.name == "HEADWIND" } && generalSetting.isheadwindenabled && !config.preview)
+                            createHeadwindFlow(karooSystem, refreshTime) else flowOf(StreamHeadWindData(0.0, 0.0))
 
-                //Timber.d("IN lastflowmap")
-                val currentSetting = settings[globalIndex]
-                val primaryField = firstField(currentSetting)
-                val secondaryField = secondField(currentSetting)
-                val thirdField = thirdField(currentSetting)
+                    val firstFieldFlow = if (!config.preview) getFieldFlow(karooSystem, primaryField, headwindFlow, generalSetting, refreshTime) else previewFlow()
+                    val secondFieldFlow = if (!config.preview) getFieldFlow(karooSystem, secondaryField, headwindFlow, generalSetting, refreshTime) else previewFlow()
+                    val thirdFieldFlow = if (!config.preview) getFieldFlow(karooSystem, thirdField, headwindFlow, generalSetting, refreshTime) else previewFlow()
 
-                val headwindFlow =
-                    if (listOf(primaryField, secondaryField,thirdField).any { it.kaction.name == "HEADWIND" } && generalSetting.isheadwindenabled && !config.preview)
-                        createHeadwindFlow(karooSystem,refreshTime) else null
-
-                val firstFieldFlow = if (!config.preview) getFieldFlow(karooSystem,primaryField, headwindFlow, generalSetting,refreshTime) else previewFlow()
-                val secondFieldFlow= if(!config.preview) getFieldFlow(karooSystem,secondaryField, headwindFlow, generalSetting,refreshTime) else previewFlow()
-                val thirdFieldFlow= if(!config.preview) getFieldFlow(karooSystem,thirdField, headwindFlow, generalSetting,refreshTime) else previewFlow()
-
-
-                combine(firstFieldFlow, secondFieldFlow, thirdFieldFlow) { firstField, secondField, thirdField ->
-                    Triple(firstField, secondField, thirdField)
-                }.map { (firstFieldState, secondFieldState, thirdFieldState) ->
-                    Triple(firstFieldState, secondFieldState, thirdFieldState) to Triple(settings, generalSetting, cyclicIndex)
-                }.catch { e ->
-                    Timber.e(e, "Error in combined flow")
-                    //emit(Triple<StreamState, StreamState, StreamState>(firstFieldState, secondFieldState, thirdFieldStat) to Triple(settings, generalSetting, cyclicIndex))
-                }.buffer()
-            }.map { (fieldStates, settingsData) ->
-
-                val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
-                val (firstFieldState, secondFieldState, thirdFieldState) = fieldStates
-                val (settings, generalSetting, cyclicIndex) = settingsData
-
-                val field = when (cyclicIndex) {
-                    0 -> firstField
-                    1 -> secondField
-                    2 -> thirdField
-                    else -> firstField
+                    combine(firstFieldFlow, secondFieldFlow, thirdFieldFlow) { firstField, secondField, thirdField ->
+                        Triple(firstField, secondField, thirdField)
+                    }.map { (firstFieldState, secondFieldState, thirdFieldState) ->
+                        Triple(firstFieldState, secondFieldState, thirdFieldState) to Triple(settings, generalSetting, cyclicIndex)
+                    }.catch { e ->
+                        Timber.e(e, "Error in Rolling combined flow")
+                    }
                 }
-                val valuestream = when (cyclicIndex) {
-                    0 -> firstFieldState
-                    1 -> secondFieldState
-                    2 -> thirdFieldState
-                    else -> firstFieldState
+                .onEach { (fieldStates, settingsData) ->
+                    if (globalIndex !in settingsData.first.indices) {
+                        Timber.e("GlobalIndex fuera de los límites: $globalIndex, Tamaño: ${settingsData.first.size}")
+                        return@onEach
+                    }
+                    val (firstFieldState, secondFieldState, thirdFieldState) = fieldStates
+                    val (settings, generalSetting, cyclicIndex) = settingsData
+
+                    val field = when (cyclicIndex) {
+                        0 -> firstField
+                        1 -> secondField
+                        2 -> thirdField
+                        else -> firstField
+                    }
+                    val valuestream = when (cyclicIndex) {
+                        0 -> firstFieldState
+                        1 -> secondFieldState
+                        2 -> thirdFieldState
+                        else -> firstFieldState
+                    }
+
+                    val (value, iconcolor, colorzone, iszone) = getFieldState(valuestream, field(settings[globalIndex]), context, userProfile, generalSetting.ispalettezwift)
+
+                    val (winddiff, windtext) = if (firstFieldState !is StreamState || secondFieldState !is StreamState || thirdFieldState !is StreamState) {
+                        val windData = (firstFieldState as? StreamHeadWindData) ?: (secondFieldState as? StreamHeadWindData) ?: (thirdFieldState as StreamHeadWindData)
+                        windData.diff to windData.windSpeed.roundToInt().toString()
+                    } else 0.0 to ""
+
+                    val selector: Boolean = valuestream is StreamState
+
+                    val remoteViews = glance.compose(context, DpSize.Unspecified) {
+                        RollingFieldScreen(value, !(field(settings[globalIndex]).kaction.convert == "speed" || field(settings[globalIndex]).kaction.zone == "slopeZones" || field(settings[globalIndex]).kaction.label == "IF"), field(settings[globalIndex]).kaction, iconcolor, colorzone,getFieldSize(config.gridSize.second), karooSystem.hardwareType == HardwareType.KAROO,
+                            generalSetting.iscenteralign, windtext, winddiff.roundToInt(), baseBitmap, selector, config.textSize, iszone, config.preview)
+                    }.remoteViews
+                    emitter.updateView(remoteViews)
                 }
-
-                val (value, iconcolor, colorzone,iszone ) = getFieldState(valuestream, field(settings[globalIndex]), context, userProfile, generalSetting.ispalettezwift)
-
-                val (winddiff, windtext) = if (firstFieldState !is StreamState || secondFieldState !is StreamState || thirdFieldState !is StreamState) {
-                    val windData = (firstFieldState as? StreamHeadWindData) ?: (secondFieldState as? StreamHeadWindData) ?: (thirdFieldState as StreamHeadWindData)
-                    windData.diff to windData.windSpeed.roundToInt().toString()
-                } else 0.0 to ""
-
-                val selector: Boolean =  valuestream is StreamState
-
-                val size = getFieldSize(config.gridSize.second)
-
-                /*val widthField = if (karooSystem.hardwareType == HardwareType.KAROO)
-                    1.875 * config.viewSize.first
-                else
-                    config.viewSize.first * context.resources.displayMetrics.densityDpi / 160.0
-*/
-
-                  // delay(if (karooSystem.hardwareType == HardwareType.K2) RefreshTime.MID.time else RefreshTime.HALF.time)
-             // Timber.d("Selector = $selector Field " + field(settings[globalIndex]).kaction + " Size = $size, Value = $value, IconColor = $iconcolor, ColorZone = $colorzone, WindText = $windtext, WindDiff = $winddiff, BaseBitmap = $baseBitmap, Config = $config")
-                glance.compose(context, DpSize.Unspecified) {
-                    RollingFieldScreen(value, !(field(settings[globalIndex]).kaction.convert == "speed" || field(settings[globalIndex]).kaction.zone == "slopeZones" || field(settings[globalIndex]).kaction.label == "IF"),field(settings[globalIndex]).kaction, iconcolor, colorzone, size, karooSystem.hardwareType == HardwareType.KAROO,
-                        generalSetting.iscenteralign,windtext, winddiff.roundToInt(), baseBitmap,selector,config.textSize,iszone,config.preview)
-                }.remoteViews
-
-
-            }.retryWhen { cause, attempt ->
-                   Timber.e(cause, "Error collecting flow, retrying... (attempt $attempt)")
-                   delay(if (attempt % 4 == 3L) RETRY_DELAY_LONG else RETRY_DELAY_SHORT)
-                   true
-               }
-            .onEach { result ->
-                emitter.updateView(result)
-            }
-            .launchIn(scope)
+                .retryWhen { cause, attempt ->
+                    if (attempt > 3) {
+                        Timber.e(cause, "Error collecting Rolling flow, stopping.. (attempt $attempt) Cause: $cause")
+                        scope.cancel()
+                        configJob.cancel()
+                        viewjob.cancel()
+                        delay(RETRY_DELAY_LONG)
+                        startView(context, config, emitter)
+                        false
+                    } else {
+                        Timber.e(cause, "Error collecting Rolling flow, retrying... (attempt $attempt) Cause: $cause")
+                        delay(RETRY_DELAY_SHORT)
+                        true
+                    }
+                }
+                .launchIn(scope)
         }
 
         emitter.setCancellable {
-            Timber.d("Stopping speed view with $emitter")
+            Timber.d("Stopping Rolling speed view with $emitter")
             configJob.cancel()
-            job.cancel()
+            viewjob.cancel()
         }
     }
 }

@@ -101,7 +101,7 @@ fun KarooKeyDropdown(remotekey: String, options: List<DropdownOption>, selectedO
 
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = { expanded = it },
+        onExpandedChange = { if (enabled) expanded = it },
     ) {
         OutlinedTextField(
             readOnly = true,
@@ -128,10 +128,6 @@ fun KarooKeyDropdown(remotekey: String, options: List<DropdownOption>, selectedO
                             expanded = false
                             onSelect(option)
                         }
-                        /*expanded = false
-                        onSelect(option)
-
-                        */
                     },
                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                 )
@@ -149,7 +145,7 @@ fun DropdownOneField(enabled: Boolean, firstpos: Boolean, label: String, action:
     //Timber.d(" ACTION  $action -LABEL $label - FIRSTPOS $firstpos")
     val dropdownInitialSelection by remember(action) {
         mutableStateOf(
-            if (!action.isactive) {
+            if (!action.isactive || !enabled) {
                 dropdownOptions.find { it.id == "none" } ?: dropdownOptions.first()
             } else {
                 dropdownOptions.find { it.id == action.kaction.action.toString() } ?: dropdownOptions.first()
