@@ -60,10 +60,9 @@ inline fun <reified T> getZone(userZones: List<T>, value: Double): Zone? {
             is zoneslope -> zone.max
             else -> return null
         }
-        if (valueabs in min..max) {
+        if (valueabs >= min && valueabs < max) {
             return zoneList.getOrNull(index) ?: Zone.Zone7
         }
     }
-
     return null
 }

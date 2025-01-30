@@ -1,171 +1,301 @@
 package com.enderthor.kCustomField.datatype
 
 import android.content.Context
+import android.graphics.BitmapFactory
 import androidx.compose.ui.unit.DpSize
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import androidx.glance.appwidget.GlanceRemoteViews
+import androidx.glance.ColorFilter
+import androidx.glance.color.ColorProvider
+
+import kotlinx.coroutines.CoroutineScope
+import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.retryWhen
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.Flow
+
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.internal.Emitter
 import io.hammerhead.karooext.internal.ViewEmitter
-import io.hammerhead.karooext.models.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.combine
-import com.enderthor.kCustomField.extensions.streamSettings
-import com.enderthor.kCustomField.extensions.streamDataFlow
-import kotlinx.coroutines.flow.map
-import androidx.core.content.ContextCompat
+
+import com.enderthor.kCustomField.extensions.consumerFlow
+import com.enderthor.kCustomField.extensions.streamDoubleFieldSettings
+import com.enderthor.kCustomField.extensions.streamGeneralSettings
+import com.enderthor.kCustomField.R
+import io.hammerhead.karooext.models.DataPoint
+import io.hammerhead.karooext.models.DataType
+import io.hammerhead.karooext.models.HardwareType
+import io.hammerhead.karooext.models.StreamState
+import io.hammerhead.karooext.models.UpdateGraphicConfig
+import io.hammerhead.karooext.models.UserProfile
+import io.hammerhead.karooext.models.ViewConfig
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+
 import androidx.compose.ui.graphics.Color
-import androidx.glance.ColorFilter
+import androidx.core.content.ContextCompat
 import androidx.glance.color.ColorProvider
 import androidx.glance.unit.ColorProvider
-import com.enderthor.kCustomField.extensions.consumerFlow
-import com.enderthor.kCustomField.extensions.getZone
-import kotlinx.coroutines.flow.first
+
 import timber.log.Timber
-import com.enderthor.kCustomField.R
-import com.enderthor.kCustomField.extensions.slopeZones
-import com.enderthor.kCustomField.extensions.streamGeneralSettings
+
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
 abstract class CustomDoubleTypeBase(
     private val karooSystem: KarooSystemService,
     extension: String,
     datatype: String,
-    context: Context
+    protected val index: Int
 ) : DataTypeImpl(extension, datatype) {
     protected val glance = GlanceRemoteViews()
-    protected val context = context.applicationContext
+    protected val firstField = { settings: DoubleFieldSettings -> settings.onefield }
+    protected val secondField = { settings: DoubleFieldSettings -> settings.secondfield }
+    protected val ishorizontal = { settings: DoubleFieldSettings -> settings.ishorizontal }
 
-    abstract val leftAction: (CustomFieldSettings) -> KarooAction
-    abstract val rightAction: (CustomFieldSettings) -> KarooAction
-    abstract val isVertical: (CustomFieldSettings) -> Boolean
-    abstract val leftZone:  (CustomFieldSettings) -> Boolean
-    abstract val rightZone:  (CustomFieldSettings) -> Boolean
-    abstract val showh: Boolean
+    companion object {
+        private const val PREVIEW_DELAY = 2000L
+        private const val RETRY_DELAY_SHORT = 2000L
+        private const val RETRY_DELAY_LONG = 8000L
+    }
 
+    private val refreshTime: Long
+        get() = if (karooSystem.hardwareType == HardwareType.K2)
+            RefreshTime.MID.time else RefreshTime.HALF.time
 
+    private lateinit var viewjob: Job
 
     override fun startStream(emitter: Emitter<StreamState>) {
-        Timber.d("start double type stream")
-
-        val job = CoroutineScope(Dispatchers.IO).launch {
-            context.streamSettings()
-                .map { settings -> leftAction(settings).action to rightAction(settings).action }
-                .collect { (leftAction, rightAction) ->
-                    karooSystem.streamDataFlow(leftAction)
-                        .combine(karooSystem.streamDataFlow(rightAction)) { left: StreamState, right: StreamState -> left to right }
-                        .collect { (left: StreamState, right: StreamState) ->
-                            val leftValue = if (left is StreamState.Streaming) left.dataPoint.singleValue!! else 0.0
-                            val rightValue = if (right is StreamState.Streaming) right.dataPoint.singleValue!! else 0.0
-
-                            emitter.onNext(
-                                StreamState.Streaming(
-                                    DataPoint(
-                                        dataTypeId,
-                                        mapOf(DataType.Field.SINGLE to leftValue, DataType.Field.SINGLE to rightValue)
-                                    )
-                                )
-                            )
-                        }
+        Timber.d("Starting double type stream")
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                while (true) {
+                    emitter.onNext(StreamState.Streaming(
+                        DataPoint(
+                            dataTypeId,
+                            mapOf(DataType.Field.SINGLE to 1.0),
+                            extension
+                        )
+                    ))
+                    delay(refreshTime)
                 }
-        }
-        emitter.setCancellable {
-            Timber.d("stop double type stream")
-            job.cancel()
+            } catch (e: Exception) {
+                Timber.e(e, "Stream error occurred")
+                emitter.onError(e)
+            }
+        }.also { job ->
+            emitter.setCancellable {
+                Timber.d("Stopping stream")
+                job.cancel()
+            }
         }
     }
 
+    private fun previewFlow(): Flow<StreamState> = flow {
+        while (true) {
+            emit(StreamState.Streaming(
+                DataPoint(
+                    dataTypeId,
+                    mapOf(DataType.Field.SINGLE to (0..100).random().toDouble()),
+                    extension
+                )
+            ))
+            delay(CustomDoubleTypeBase.PREVIEW_DELAY)
+        }
+    }.flowOn(Dispatchers.IO)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
-        val configJob = CoroutineScope(Dispatchers.IO).launch {
+        val scope = CoroutineScope(Dispatchers.IO)
+
+        val configJob = scope.launch {
             emitter.onNext(UpdateGraphicConfig(showHeader = false))
             awaitCancellation()
         }
 
-        fun getColorZone(context: Context, zone: String, value: Double, userProfile: UserProfile, isPaletteZwift: Boolean): ColorProvider {
-            val zoneData = when (zone) {
-                "heartRateZones" -> userProfile.heartRateZones
-                "powerZones" -> userProfile.powerZones
-                else -> slopeZones
-            }
-            val colorResource = getZone(zoneData, value)?.let { if (isPaletteZwift) it.colorZwift else it.colorResource } ?: R.color.zone7
-            return ColorProvider(
-                day = Color(ContextCompat.getColor(context, colorResource)),
-                night = Color(ContextCompat.getColor(context, colorResource))
-            )
-        }
+        viewjob = scope.launch {
 
-        fun convertValue(streamState: StreamState, convert: String, unitType: UserProfile.PreferredUnit.UnitType): Double {
-            val value = if (streamState is StreamState.Streaming) streamState.dataPoint.singleValue!! else 0.0
-            return when (convert) {
-                "distance", "speed" -> when (unitType) {
-                    UserProfile.PreferredUnit.UnitType.METRIC -> if (convert == "distance") (value / 1000) else (value * 18 / 5)
-                    UserProfile.PreferredUnit.UnitType.IMPERIAL -> if (convert == "distance") (value / 1609.345) else (value * 0.0568182)
-                }
-                else -> value
-            }
-        }
-
-        fun getColorFilter(context: Context, action: KarooAction, colorzone: Boolean): ColorFilter {
-            return if (colorzone) {
-                ColorFilter.tint(ColorProvider(Color.Black, Color.Black))
-            } else {
-                ColorFilter.tint(
-                    ColorProvider(
-                        day = Color(ContextCompat.getColor(context, action.colorday)),
-                        night = Color(ContextCompat.getColor(context, action.colornight))
-                    )
-                )
-            }
-        }
-
-        fun getFieldSize(size: Int): FieldSize {
-            return fieldSizeRanges.first { size in it.min..it.max }.name
-        }
-
-        val job = CoroutineScope(Dispatchers.IO).launch {
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
-            context.streamSettings()
-                .combine(context.streamGeneralSettings()) { settings, generalSettings ->
-                    settings to generalSettings
-                }
-                .collect { (settings, generalSettings) ->
-                    karooSystem.streamDataFlow(leftAction(settings).action)
-                        .combine(karooSystem.streamDataFlow(rightAction(settings).action)) { left: StreamState, right: StreamState -> Quadruple(generalSettings, settings, left, right) }
-                        .collect { (generalsettings, settings, left: StreamState, right: StreamState) ->
+            val settingsFlow = if (config.preview) { if (index % 2 == 0) flowOf(previewDoubleVerticalFieldSettings)  else flowOf(previewDoubleHorizontalFieldSettings) }else context.streamDoubleFieldSettings().stateIn(scope, SharingStarted.WhileSubscribed(), listOf(DoubleFieldSettings()))
+            val generalSettingsFlow = context.streamGeneralSettings().stateIn(scope, SharingStarted.WhileSubscribed(), GeneralSettings())
 
-                            val leftValue = convertValue(left, leftAction(settings).convert, userProfile.preferredUnit.distance)
-                            val rightValue = convertValue(right, rightAction(settings).convert, userProfile.preferredUnit.distance)
+            var fieldNumber: Int =3
+            var clayout: FieldPosition = FieldPosition.CENTER
+            val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
 
-                            val colorleft = getColorFilter(context, leftAction(settings), leftZone(settings))
-                            val colorright = getColorFilter(context, rightAction(settings), rightZone(settings))
+            combine(settingsFlow, generalSettingsFlow) { settings, generalSettings -> settings to generalSettings }
+                .firstOrNull()?.let { (settings, generalSettings) ->
+                    val primaryField = firstField(settings[index])
+                    val secondaryField = secondField(settings[index])
 
-                            val colorzoneleft = getColorZone(context, leftAction(settings).zone, leftValue, userProfile, generalsettings.ispalettezwift).takeIf { leftAction(settings).zone == "heartRateZones" || leftAction(settings).zone == "powerZones" || leftAction(settings).zone == "slopeZones"} ?: ColorProvider(Color.White, Color.Black)
-                            val colorzoneright= getColorZone(context, rightAction(settings).zone, leftValue, userProfile, generalsettings.ispalettezwift).takeIf { rightAction(settings).zone == "heartRateZones" || rightAction(settings).zone == "powerZones" || rightAction(settings).zone == "slopeZones"} ?: ColorProvider(Color.White, Color.Black)
+                    // Initial view
 
-                            val size = getFieldSize(config.gridSize.second)
-                            /*Timber.d("UPDATING leftAction: ${leftAction(settings).action}, rightAction: ${rightAction(settings).action}")
-                            Timber.d("Leftvalue is $leftValue and RightIS $rightValue")
-                            Timber.d("leftAction.zone is ${leftAction(settings).zone} and rihhAction.zone is ${rightAction(settings).zone}")
-                            Timber.d("leftAction.convert is ${leftAction(settings).convert} and rightAction.convert is ${rightAction(settings).convert}")
-                            Timber.d("leftAction.colorday is ${leftAction(settings).colorday} and rightAction.colorday is ${rightAction(settings).colorday}")
-                            */
-                            Timber.d("Viewconfig is $config")
-
-                            val result = glance.compose(context, DpSize.Unspecified) {
-                               // DoubleScreenSelector(showh,leftValue, rightValue, leftAction(settings).icon, rightAction(settings).icon, colorleft, colorright, isVertical(settings), colorzoneleft, colorzoneright, config.gridSize.second > 18, karooSystem.hardwareType == HardwareType.KAROO, false, false, generalsettings.iscenteralign)
-                                DoubleScreenSelector(showh,leftValue, rightValue, leftAction(settings).icon, rightAction(settings).icon, colorleft, colorright, isVertical(settings), colorzoneleft, colorzoneright, size , karooSystem.hardwareType == HardwareType.KAROO, !(leftAction(settings).convert == "speed" || leftAction(settings).zone=="slopeZones"),!(rightAction(settings).convert == "speed" || rightAction(settings).zone=="slopeZones"),if(showh) generalsettings.iscenteralign else generalsettings.iscentervertical)
-
-                            }
-                            emitter.updateView(result.remoteViews)
+                    fieldNumber = when {
+                        generalSettings.isheadwindenabled -> when {
+                            primaryField.kaction.name == "HEADWIND" -> if (secondaryField.kaction.name == "HEADWIND") 2 else 0
+                            secondaryField.kaction.name == "HEADWIND" -> 1
+                            else -> 3
                         }
+                        else -> 3
+                    }
+
+
+                    clayout = when {
+                        fieldNumber != 3 -> FieldPosition.CENTER
+                        generalSettings.iscenterkaroo -> when (config.alignment) {
+                            ViewConfig.Alignment.CENTER -> FieldPosition.CENTER
+                            ViewConfig.Alignment.LEFT -> FieldPosition.LEFT
+                            ViewConfig.Alignment.RIGHT -> FieldPosition.RIGHT
+                        }
+
+                        ishorizontal(settings[index]) -> generalSettings.iscenteralign
+                        else -> generalSettings.iscentervertical
+                    }
+
+                    val initialRemoteViews = glance.compose(context, DpSize.Unspecified) {
+                        DoubleScreenSelector(
+                            fieldNumber,
+                            ishorizontal(settings[index]),
+                            0.0,
+                            0.0,
+                            primaryField.kaction.icon,
+                            secondaryField.kaction.icon,
+                            ColorProvider(Color.Black, Color.White),
+                            ColorProvider(Color.Black, Color.White),
+                            ColorProvider(Color.White, Color.Black),
+                            ColorProvider(Color.White, Color.Black),
+                            getFieldSize(config.gridSize.second),
+                            karooSystem.hardwareType == HardwareType.KAROO,
+                            !(firstField(settings[index]).kaction.convert == "speed" || firstField(settings[index]).kaction.zone == "slopeZones" || firstField(settings[index]).kaction.label == "IF"),
+                            !(secondField(settings[index]).kaction.convert == "speed" || secondField(settings[index]).kaction.zone == "slopeZones" || secondField(settings[index]).kaction.label == "IF"),
+                            firstField(settings[index]).kaction.label,
+                            secondField(settings[index]).kaction.label,
+                            clayout,
+                            "",
+                            0,
+                            baseBitmap,
+                            false,
+                            false
+                        )
+                    }.remoteViews
+                    emitter.updateView(initialRemoteViews)
                 }
+
+            // Stream view
+
+            combine(settingsFlow, generalSettingsFlow) { settings, generalSettings -> settings to generalSettings }
+                .flatMapLatest { (settings, generalSettings) ->
+                    val primaryField = firstField(settings[index])
+                    val secondaryField = secondField(settings[index])
+
+                    val headwindFlow =
+                        if (listOf(primaryField, secondaryField).any { it.kaction.name == "HEADWIND" } && generalSettings.isheadwindenabled)
+                            createHeadwindFlow(karooSystem,refreshTime) else flowOf(StreamHeadWindData(0.0, 0.0))
+
+                    val firstFieldFlow = if (!config.preview) getFieldFlow(karooSystem, primaryField, headwindFlow, generalSettings,refreshTime) else previewFlow()
+                    val secondFieldFlow = if (!config.preview) getFieldFlow(karooSystem, secondaryField, headwindFlow, generalSettings,refreshTime) else previewFlow()
+
+
+                    combine(firstFieldFlow, secondFieldFlow) { firstState, secondState ->
+                        Quadruple(generalSettings, settings, firstState, secondState)
+                    }
+                }
+                .onEach { (generalSettings, settings, firstFieldState, secondFieldState) ->
+                   // val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
+
+                    val (firstvalue, firstIconcolor, firstColorzone) = getFieldState(firstFieldState, firstField(settings[index]), context, userProfile, generalSettings.ispalettezwift)
+                    val (secondvalue, secondIconcolor, secondColorzone) = getFieldState(secondFieldState, secondField(settings[index]), context, userProfile, generalSettings.ispalettezwift)
+
+                    val (winddiff, windtext) = if (firstFieldState !is StreamState || secondFieldState !is StreamState) {
+                        val windData = (firstFieldState as? StreamHeadWindData) ?: (secondFieldState as StreamHeadWindData)
+                        windData.diff to windData.windSpeed.roundToInt().toString()
+                    } else 0.0 to ""
+
+                   /* val fieldNumber = when {
+                        firstFieldState is StreamState && secondFieldState is StreamState -> 3
+                        firstFieldState is StreamState -> 0
+                        secondFieldState is StreamState -> 1
+                        else -> 2
+                    }
+
+                    val clayout = when {
+                        fieldNumber != 3 -> FieldPosition.CENTER
+                        generalSettings.iscenterkaroo -> when (config.alignment) {
+                            ViewConfig.Alignment.CENTER -> FieldPosition.CENTER
+                            ViewConfig.Alignment.LEFT -> FieldPosition.LEFT
+                            ViewConfig.Alignment.RIGHT -> FieldPosition.RIGHT
+                        }
+                        ishorizontal(settings[index]) -> generalSettings.iscenteralign
+                        else -> generalSettings.iscentervertical
+                    }
+                    */
+                   // delay(if (karooSystem.hardwareType == HardwareType.K2) RefreshTime.MID.time else RefreshTime.HALF.time)
+                    val result=glance.compose(context, DpSize.Unspecified) {
+                        DoubleScreenSelector(
+                            fieldNumber,
+                            ishorizontal(settings[index]),
+                            firstvalue,
+                            secondvalue,
+                            firstField(settings[index]).kaction.icon,
+                            secondField(settings[index]).kaction.icon,
+                            firstIconcolor,
+                            secondIconcolor,
+                            firstColorzone,
+                            secondColorzone,
+                            getFieldSize(config.gridSize.second),
+                            karooSystem.hardwareType == HardwareType.KAROO,
+                            !(firstField(settings[index]).kaction.convert == "speed" || firstField(settings[index]).kaction.zone == "slopeZones" || firstField(settings[index]).kaction.label == "IF"),
+                            !(secondField(settings[index]).kaction.convert == "speed" || secondField(settings[index]).kaction.zone == "slopeZones" || secondField(settings[index]).kaction.label == "IF"),
+                            firstField(settings[index]).kaction.label,
+                            secondField(settings[index]).kaction.label,
+                            clayout,
+                            windtext,
+                            winddiff.roundToInt(),
+                            baseBitmap,
+                            firstField(settings[index]).iszone,
+                            secondField(settings[index]).iszone
+                        )
+                    }.remoteViews
+                    emitter.updateView(result)
+                }
+                .retryWhen { cause, attempt ->
+                    if (attempt > 3) {
+                        Timber.e(cause, "Error collecting Rolling flow, stopping.. (attempt $attempt) Cause: $cause")
+                        scope.cancel()
+                        configJob.cancel()
+                        viewjob.cancel()
+                        delay(RETRY_DELAY_LONG)
+                        startView(context, config, emitter)
+                        false
+                    } else {
+                        Timber.e(cause, "Error collecting Rolling flow, retrying... (attempt $attempt) Cause: $cause")
+                        delay(RETRY_DELAY_SHORT)
+                        true
+                    }
+                }
+                .launchIn(scope)
         }
 
         emitter.setCancellable {
             Timber.d("Stopping speed view with $emitter")
             configJob.cancel()
-            job.cancel()
+            viewjob.cancel()
         }
     }
 }

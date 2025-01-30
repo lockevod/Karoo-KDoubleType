@@ -35,9 +35,16 @@
         icon="@drawable/ic_field"
         typeId="vertical-two" />
     <DataType
-        description="@string/custom_double_vertical_description3"
-        displayName="@string/custom_vertical_double3"
+        description="@string/custom_rolling_description1"
+        displayName="@string/custom_rolling1"
         graphical="true"
         icon="@drawable/ic_field"
-        typeId="vertical-three" />
+        typeId="rolling-one" />
+    <DataType
+        description="@string/custom_rolling_description2"
+        displayName="@string/custom_rolling2"
+        graphical="true"
+        icon="@drawable/ic_field"
+        typeId="rolling-two" />
+
 </ExtensionInfo>
