@@ -28,6 +28,12 @@ import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.DataTypeImpl
@@ -45,11 +51,8 @@ import com.enderthor.kCustomField.extensions.consumerFlow
 import com.enderthor.kCustomField.extensions.streamGeneralSettings
 import com.enderthor.kCustomField.extensions.streamOneFieldSettings
 import com.enderthor.kCustomField.R
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
 
 import timber.log.Timber
 
@@ -58,7 +61,7 @@ abstract class CustomRollingTypeBase(
     private val karooSystem: KarooSystemService,
     extension: String,
     datatype: String,
-    protected val globalIndex: Int
+    protected val index: Int
 ) : DataTypeImpl(extension, datatype) {
     protected val glance = GlanceRemoteViews()
 
@@ -67,16 +70,10 @@ abstract class CustomRollingTypeBase(
     protected val thirdField= { settings: OneFieldSettings -> settings.thirdfield }
     protected val rollingtime= { settings: OneFieldSettings -> settings.rollingtime }
 
-    companion object {
-        private const val PREVIEW_DELAY = 3000L
-        private const val RETRY_DELAY_SHORT = 2000L
-        private const val RETRY_DELAY_LONG = 8000L
-        private const val EXTRA_ROLLINNG = 350L
-    }
 
     private val refreshTime: Long
         get() = if (karooSystem.hardwareType == HardwareType.K2)
-            RefreshTime.MID.time + EXTRA_ROLLINNG else RefreshTime.HALF.time + EXTRA_ROLLINNG
+            RefreshTime.MID.time + RefreshTime.EXTRA_ROLLING.time else RefreshTime.HALF.time + RefreshTime.EXTRA_ROLLING.time
 
     private lateinit var viewjob: Job
 
@@ -115,11 +112,11 @@ abstract class CustomRollingTypeBase(
                     extension
                 )
             ))
-            delay(PREVIEW_DELAY)
+            delay(Delay.PREVIEW.time)
         }
     }.flowOn(Dispatchers.IO)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         val scope = CoroutineScope(Dispatchers.IO)
 
@@ -128,27 +125,69 @@ abstract class CustomRollingTypeBase(
             awaitCancellation()
         }
 
-        val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
+        val globalIndex = if(config.preview) 0 else index
 
+        val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
+        Timber.d("Starting ROLLING view field $extension and index $index and field $dataTypeId")
         viewjob = scope.launch {
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
-            val settings = context.streamOneFieldSettings()
+            val settings = if (config.preview) { flowOf(previewOneFieldSettings)}
+            else
+                context.streamOneFieldSettings()
                 .stateIn(scope, SharingStarted.WhileSubscribed(), listOf(OneFieldSettings()))
+
             val generalSettings = context.streamGeneralSettings()
                 .stateIn(scope, SharingStarted.WhileSubscribed(), GeneralSettings())
 
-
             // Initial view
-            combine(settings, generalSettings) { settings, generalSettings -> settings to generalSettings }
-                .firstOrNull()?.let { (settings, generalSettings) ->
-                    val initField = firstField(settings[globalIndex])
-                    val initSelector= !(initField.kaction.name == "HEADWIND" && generalSettings.isheadwindenabled)
+            retryFlow(
+                action = {
+                    val settingsFlow = combine(settings, generalSettings) { settings, generalSettings -> settings to generalSettings }
+                        .firstOrNull { (settings, _) -> globalIndex in settings.indices }
 
-                    val initialRemoteViews = glance.compose(context, DpSize.Unspecified) {
-                        RollingFieldScreen(0.0, !(initField.kaction.convert == "speed" || initField.kaction.zone == "slopeZones" || initField.kaction.label == "IF"), initField.kaction,  ColorProvider(Color.Black, Color.White), ColorProvider(Color.White, Color.Black), getFieldSize(config.gridSize.second), karooSystem.hardwareType == HardwareType.KAROO,
-                            generalSettings.iscenteralign, "", 0, baseBitmap, initSelector, config.textSize, false, config.preview)
-                    }.remoteViews
-                    emitter.updateView(initialRemoteViews)
+                    if (settingsFlow != null) {
+                        Timber.d("DOUBLE INITIAL RETRYFLOW encontrado: $index  campo: $dataTypeId" )
+                        val (settings, generalSettings) = settingsFlow
+                        emit(settings to generalSettings)
+                    } else {
+                        Timber.e("GlobalIndex InitView Rolling out of bounds Index : $globalIndex")
+                        throw IndexOutOfBoundsException("GlobalIndex out of bounds")
+                    }
+                },
+                onFailure = { attempts, e ->
+                    Timber.e("Not valid Rolling index  in $attempts attemps. Error: $e")
+                    emit(listOf(OneFieldSettings()) to GeneralSettings())
+                }
+            ).collectLatest { (settings, generalSettings) ->
+                    if (globalIndex in settings.indices) {
+                        val initField = firstField(settings[globalIndex])
+                        val initSelector =
+                            !(initField.kaction.name == "HEADWIND" && generalSettings.isheadwindenabled)
+                        if (!config.preview)
+                        {
+                            val initialRemoteViews = glance.compose(context, DpSize.Unspecified) {
+                                RollingFieldScreen(
+                                    0.0,
+                                    !(initField.kaction.convert == "speed" || initField.kaction.zone == "slopeZones" || initField.kaction.label == "IF"),
+                                    initField.kaction,
+                                    ColorProvider(Color.Black, Color.White),
+                                    ColorProvider(Color.White, Color.Black),
+                                    getFieldSize(config.gridSize.second),
+                                    karooSystem.hardwareType == HardwareType.KAROO,
+                                    generalSettings.iscenteralign,
+                                    "",
+                                    0,
+                                    baseBitmap,
+                                    initSelector,
+                                    config.textSize,
+                                    false,
+                                    config.preview
+                                )
+                            }.remoteViews
+                            emitter.updateView(initialRemoteViews)
+                        }
+                    } else
+                        Timber.e("GlobalIndex InitView Rolling fuera de los límites: $globalIndex, Tamaño: ${settings.size}")
                 }
 
             // start rolling view
@@ -156,15 +195,16 @@ abstract class CustomRollingTypeBase(
                 if (settings.isNotEmpty() && globalIndex in settings.indices && rollingtime(settings[globalIndex]).time > 0L) {
                     flow {
                         var cyclicindex = 0
+                        val currentSetting = settings[globalIndex]
                         while (true) {
-                            val currentSetting = settings.getOrNull(globalIndex) ?: return@flow
+                            //val currentSetting = settings.getOrNull(globalIndex) ?: return@flow
                             emit(cyclicindex)
                             cyclicindex = when (cyclicindex) {
                                 0 -> if (secondField(currentSetting).isactive) 1 else if (thirdField(currentSetting).isactive) 2 else 0
                                 1 -> if (thirdField(currentSetting).isactive) 2 else 0
                                 else -> 0
                             }
-                            delay(rollingtime(settings[globalIndex]).time)
+                            delay(rollingtime(currentSetting).time)
                         }
                     }.flowOn(Dispatchers.IO).distinctUntilChanged().catch { e ->
                         Timber.e(e, "Error in cyclicIndexFlow")
@@ -188,7 +228,7 @@ abstract class CustomRollingTypeBase(
             combinedFlow
                 .flatMapLatest { (settings, generalSetting, cyclicIndex) ->
                     val currentSetting = settings.getOrNull(globalIndex) ?: return@flatMapLatest flowOf(Triple(previewOneFieldSettings, GeneralSettings(), 0) to Triple(settings, generalSetting, cyclicIndex))
-
+                   Timber.d("ROLLING FLAT: $index datos: ${settings[index]} campo: $dataTypeId" )
                     val primaryField = firstField(currentSetting)
                     val secondaryField = secondField(currentSetting)
                     val thirdField = thirdField(currentSetting)
@@ -209,14 +249,16 @@ abstract class CustomRollingTypeBase(
                         Timber.e(e, "Error in Rolling combined flow")
                     }
                 }
+                .debounce(refreshTime)
                 .onEach { (fieldStates, settingsData) ->
                     if (globalIndex !in settingsData.first.indices) {
                         Timber.e("GlobalIndex fuera de los límites: $globalIndex, Tamaño: ${settingsData.first.size}")
                         return@onEach
                     }
+
                     val (firstFieldState, secondFieldState, thirdFieldState) = fieldStates
                     val (settings, generalSetting, cyclicIndex) = settingsData
-
+                    Timber.d("ROLLING ONEACH: $index datos: ${settings[index]} campo: $dataTypeId" )
                     val field = when (cyclicIndex) {
                         0 -> firstField
                         1 -> secondField
@@ -239,11 +281,12 @@ abstract class CustomRollingTypeBase(
 
                     val selector: Boolean = valuestream is StreamState
 
-                    val remoteViews = glance.compose(context, DpSize.Unspecified) {
+                    val result = glance.compose(context, DpSize.Unspecified) {
                         RollingFieldScreen(value, !(field(settings[globalIndex]).kaction.convert == "speed" || field(settings[globalIndex]).kaction.zone == "slopeZones" || field(settings[globalIndex]).kaction.label == "IF"), field(settings[globalIndex]).kaction, iconcolor, colorzone,getFieldSize(config.gridSize.second), karooSystem.hardwareType == HardwareType.KAROO,
                             generalSetting.iscenteralign, windtext, winddiff.roundToInt(), baseBitmap, selector, config.textSize, iszone, config.preview)
                     }.remoteViews
-                    emitter.updateView(remoteViews)
+                    emitter.updateView(result)
+                    Timber.d("ROLLING RESULT $result campo: $dataTypeId")
                 }
                 .retryWhen { cause, attempt ->
                     if (attempt > 3) {
@@ -251,12 +294,12 @@ abstract class CustomRollingTypeBase(
                         scope.cancel()
                         configJob.cancel()
                         viewjob.cancel()
-                        delay(RETRY_DELAY_LONG)
+                        delay(Delay.RETRY_LONG.time)
                         startView(context, config, emitter)
                         false
                     } else {
                         Timber.e(cause, "Error collecting Rolling flow, retrying... (attempt $attempt) Cause: $cause")
-                        delay(RETRY_DELAY_SHORT)
+                        delay(Delay.RETRY_SHORT.time)
                         true
                     }
                 }

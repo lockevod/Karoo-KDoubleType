@@ -16,12 +16,13 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+import kotlinx.coroutines.launch
+
 import com.enderthor.kCustomField.datatype.*
 import com.enderthor.kCustomField.extensions.*
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.HardwareType
-import kotlinx.coroutines.launch
-import timber.log.Timber
 
 
 val alignmentOptions = listOf(FieldPosition.LEFT, FieldPosition.CENTER, FieldPosition.RIGHT)
@@ -59,7 +60,7 @@ fun TabLayout() {
             }
         }
 
-        Timber.d("iskaroo3 Rolling $iskaroo3")
+       // Timber.d("iskaroo3 Rolling $iskaroo3")
 
         when (selectedTabIndex) {
             0 -> ConfFields(ctx, iskaroo3)
@@ -139,10 +140,18 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
                         label="Second Field",
                         action=oneFieldSettings.secondfield
                     ) { newAction ->
+
                         val updatedZone =
                             if (newAction.kaction.zone == "none") false else oneFieldSettings.secondfield.iszone
                         val updatednewAction = newAction.copy(iszone = updatedZone)
+                      // Timber.d("NEW ACTION SECONDFIELD $updatednewAction")
                         oneFieldSettingsList[index] =
+                            oneFieldSettings.copy(secondfield = updatednewAction)
+                        if (newAction.kaction.zone == "none")  oneFieldSettingsList[index] = oneFieldSettings.copy(
+                            secondfield = updatednewAction,
+                            thirdfield =  updatednewAction
+                        )
+                        else  oneFieldSettingsList[index] =
                             oneFieldSettings.copy(secondfield = updatednewAction)
                     }
                     ZoneMultiSwitch(
@@ -156,7 +165,7 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
                     DropdownOneField(
                         firstpos=false,
                         label="Third Field",
-                        action=oneFieldSettings.thirdfield,
+                        action= oneFieldSettings.thirdfield,
                         enabled = oneFieldSettings.secondfield.isactive
                     ) { newAction ->
                         val updatedZone =

@@ -24,9 +24,16 @@ import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.getZone
 import com.enderthor.kCustomField.extensions.slopeZones
 import com.enderthor.kCustomField.extensions.streamDataFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlin.random.Random
 
 
 import timber.log.Timber
+
 
 fun getColorZone(context: Context, zone: String, value: Double, userProfile: UserProfile, isPaletteZwift: Boolean): ColorProvider {
     val zoneData = when (zone) {
@@ -75,7 +82,8 @@ fun getFieldSize(size: Int): FieldSize {
 }
 
 @OptIn(FlowPreview::class)
-fun createHeadwindFlow(karooSystem: KarooSystemService,period:Long): Flow<StreamHeadWindData> {
+fun createHeadwindFlow(karooSystem: KarooSystemService, period: Long): Flow<StreamHeadWindData> {
+
     return karooSystem.streamDataFlow(Headwind.DIFF.type)
         .mapNotNull { (it as? StreamState.Streaming)?.dataPoint?.singleValue }
         .combine(karooSystem.streamDataFlow(Headwind.SPEED.type)
@@ -84,7 +92,7 @@ fun createHeadwindFlow(karooSystem: KarooSystemService,period:Long): Flow<Stream
         }
         .onStart { emit(StreamHeadWindData(0.0, 0.0)) }
         .distinctUntilChanged()
-        .debounce(1000+period)
+        .debounce(1000 + period)
         .conflate()
         .catch { e ->
             Timber.e(e, "Error in headwindFlow")
@@ -133,3 +141,37 @@ fun getFieldState(
         Quadruple(0.0, ColorProvider(Color.White, Color.Black), ColorProvider(Color.White, Color.Black),false)
     }
 }
+
+fun <T> retryFlow(
+    maxAttempts: Int = 6,
+    initialDelayMillis: Long = 190,
+    maxDelayMillis: Long = 600,
+    action: suspend FlowCollector<T>.() -> Unit,
+    onFailure: suspend FlowCollector<T>.(Int, Throwable) -> Unit
+): Flow<T> = flow {
+    var attempts = 0
+    var delayMillis = initialDelayMillis
+    val exceptionsToRetry = listOf(IndexOutOfBoundsException::class, Exception::class)
+
+    while (attempts < maxAttempts) {
+        try {
+            action()
+            return@flow
+        } catch (e: Throwable) {
+            if (exceptionsToRetry.any { it.isInstance(e) }) {
+                Timber.e(e, "Error en attempt $attempts")
+                attempts++
+                if (attempts >= maxAttempts) {
+                    onFailure(attempts, e)
+                } else {
+                    delay(delayMillis + Random.nextLong(0, delayMillis / 2)) // jitter
+                    delayMillis = (delayMillis * 2).coerceAtMost(maxDelayMillis) // Exponential backoff
+                }
+            } else {
+                throw e
+            }
+        }
+    }
+}.flowOn(Dispatchers.IO)
+
+

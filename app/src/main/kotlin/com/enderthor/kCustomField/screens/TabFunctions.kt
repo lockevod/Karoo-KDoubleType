@@ -36,7 +36,7 @@ import com.enderthor.kCustomField.datatype.DoubleFieldType
 import com.enderthor.kCustomField.datatype.KarooAction
 import com.enderthor.kCustomField.datatype.OneFieldType
 import java.util.Locale
-import timber.log.Timber
+
 
 
 data class DropdownOption(val id: String, val name: String)
@@ -142,7 +142,7 @@ fun DropdownOneField(enabled: Boolean, firstpos: Boolean, label: String, action:
     var dropdownOptions = KarooAction.entries.map { DropdownOption(it.action.toString(), it.label) }
     if (!firstpos) dropdownOptions = listOf(DropdownOption("none", "None")) + dropdownOptions
 
-    //Timber.d(" ACTION  $action -LABEL $label - FIRSTPOS $firstpos")
+
     val dropdownInitialSelection by remember(action) {
         mutableStateOf(
             if (!action.isactive || !enabled) {
@@ -152,7 +152,7 @@ fun DropdownOneField(enabled: Boolean, firstpos: Boolean, label: String, action:
             }
         )
     }
-
+    //Timber.d("DROPDOWN INITIAL SELECTION Label $label Action $action InitialSelection $dropdownInitialSelection enabled $enabled")
     KarooKeyDropdown(enabled=enabled,remotekey = label, options = dropdownOptions, selectedOption = dropdownInitialSelection) { selectedOption ->
         val newAction = if (selectedOption.id == "none" || !enabled) {
             OneFieldType(KarooAction.SPEED, false, false)

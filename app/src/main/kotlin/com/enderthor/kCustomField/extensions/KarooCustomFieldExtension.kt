@@ -4,8 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
-import com.enderthor.kCustomField.datatype.CustomDoubleType
-import com.enderthor.kCustomField.datatype.CustomRollingType
+
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.DataTypeImpl
@@ -17,11 +16,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 
+import com.enderthor.kCustomField.datatype.CustomDoubleType
+import com.enderthor.kCustomField.datatype.CustomRollingType
+import com.enderthor.kCustomField.BuildConfig
+
+
 import timber.log.Timber
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-class KarooCustomFieldExtension : KarooExtension("kcustomfield", "2.0") {
+class KarooCustomFieldExtension : KarooExtension("kcustomfield", BuildConfig.VERSION_NAME) {
 
     lateinit var karooSystem: KarooSystemService
     private var serviceJob: Job? = null
@@ -35,7 +39,7 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", "2.0") {
         super.onCreate()
         karooSystem = KarooSystemService(applicationContext)
 
-        Timber.d("Service created")
+        Timber.d("Service KDouble created")
 
         serviceJob = CoroutineScope(Dispatchers.IO).launch {
             karooSystem.connect { connected ->
@@ -59,8 +63,6 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", "2.0") {
                                 CustomRollingType(karooSystem, extension, "rolling-one", 0)
                             )
                         }
-
-
                     }
             }
         }
