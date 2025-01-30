@@ -30,7 +30,7 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 
 - Add custom fields to your profiles (HR, Power, etc).
 - You can add horizontal or vertical fields.
-- You can add rolling fields and select de rolling period (ie. change every 5-10-20-30 seconds between three fields...)
+- You can add rolling fields and select de rolling period (ie. change every 5-10-20-30 seconds between three fields...). You can chose one/two/three rolling mesures, if you chose only one.. then you only have one messure in this field.
 - You can configure the fields in the configuration tab and select if you want colored zones or not.
 
 ## Configuration
@@ -47,6 +47,8 @@ In this case, you have to select Timklge headwind field also in this profile.
 - The max number of every field horizontal is 3 digits, but it's better if you don't mix two types with 3 digits always.
 - Not intensive tested with all the fields, please report any issue. For example, number adaptation for the fields is not tested with all the fields.
 - If you use several fields your Karoo can be freeze especially if you have a Karoo 2. I've made several performance improvements but be careful to use 5 fields + rolling + headwind (in the same rolling or custom fields).. it's a lot of data to process.
+- Extensions (Hammerhead API) have a problem with rendering (sometimes and it's random)... if you have some field that dissapears when you use custom fields, you can try to change ride profile, kill ride app or reboot karoo. Sorry, but I cannot solve this at this moment (we're talking with Hammerhead).
+- Karoo 2 has low resources. Kdouble limit number of fields you can use in Karoo. Please be careful (also with Karoo 3) if you use several custom field, several extensions (apps) and you have a lot of these fields in your profile...
 
 ## Credits
 
