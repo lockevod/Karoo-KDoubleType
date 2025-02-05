@@ -1,0 +1,20 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="38dp"
+    android:height="38dp"
+    android:viewportWidth="38"
+    android:viewportHeight="38">
+
+  <!-- Rectangle (Border) -->
+  <path
+      android:fillColor="#00000000"
+      android:strokeColor="#000000"
+      android:strokeWidth="2"
+      android:pathData="M2,2 L36,2 L36,36 L2,36 Z" />
+
+  <!-- Existing Power Zone Icon -->
+  <path
+      android:strokeWidth="1"
+      android:pathData="M18.502,16.002V16.502H19.002H27.227L19.499,33.671V22V21.5H18.999H10.773L14.957,12.205L18.502,4.329V16.002Z"
+      android:fillColor="#000000"
+      android:strokeColor="#ffffff" />
+</vector>

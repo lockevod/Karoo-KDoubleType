@@ -1,0 +1,18 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Dibuja el cuerpo del cronómetro -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 Z M12,20 C7.58,20 4,16.42 4,12 C4,7.58 7.58,4 12,4 C16.42,4 20,7.58 20,12 C20,16.42 16.42,20 12,20 Z" />
+    <!-- Dibuja la parte superior del cronómetro -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M15,1 L9,1 L9,3 L15,3 Z" />
+    <!-- Dibuja la manecilla del cronómetro -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M12,6 L12,12 L16,14" />
+</vector>

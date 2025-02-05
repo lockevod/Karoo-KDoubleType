@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16dp"
+    android:height="16dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Primer círculo (izquierda) -->
+    <!-- Primer punto del % (izquierda, superior) -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="
+            M30,30
+            C30,25.5817 32.5817,23 35,23
+            C37.4183,23 40,25.5817 40,30
+            C40,34.4183 37.4183,37 35,37
+            C32.5817,37 30,34.4183 30,30
+            Z" />
+
+    <!-- Segundo círculo (derecha, inferior) -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="
+            M70,70
+            C70,65.5817 72.5817,63 75,63
+            C77.4183,63 80,65.5817 80,70
+            C80,74.4183 77.4183,77 75,77
+            C72.5817,77 70,74.4183 70,70
+            Z" />
+
+    <!-- Línea diagonal -->
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="5"
+        android:pathData="M20,80 L80,20" />
+</vector>
