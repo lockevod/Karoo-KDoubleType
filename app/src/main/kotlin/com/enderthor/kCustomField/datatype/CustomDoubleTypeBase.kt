@@ -44,6 +44,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import androidx.compose.ui.graphics.Color
+import io.hammerhead.karooext.models.OnStreamState
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
@@ -98,7 +99,7 @@ abstract class CustomDoubleTypeBase(
         }
     }
 
-    private fun previewFlow(): Pair<Flow<StreamState>,Long> = flow {
+    private fun previewFlow(): Flow<StreamState> = flow {
         while (true) {
             emit(StreamState.Streaming(
                 DataPoint(
@@ -109,13 +110,13 @@ abstract class CustomDoubleTypeBase(
             ))
             delay(Delay.PREVIEW.time)
         }
-    }.flowOn(Dispatchers.IO) to 0L
+    }.flowOn(Dispatchers.IO)
 
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         val scope = CoroutineScope(Dispatchers.IO)
 
-        val index = if(config.preview) 0 else globalIndex
+        var index =  globalIndex
 
 
         val configJob = scope.launch {
@@ -124,16 +125,15 @@ abstract class CustomDoubleTypeBase(
         }
 
 
-
         Timber.d("Starting Double view field $extension and index $index and field $dataTypeId")
         viewjob = scope.launch {
 
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
-            val settingsFlow = if (config.preview) {
+            val settingsFlow = /*if (config.preview) {
                 if (index % 2 == 0) flowOf(previewDoubleVerticalFieldSettings)
                 else flowOf(previewDoubleHorizontalFieldSettings)
             }
-            else context.streamDoubleFieldSettings().stateIn(
+            else */context.streamDoubleFieldSettings().stateIn(
                 scope,
                 SharingStarted.WhileSubscribed(),
                 listOf(DoubleFieldSettings())
@@ -142,7 +142,7 @@ abstract class CustomDoubleTypeBase(
             val generalSettingsFlow = context.streamGeneralSettings()
                 .stateIn(scope, SharingStarted.WhileSubscribed(), GeneralSettings())
 
-            var fieldNumber: Int =5
+            var fieldNumber: Int =3
             var clayout: FieldPosition = FieldPosition.CENTER
             val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
 
@@ -150,7 +150,6 @@ abstract class CustomDoubleTypeBase(
                 action = {
                     val settingsFlow = combine(settingsFlow, generalSettingsFlow) { settings, generalSettings -> settings to generalSettings }
                         .firstOrNull { (settings, _) -> index in settings.indices }
-
 
                     if (settingsFlow != null) {
                         Timber.d("DOUBLE INITIAL RETRYFLOW encontrado: $index  campo: $dataTypeId" )
@@ -174,6 +173,7 @@ abstract class CustomDoubleTypeBase(
                     val secondaryField = secondField(settings[index])
 
                     // Initial view
+
 
                     fieldNumber = when {
                         generalSettings.isheadwindenabled -> when {
@@ -202,28 +202,19 @@ abstract class CustomDoubleTypeBase(
                                 ishorizontal(settings[index]),
                                 0.0,
                                 0.0,
-                                primaryField.kaction.icon,
-                                secondaryField.kaction.icon,
+                                primaryField,
+                                secondaryField,
                                 ColorProvider(Color.Black, Color.White),
                                 ColorProvider(Color.Black, Color.White),
                                 ColorProvider(Color.White, Color.Black),
                                 ColorProvider(Color.White, Color.Black),
                                 getFieldSize(config.gridSize.second),
                                 karooSystem.hardwareType == HardwareType.KAROO,
-                                !(firstField(settings[index]).kaction.convert == "speed" || firstField(
-                                    settings[index]
-                                ).kaction.zone == "slopeZones" || firstField(settings[index]).kaction.label == "IF"),
-                                !(secondField(settings[index]).kaction.convert == "speed" || secondField(
-                                    settings[index]
-                                ).kaction.zone == "slopeZones" || secondField(settings[index]).kaction.label == "IF"),
-                                firstField(settings[index]).kaction.label,
-                                secondField(settings[index]).kaction.label,
                                 clayout,
                                 "",
                                 0,
                                 baseBitmap,
-                                false,
-                                false
+                                generalSettings.isdivider
                             )
                         }.remoteViews
                         emitter.updateView(initialRemoteViews)
@@ -247,24 +238,9 @@ abstract class CustomDoubleTypeBase(
                         if (listOf(primaryField, secondaryField).any { it.kaction.name == "HEADWIND" } && generalSettings.isheadwindenabled)
                             createHeadwindFlow(karooSystem,refreshTime) else flowOf(StreamHeadWindData(0.0, 0.0))
 
-                   /*
-                   val (firstFieldFlow,timefirstField) = if (!config.preview) getFieldFlow(karooSystem, primaryField, headwindFlow, generalSettings,refreshTime) else previewFlow()
-                    val (secondFieldFlow,timesecondField) = if (!config.preview) getFieldFlow(karooSystem, secondaryField, headwindFlow, generalSettings,refreshTime) else previewFlow()
 
-                    val resetfirst= if (firstFieldFlow is StreamState)  checkDataFlowTimeout(scope, primaryField.kaction.action, refreshTime, 60000, 10000, timefirstField) else false
-
-
-                    if (resetfirst) {
-                        firstFieldJob?.cancel()
-                        firstFieldJob = scope.launch {
-                            firstFieldFlow.collect { state ->
-                                // No emitir, solo reiniciar el flujo
-                            }
-                        }
-                        }
-                        */
-                    val firstFieldFlow =  getFieldFlow(karooSystem, primaryField, headwindFlow, generalSettings,refreshTime)
-                    val secondFieldFlow =  getFieldFlow(karooSystem, secondaryField, headwindFlow, generalSettings,refreshTime)
+                    val firstFieldFlow =  if (!config.preview) getFieldFlow(karooSystem, primaryField, headwindFlow, generalSettings,refreshTime) else previewFlow()
+                    val secondFieldFlow =  if (!config.preview) getFieldFlow(karooSystem, secondaryField, headwindFlow, generalSettings,refreshTime) else previewFlow()
 
 
                     combine(firstFieldFlow, secondFieldFlow) { firstState, secondState ->
@@ -273,16 +249,16 @@ abstract class CustomDoubleTypeBase(
                 }
                 .debounce(refreshTime)
                 .onEach { (firstFieldState, secondFieldState, settings, generalSettings) ->
+               //     if (firstField(settings[index]).kaction== KarooAction.AVERAGE_VAM) Timber.d("DOUBLE VIEW PEDAL fitstFieldState: $firstFieldState")
 
-
-                        val (firstvalue, firstIconcolor, firstColorzone) = getFieldState(
+                        val (firstvalue, firstIconcolor, firstColorzone,isleftzone, firstvalueRight) = getFieldState(
                             firstFieldState,
                             firstField(settings[index]),
                             context,
                             userProfile,
                             generalSettings.ispalettezwift
                         )
-                        val (secondvalue, secondIconcolor, secondColorzone) = getFieldState(
+                        val (secondvalue, secondIconcolor, secondColorzone,isrightzone,secondvalueRight) = getFieldState(
                             secondFieldState,
                             secondField(settings[index]),
                             context,
@@ -297,7 +273,8 @@ abstract class CustomDoubleTypeBase(
                         } else 0.0 to ""
 
 
-                        if(fieldNumber==5){
+
+                       // if(fieldNumber==5){
                            // Timber.d("determino el fieldlayout porque no he podido antes")
                             fieldNumber = when {
                                 firstFieldState is StreamState && secondFieldState is StreamState -> 3
@@ -317,32 +294,30 @@ abstract class CustomDoubleTypeBase(
                                 ishorizontal(settings[index]) -> generalSettings.iscenteralign
                                 else -> generalSettings.iscentervertical
                             }
-                        }
+                     //   }
 
+                        Timber.d("DOUBLE VIEW fieldNumber: $fieldNumber, firstFieldName:  ${firstField(settings[index]).kaction.name}, secondFieldName:  ${secondField(settings[index]).kaction.name}generalSettings.isdivider: ${generalSettings.isdivider},firstvalue: $firstvalue, firstvalueRight: $firstvalueRight, secondatvalue: $secondvalue, secondvalueRight: $secondvalueRight")
                         val result=glance.compose(context, DpSize.Unspecified) {
                             DoubleScreenSelector(
                                 fieldNumber,
                                 ishorizontal(settings[index]),
                                 firstvalue,
                                 secondvalue,
-                                firstField(settings[index]).kaction.icon,
-                                secondField(settings[index]).kaction.icon,
+                                firstField(settings[index]),
+                                secondField(settings[index]),
                                 firstIconcolor,
                                 secondIconcolor,
                                 firstColorzone,
                                 secondColorzone,
                                 getFieldSize(config.gridSize.second),
                                 karooSystem.hardwareType == HardwareType.KAROO,
-                                !(firstField(settings[index]).kaction.convert == "speed" || firstField(settings[index]).kaction.zone == "slopeZones" || firstField(settings[index]).kaction.label == "IF"),
-                                !(secondField(settings[index]).kaction.convert == "speed" || secondField(settings[index]).kaction.zone == "slopeZones" || secondField(settings[index]).kaction.label == "IF"),
-                                firstField(settings[index]).kaction.label,
-                                secondField(settings[index]).kaction.label,
                                 clayout,
                                 windtext,
                                 winddiff.roundToInt(),
                                 baseBitmap,
-                                firstField(settings[index]).iszone,
-                                secondField(settings[index]).iszone
+                                generalSettings.isdivider,
+                                firstvalueRight,
+                                secondvalueRight
                             )
                         }.remoteViews
                         //Timber.d("DOUBLE RESULT $result campo: $dataTypeId")

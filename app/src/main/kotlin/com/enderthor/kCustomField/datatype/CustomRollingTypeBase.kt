@@ -125,14 +125,15 @@ abstract class CustomRollingTypeBase(
             awaitCancellation()
         }
 
-        val globalIndex = if(config.preview) 0 else index
+        val globalIndex = index
+            //if(config.preview) 0 else index
 
         val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
         Timber.d("Starting ROLLING view field $extension and index $index and field $dataTypeId")
         viewjob = scope.launch {
             val userProfile = karooSystem.consumerFlow<UserProfile>().first()
-            val settings = if (config.preview) { flowOf(previewOneFieldSettings)}
-            else
+            val settings = /*if (config.preview) { flowOf(previewOneFieldSettings)}
+            else*/
                 context.streamOneFieldSettings()
                 .stateIn(scope, SharingStarted.WhileSubscribed(), listOf(OneFieldSettings()))
 
@@ -181,7 +182,8 @@ abstract class CustomRollingTypeBase(
                                     initSelector,
                                     config.textSize,
                                     false,
-                                    config.preview
+                                    config.preview,
+                                    0.0
                                 )
                             }.remoteViews
                             emitter.updateView(initialRemoteViews)
@@ -215,7 +217,7 @@ abstract class CustomRollingTypeBase(
                 }
             }.stateIn(scope, SharingStarted.WhileSubscribed(), 0)
 
-            val combinedFlow = if (config.preview) {
+           /* val combinedFlow = if (config.preview) {
                 combine(flowOf(previewOneFieldSettings), flowOf(GeneralSettings()), flowOf(0)) { settings, generalSettings, cyclicIndex ->
                     Triple(settings, generalSettings, cyclicIndex)
                 }
@@ -223,6 +225,9 @@ abstract class CustomRollingTypeBase(
                 combine(settings, generalSettings, cyclicIndexFlow) { settings, generalSettings, cyclicIndex ->
                     Triple(settings, generalSettings, cyclicIndex)
                 }
+            }*/
+            val combinedFlow = combine(settings, generalSettings, cyclicIndexFlow) { settings, generalSettings, cyclicIndex ->
+                Triple(settings, generalSettings, cyclicIndex)
             }
 
             combinedFlow
@@ -272,7 +277,7 @@ abstract class CustomRollingTypeBase(
                         else -> firstFieldState
                     }
 
-                    val (value, iconcolor, colorzone, iszone) = getFieldState(valuestream, field(settings[globalIndex]), context, userProfile, generalSetting.ispalettezwift)
+                    val (value, iconcolor, colorzone, iszone, valueSecond) = getFieldState(valuestream, field(settings[globalIndex]), context, userProfile, generalSetting.ispalettezwift)
 
                     val (winddiff, windtext) = if (firstFieldState !is StreamState || secondFieldState !is StreamState || thirdFieldState !is StreamState) {
                         val windData = (firstFieldState as? StreamHeadWindData) ?: (secondFieldState as? StreamHeadWindData) ?: (thirdFieldState as StreamHeadWindData)
@@ -283,7 +288,7 @@ abstract class CustomRollingTypeBase(
 
                     val result = glance.compose(context, DpSize.Unspecified) {
                         RollingFieldScreen(value, !(field(settings[globalIndex]).kaction.convert == "speed" || field(settings[globalIndex]).kaction.zone == "slopeZones" || field(settings[globalIndex]).kaction.label == "IF"), field(settings[globalIndex]).kaction, iconcolor, colorzone,getFieldSize(config.gridSize.second), karooSystem.hardwareType == HardwareType.KAROO,
-                            generalSetting.iscenteralign, windtext, winddiff.roundToInt(), baseBitmap, selector, config.textSize, iszone, config.preview)
+                            generalSetting.iscenteralign, windtext, winddiff.roundToInt(), baseBitmap, selector, config.textSize, iszone, config.preview, valueSecond)
                     }.remoteViews
                     emitter.updateView(result)
                     Timber.d("ROLLING RESULT $result campo: $dataTypeId")

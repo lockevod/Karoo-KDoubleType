@@ -14,6 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -23,6 +25,7 @@ import com.enderthor.kCustomField.datatype.*
 import com.enderthor.kCustomField.extensions.*
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.HardwareType
+import timber.log.Timber
 
 
 val alignmentOptions = listOf(FieldPosition.LEFT, FieldPosition.CENTER, FieldPosition.RIGHT)
@@ -42,10 +45,11 @@ fun TabLayout() {
         karooSystem.connect { connected ->
             karooConnected = connected
             iskaroo3 = karooSystem.hardwareType == HardwareType.KAROO
-
         }
     }
 
+
+    Timber.d("en TABLAYOUT iskaroo3 $iskaroo3")
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(
             selectedTabIndex = selectedTabIndex,
@@ -62,10 +66,12 @@ fun TabLayout() {
 
        // Timber.d("iskaroo3 Rolling $iskaroo3")
 
-        when (selectedTabIndex) {
-            0 -> ConfFields(ctx, iskaroo3)
-            1 -> ConfRolling(ctx, iskaroo3)
-            2 -> ConfGeneral()
+        if (karooConnected) {
+            when (selectedTabIndex) {
+                0 -> ConfFields(ctx, iskaroo3)
+                1 -> ConfRolling(ctx, iskaroo3)
+                2 -> ConfGeneral()
+            }
         }
     }
 }
@@ -112,7 +118,14 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
         ) {
             oneFieldSettingsDerived.value.forEachIndexed { index, oneFieldSettings ->
                 if (index == 0  || (iskaroo3 && index == 1)) {
-
+                    if(index==1) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "Be careful to use several custom fields simultaneously (custom and rolling) in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues",
+                            fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
                     TopAppBar(title = { Text("Rolling Field ${index + 1}") })
                     DropdownOneField(
                         enabled = true,
@@ -263,8 +276,10 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
     }
 
     val doubleFieldSettingsDerived = remember {
-        derivedStateOf { doubleFieldSettingsList.toList() }
+            derivedStateOf { doubleFieldSettingsList.toList() }
     }
+
+    Timber.d("List size ${doubleFieldSettingsDerived.value.size} and iskaroo3 $iskaroo3")
 
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
@@ -272,7 +287,15 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             doubleFieldSettingsDerived.value.forEachIndexed { index, doubleFieldSettings ->
-                if (index < 3 || (iskaroo3 && index in 3..4) ) {
+                if (index < 3 || (iskaroo3 && index in 3..5) ) {
+                    if(index==4) {
+                     Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "Be careful to use more than 4 custom fields simultaneously in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues",
+                            fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
                     TopAppBar(title = { Text("Field ${index + 1}") })
 
                     DropdownDoubleField(
@@ -362,6 +385,7 @@ fun ConfGeneral() {
     var iscentervertical by remember { mutableStateOf(FieldPosition.CENTER) }
     var iscenterkaroo by remember { mutableStateOf(false) }
     var isheadwindenabled by remember { mutableStateOf(false) }
+    var isdivider by remember { mutableStateOf(true) }
 
     var savedDialogVisible by remember { mutableStateOf(false) }
 
@@ -374,6 +398,7 @@ fun ConfGeneral() {
             iscentervertical = settings.iscentervertical
             iscenterkaroo = settings.iscenterkaroo
             isheadwindenabled = settings.isheadwindenabled
+            isdivider = settings.isdivider
         }
     }
 
@@ -447,6 +472,16 @@ fun ConfGeneral() {
                 Text("Zwift Color palette?")
             }
 
+            Spacer(modifier = Modifier.height(2.dp))
+            TopAppBar(title = { Text("Use Divider Line?") })
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = isdivider, onCheckedChange = {
+                    isdivider = it
+                })
+                Spacer(modifier = Modifier.width(10.dp))
+                Text("Enable Headwind Datafield (you need to have Headwind extension installed)?")
+            }
 
             FilledTonalButton(modifier = Modifier.fillMaxWidth().height(50.dp), onClick = {
                 val newGeneralSettings = GeneralSettings(
@@ -454,7 +489,8 @@ fun ConfGeneral() {
                     iscenteralign = iscenteralign,
                     iscentervertical = iscentervertical,
                     iscenterkaroo = iscenterkaroo,
-                    isheadwindenabled = isheadwindenabled
+                    isheadwindenabled = isheadwindenabled,
+                    isdivider = isdivider
 
                 )
                 coroutineScope.launch {

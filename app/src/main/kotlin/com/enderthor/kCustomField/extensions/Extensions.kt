@@ -8,6 +8,7 @@ import com.enderthor.kCustomField.datatype.CustomFieldSettings
 import com.enderthor.kCustomField.datatype.DoubleFieldSettings
 import com.enderthor.kCustomField.datatype.DoubleFieldType
 import com.enderthor.kCustomField.datatype.GeneralSettings
+
 import com.enderthor.kCustomField.datatype.KarooAction
 import com.enderthor.kCustomField.datatype.OneFieldSettings
 import com.enderthor.kCustomField.datatype.OneFieldType
@@ -79,9 +80,15 @@ fun Context.streamDoubleFieldSettings(): Flow<MutableList<DoubleFieldSettings>> 
     return dataStore.data.map { settingsJson ->
         try {
             if (settingsJson[doublefieldKey] != null) {
-                jsonWithUnknownKeys.decodeFromString<MutableList<DoubleFieldSettings>>(
+
+                val settingsList = jsonWithUnknownKeys.decodeFromString<MutableList<DoubleFieldSettings>>(
                     settingsJson[doublefieldKey] ?: defaultDoubleFieldSettings
                 )
+                if (settingsList.size < 6) {
+                    settingsList.add(DoubleFieldSettings())
+                }
+                settingsList
+
             } else if (settingsJson[settingsKey] != null) {
                 val customSettings = jsonWithUnknownKeys.decodeFromString<CustomFieldSettings>(
                     settingsJson[settingsKey] ?: defaultSettings
@@ -93,7 +100,8 @@ fun Context.streamDoubleFieldSettings(): Flow<MutableList<DoubleFieldSettings>> 
                     DoubleFieldSettings(2, DoubleFieldType(customSettings.customleft3, if( customSettings.customleft3.zone =="none") false else customSettings.customleft3zone), DoubleFieldType(customSettings.customright3, if( customSettings.customright3.zone =="none") false else customSettings.customright3zone),true,true),
                     DoubleFieldSettings(3, DoubleFieldType(customSettings.customverticalleft1, if(customSettings.customverticalleft1.zone =="none") false else customSettings.customverticalleft1zone), DoubleFieldType(customSettings.customverticalright1, if(customSettings.customverticalright1.zone =="none") false else customSettings.customright1zone),false,true),
                     DoubleFieldSettings(4, DoubleFieldType(customSettings.customverticalleft2, if(customSettings.customverticalleft2.zone =="none") false else customSettings.customverticalleft2zone), DoubleFieldType(customSettings.customverticalright2, if(customSettings.customverticalright2.zone =="none") false else customSettings.customright2zone),false,true),
-                )
+                    DoubleFieldSettings(5, DoubleFieldType(customSettings.customverticalleft3, if(customSettings.customverticalleft3.zone =="none") false else customSettings.customverticalleft3zone), DoubleFieldType(customSettings.customverticalright3, if(customSettings.customverticalright3.zone =="none") false else customSettings.customright3zone),false,true),
+                    )
             } else {
                 jsonWithUnknownKeys.decodeFromString<MutableList<DoubleFieldSettings>>(defaultDoubleFieldSettings)
             }
@@ -117,9 +125,16 @@ fun Context.streamOneFieldSettings(): Flow<MutableList<OneFieldSettings>> {
     return dataStore.data.map { settingsJson ->
         try {
             if (settingsJson[onefieldKey] != null) {
-                jsonWithUnknownKeys.decodeFromString<MutableList<OneFieldSettings>>(
+
+                val settingsList = jsonWithUnknownKeys.decodeFromString<MutableList<OneFieldSettings>>(
                     settingsJson[onefieldKey] ?: defaultOneFieldSettings
                 )
+                if (settingsList.size < 3) {
+                    settingsList.add(OneFieldSettings())
+                }
+                settingsList
+
+
             } else if (settingsJson[settingsKey] != null) {
                 val customSettings = jsonWithUnknownKeys.decodeFromString<CustomFieldSettings>(
                     settingsJson[settingsKey] ?: defaultSettings
@@ -163,3 +178,4 @@ inline fun <reified T : KarooEvent> KarooSystemService.consumerFlow(): Flow<T> {
         }
     }
 }
+

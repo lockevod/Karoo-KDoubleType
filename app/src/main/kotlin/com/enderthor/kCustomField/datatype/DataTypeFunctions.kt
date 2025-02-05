@@ -24,6 +24,7 @@ import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.getZone
 import com.enderthor.kCustomField.extensions.slopeZones
 import com.enderthor.kCustomField.extensions.streamDataFlow
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.FlowCollector
@@ -52,9 +53,13 @@ fun getColorZone(context: Context, zone: String, value: Double, userProfile: Use
 
 fun convertValue(streamState: StreamState, convert: String, unitType: UserProfile.PreferredUnit.UnitType, type: String): Double {
 
-    val value = if (type == "TYPE_ELEVATION_REMAINING_ID")
-        (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_REMAINING_ID") ?: 0.0
-    else (streamState as? StreamState.Streaming)?.dataPoint?.singleValue ?: 0.0
+    val value = when (type) {
+        "TYPE_ELEVATION_REMAINING_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_REMAINING_ID") ?: 0.0
+        "TYPE_DISTANCE_TO_DESTINATION_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_DISTANCE_TO_DESTINATION_ID") ?: 0.0
+        "TYPE_VERTICAL_SPEED_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_VERTICAL_SPEED_ID") ?: 0.0
+        "TYPE_AVERAGE_VERTICAL_SPEED_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_VERTICAL_SPEED_ID") ?: 0.0
+        else -> (streamState as? StreamState.Streaming)?.dataPoint?.singleValue ?: 0.0
+    }
 
     return when (convert) {
         "distance", "speed" -> when (unitType) {
@@ -102,17 +107,22 @@ fun createHeadwindFlow(karooSystem: KarooSystemService, period: Long): Flow<Stre
 
 fun getFieldFlow(karooSystem: KarooSystemService, field: Any, headwindFlow: Flow<StreamHeadWindData>, generalSettings: GeneralSettings,period:Long): Flow<Any> {
     return if (field is DoubleFieldType) {
-        if (field.kaction.name == "HEADWIND" && generalSettings.isheadwindenabled) headwindFlow
-        else karooSystem.streamDataFlow(field.kaction.action,period)
+        when {
+            field.kaction.name == "HEADWIND" && generalSettings.isheadwindenabled -> headwindFlow
+            //field.kaction.powerField -> karooSystem.powerBalanceCustomDataFlow(field.kaction.action,period)
+            else -> karooSystem.streamDataFlow(field.kaction.action, period)
+        }
     } else if (field is OneFieldType) {
-        if (field.kaction.name == "HEADWIND" && generalSettings.isheadwindenabled) headwindFlow
-        else karooSystem.streamDataFlow(field.kaction.action,period)
-    } else {
+        when {
+            field.kaction.name == "HEADWIND" && generalSettings.isheadwindenabled -> headwindFlow
+            //field.kaction.powerField -> karooSystem.powerBalanceCustomDataFlow(field.kaction.action,period)
+            else -> karooSystem.streamDataFlow(field.kaction.action, period)
+        }
+    } else
         throw IllegalArgumentException("Unsupported field type")
-    }
 }
 
-
+/*
 fun updateFieldState(fieldState: StreamState, fieldSettings: Any, context: Context, userProfile: UserProfile, isPaletteZwift: Boolean): Quadruple<Double, ColorProvider, ColorProvider,Boolean> {
     val (kaction, iszone) = when (fieldSettings) {
         is DoubleFieldType -> fieldSettings.kaction to fieldSettings.iszone
@@ -141,6 +151,69 @@ fun getFieldState(
         Quadruple(0.0, ColorProvider(Color.White, Color.Black), ColorProvider(Color.White, Color.Black),false)
     }
 }
+*/
+
+fun multipleStreamValues(state: StreamState, kaction: KarooAction): Pair<Double,Double>
+{
+
+    val (leftDatatype,rightDatatype,onlyfirst) = getMultiFieldsByAction(kaction)?:Triple("","",false)
+
+    var left = 0.0
+    var right= 0.0
+
+    if (state is StreamState.Streaming) {
+        left = state.dataPoint.values[leftDatatype] ?: 0.0
+        right = if(onlyfirst) 1- left
+        else state.dataPoint.values[rightDatatype] ?: 0.0
+    }
+    return when {
+        left + right != 100.0 && left > 0 -> Pair(left, 100.0 - left)
+        left + right != 100.0 && right > 0 -> Pair(100.0 - right, right)
+        left + right != 100.0 -> Pair(100.0, 0.0)
+        else -> Pair(left, right)
+    }
+}
+fun updateFieldState(fieldState: StreamState, fieldSettings: Any, context: Context, userProfile: UserProfile, isPaletteZwift: Boolean): Quintuple<Double, ColorProvider, ColorProvider,Boolean,Double> {
+
+    var value = 0.0
+    var valueRight=0.0
+
+    val (kaction, iszone) = when (fieldSettings) {
+        is DoubleFieldType -> fieldSettings.kaction to fieldSettings.iszone
+        is OneFieldType -> fieldSettings.kaction to fieldSettings.iszone
+        else -> throw IllegalArgumentException("Unsupported field type")
+    }
+
+    if (kaction.powerField) {
+        multipleStreamValues(fieldState, kaction).let { (v, vr) ->
+            value = v
+            valueRight = vr
+        }
+    } else {
+        value = convertValue(fieldState, kaction.convert, userProfile.preferredUnit.distance, kaction.action)
+    }
+   // val value = convertValue(fieldState, kaction.convert, userProfile.preferredUnit.distance, kaction.action)
+    val iconColor = getColorProvider(context, kaction, iszone)
+    val colorZone = getColorZone(context, kaction.zone, value, userProfile, isPaletteZwift).takeIf {
+        (kaction.zone == "heartRateZones" || kaction.zone == "powerZones" || kaction.zone == "slopeZones") && iszone
+    } ?: ColorProvider(Color.White, Color.Black)
+    return Quintuple(value, iconColor, colorZone,iszone,valueRight)
+}
+fun getFieldState(
+    fieldState: Any?,
+    field: Any,
+    context: Context,
+    userProfile: UserProfile,
+    isPaletteZwift: Boolean
+): Quintuple<Double, ColorProvider, ColorProvider,Boolean,Double> {
+    return if (fieldState is StreamState) {
+        updateFieldState(fieldState, field, context, userProfile, isPaletteZwift)
+    } else {
+        Quintuple(0.0, ColorProvider(Color.White, Color.Black), ColorProvider(Color.White, Color.Black),false,0.0)
+    }
+}
+
+
 
 fun <T> retryFlow(
     maxAttempts: Int = 6,
