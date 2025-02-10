@@ -1,4 +1,4 @@
-package com.enderthor.kCustomField.datatype
+/*package com.enderthor.kCustomField.datatype
 
 import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
@@ -15,6 +15,7 @@ import androidx.glance.preview.ExperimentalGlancePreviewApi
 import androidx.glance.preview.Preview
 import androidx.glance.text.*
 import androidx.glance.unit.ColorProvider
+import kotlin.String.plus
 import kotlin.math.roundToInt
 
 @Composable
@@ -44,59 +45,40 @@ fun VerticalDivider(isTopField: Boolean, fieldSize: FieldSize) {
 }
 
 @Composable
-fun IconRow(
-    icon: Int,
-    colorFilter: ColorFilter,
-    layout: FieldPosition,
-    modifier: GlanceModifier = GlanceModifier.fillMaxWidth()
-) {
+fun IconRow(icon: Int, colorFilter: ColorFilter, layout: FieldPosition) {
     Row(
-        modifier = modifier,
+        modifier = GlanceModifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalAlignment = when (layout) {
-            FieldPosition.CENTER -> Alignment.CenterHorizontally
-            FieldPosition.RIGHT -> Alignment.End
-            FieldPosition.LEFT -> Alignment.Start
+        horizontalAlignment = when (layout.name) {
+            "CENTER" -> Alignment.CenterHorizontally
+            "RIGHT" -> Alignment.End
+            else -> Alignment.Start
         }
     ) {
         Image(
             provider = ImageProvider(icon),
-            contentDescription = null,
+            contentDescription = "Icon",
             modifier = GlanceModifier.size(20.dp),
             colorFilter = colorFilter
         )
     }
 }
 
-
 @Composable
-fun NumberRow(
-    number: String,
-    zoneColor: ColorProvider,
-    layout: FieldPosition,
-    fieldSize: FieldSize,
-    onlyOne: Boolean,
-    isheadwind: Boolean = false,
-    iszone: Boolean = false,
-    textColor: ColorProvider
-) {
+fun NumberRow(number: String, zoneColor: ColorProvider, layout: FieldPosition, fieldSize: FieldSize, onlyOne: Boolean, isheadwind: Boolean, iszone: Boolean, textColor: ColorProvider) {
     val padding = if (fieldSize == FieldSize.LARGE) 8.dp else 2.dp
     val fontSize = when {
         onlyOne -> 42.sp
         number.length > 3 -> 32.sp
         else -> 38.sp
     }
-
     Row(
-        modifier = GlanceModifier
-            .fillMaxHeight()
-            .fillMaxWidth()
-            .padding(bottom = padding),
+        modifier = GlanceModifier.fillMaxHeight().fillMaxWidth().padding(bottom = padding),
         verticalAlignment = if (isheadwind) Alignment.CenterVertically else Alignment.Bottom,
-        horizontalAlignment = when (layout) {
-            FieldPosition.CENTER -> Alignment.CenterHorizontally
-            FieldPosition.RIGHT -> Alignment.End
-            FieldPosition.LEFT -> Alignment.Start
+        horizontalAlignment = when (layout.name) {
+            "CENTER" -> Alignment.CenterHorizontally
+            "RIGHT" -> Alignment.End
+            else -> Alignment.Start
         }
     ) {
         Text(
@@ -108,66 +90,47 @@ fun NumberRow(
                 color = if (iszone) textColor else ColorProvider(Color.Black, Color.White)
             )
         )
-        Spacer(
-            modifier = GlanceModifier
-                .fillMaxHeight()
-                .width(2.dp)
-                .background(zoneColor)
-        )
+       Spacer(modifier = GlanceModifier.fillMaxHeight().width(2.dp).background(zoneColor))
     }
 }
 
 
-
 @Composable
-fun OneIconRow(
-    icon: Int,
-    iconColor: ColorProvider,
-    text: String,
-    iszone: Boolean,
-    fieldSize: FieldSize
-) {
-    val isSmall = fieldSize == FieldSize.SMALL
-    val rowHeight = if (isSmall) 31.dp else 37.dp
-    val iconSize = if (isSmall) 16.dp else 20.dp
-    val fontSize = if (isSmall) 15.sp else 18.sp
-    val topPadding = if (isSmall) (-2).dp else (-1).dp
-
+fun OneIconRow(icon: Int, iconColor: ColorProvider, text:String, iszone: Boolean, fieldSize: FieldSize) {
+    //Timber.d("OneIconRow text = $text icon = $icon iconColor = $iconColor iszone = $iszone fieldSize = $fieldSize")
     Row(
-        modifier = GlanceModifier.fillMaxWidth().height(rowHeight),
+        modifier = if(fieldSize==FieldSize.SMALL) GlanceModifier.fillMaxWidth().height(31.dp) else GlanceModifier.fillMaxWidth().height(37.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(
             horizontalAlignment = Alignment.Start,
-            modifier = GlanceModifier
-                .height(if (isSmall) 20.dp else 24.dp)
-                .width(24.dp)
-        ) {
+            modifier = if(fieldSize==FieldSize.SMALL) GlanceModifier.height(20.dp).width(24.dp)else GlanceModifier.height(24.dp).width(24.dp)
+
+            ){
             Image(
                 provider = ImageProvider(icon),
-                contentDescription = null,
-                modifier = GlanceModifier.size(iconSize).padding(top = topPadding),
+                contentDescription = "Icon",
+                modifier = if(fieldSize==FieldSize.SMALL) GlanceModifier.size(16.dp).padding(top = (-2).dp) else GlanceModifier.size(20.dp).padding(top = (-1).dp),
                 colorFilter = ColorFilter.tint(iconColor)
+                //ColorFilter.tint(ColorProvider(Color.Black, Color.White))
             )
         }
-
         Column(
-            modifier = GlanceModifier
-                .height(if (isSmall) 32.dp else 36.dp)
-                .fillMaxWidth()
-                .padding(end = 3.dp),
+            modifier = if(fieldSize==FieldSize.SMALL) GlanceModifier
+                .height(32.dp).fillMaxWidth().padding(end=3.dp)else GlanceModifier
+                .height(36.dp).fillMaxWidth().padding(end=3.dp),
             horizontalAlignment = Alignment.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val displayText = text.takeIf { it.length <= 10 } ?: text.split(" ", limit = 2)
-                .let { parts -> if (parts.size > 1) "${parts[0]}\n${parts[1]}" else text }
-
+            verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = displayText,
+                text =
+                if (text.length > 10) {
+                    val parts = text.split(" ", limit = 2)
+                    if (parts.size > 1) "${parts[0]}\n${parts[1]}" else text}
+                else text,
                 maxLines = 2,
                 style = TextStyle(
                     fontWeight = FontWeight.Bold,
-                    fontSize = fontSize,
+                    fontSize = if(fieldSize==FieldSize.SMALL) 15.sp else 18.sp,
                     fontFamily = FontFamily.Monospace,
                     color = if (iszone) iconColor else ColorProvider(Color.Black, Color.White),
                     textAlign = TextAlign.End
@@ -178,48 +141,32 @@ fun OneIconRow(
 }
 
 @Composable
-fun OneNumberRow(
-    number: String,
-    layout: FieldPosition,
-    fieldSize: FieldSize,
-    textSize: Int,
-    iszone: Boolean,
-    textColor: ColorProvider,
-    ispower: Boolean,
-    secondValue: String
-) {
-    val padding = if (fieldSize == FieldSize.LARGE) 7.dp else 2.dp
-    val displayNumber = if (!ispower) {
-        number
-    } else {
-        "${number.take(3)}-${secondValue.take(3)}"
-    }
-
+fun OneNumberRow(number: String, layout: FieldPosition, fieldSize: FieldSize, textSize: Int, iszone: Boolean, textColor: ColorProvider,ispower:Boolean,secondValue:String) {
+    val padding = if (fieldSize == FieldSize.LARGE) 7.dp  else 2.dp
+    //Timber.d("OneNumberRow FieldSize = $fieldSize padding= $padding Text = $number")
+    val realNumber= if(!ispower) number else number.take(3) + "-" + secondValue.take(3)
     Row(
-        modifier = GlanceModifier
-            .fillMaxHeight()
-            .fillMaxWidth()
-            .padding(bottom = padding, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalAlignment = when (layout) {
-            FieldPosition.CENTER -> Alignment.CenterHorizontally
-            FieldPosition.RIGHT -> Alignment.End
-            FieldPosition.LEFT -> Alignment.Start
+        modifier = GlanceModifier.fillMaxHeight().fillMaxWidth().padding(bottom =padding,end=4.dp),
+        verticalAlignment = Alignment.CenterVertically ,
+        horizontalAlignment = when (layout.name) {
+            "CENTER" -> Alignment.CenterHorizontally
+            "RIGHT" -> Alignment.End
+            else -> Alignment.Start
         }
     ) {
         Text(
-            text = displayNumber,
+            text = realNumber,
             style = TextStyle(
                 fontWeight = FontWeight.Bold,
                 fontSize = textSize.sp,
                 fontFamily = FontFamily.Monospace,
                 color = if (iszone) textColor else ColorProvider(Color.Black, Color.White)
             ),
-            modifier = GlanceModifier.padding(top = -padding)
+            modifier = GlanceModifier.padding(top= -padding)
         )
     }
-}
 
+}
 
 @Composable
 fun HorizontalScreenContent(number: String, icon: Int, colorFilter: ColorProvider, layout: FieldPosition, iszone: Boolean) {
@@ -518,4 +465,4 @@ fun HeadwindDirectionDoubleType(baseBitmap: Bitmap, bearing: Int, fontSize: Int,
             )
         }
     }
-}
+}*/

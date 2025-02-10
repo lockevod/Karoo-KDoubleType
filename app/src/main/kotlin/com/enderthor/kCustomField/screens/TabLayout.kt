@@ -117,12 +117,12 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             oneFieldSettingsDerived.value.forEachIndexed { index, oneFieldSettings ->
-                if (index == 0  || (iskaroo3 && index == 1)) {
-                    if(index==1) {
+                if (index == 0  || (iskaroo3 && index >= 1)) {
+                    if(index>=1) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             "Be careful to use several custom fields simultaneously (custom and rolling) in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues",
-                            fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold
+                            fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                     }
@@ -288,11 +288,11 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
         ) {
             doubleFieldSettingsDerived.value.forEachIndexed { index, doubleFieldSettings ->
                 if (index < 3 || (iskaroo3 && index in 3..5) ) {
-                    if(index==4) {
+                    if(index>=4) {
                      Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             "Be careful to use more than 4 custom fields simultaneously in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues",
-                            fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold
+                            fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                     }

@@ -1,4 +1,4 @@
-package com.enderthor.kCustomField.datatype
+/*package com.enderthor.kCustomField.datatype
 
 import android.content.Context
 import android.util.LruCache
@@ -9,24 +9,13 @@ import androidx.glance.unit.ColorProvider
 import io.hammerhead.karooext.models.StreamState
 import io.hammerhead.karooext.models.UserProfile
 import io.hammerhead.karooext.KarooSystemService
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.conflate
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.FlowPreview
 import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.getZone
 import com.enderthor.kCustomField.extensions.slopeZones
 import com.enderthor.kCustomField.extensions.streamDataFlow
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.*
 import kotlin.random.Random
 import timber.log.Timber
 
@@ -81,6 +70,47 @@ object DataTypeCache {
     fun getStats() = "ColorZone: ${colorZoneCache.size()}/${COLOR_ZONE_CACHE_SIZE}, " +
             "ConvertValue: ${convertValueCache.size()}/${CONVERT_VALUE_CACHE_SIZE}, " +
             "ColorProvider: ${colorProviderCache.size()}/${COLOR_PROVIDER_CACHE_SIZE}"
+}
+
+object StreamMonitor {
+    const val WAIT_TIME = 30000L // 30 segundos entre comprobaciones
+    const val MAX_RETRIES = 3
+    const val RETRY_DELAY = 1000L // 1 segundo entre reintentos
+
+    data class StreamInfo(
+        var lastEmission: Long = System.currentTimeMillis(),
+        var lastCheck: Long = System.currentTimeMillis(),
+        var retryCount: Int = 0,
+        var isActive: Boolean = true
+    ) {
+        fun shouldCheck() = System.currentTimeMillis() - lastCheck >= WAIT_TIME
+
+        fun resetState() {
+            lastEmission = System.currentTimeMillis()
+            lastCheck = System.currentTimeMillis()
+            retryCount = 0
+            isActive = true
+        }
+    }
+
+    private val activeStreams = mutableMapOf<String, StreamInfo>()
+
+    fun registerStream(key: String) {
+        activeStreams[key] = StreamInfo()
+    }
+
+    fun unregisterStream(key: String) {
+        activeStreams.remove(key)
+    }
+
+    fun getStreamInfo(key: String): StreamInfo? = activeStreams[key]
+
+    fun updateStreamState(key: String, active: Boolean) {
+        activeStreams[key]?.let { info ->
+            info.isActive = active
+            if (active) info.resetState()
+        }
+    }
 }
 
 fun getColorZone(
@@ -208,31 +238,7 @@ fun createHeadwindFlow(
         .collect { emit(it) }
 }.flowOn(Dispatchers.Default)
 
-fun getFieldFlow(
-    karooSystem: KarooSystemService,
-    field: Any,
-    headwindFlow: Flow<StreamHeadWindData>,
-    generalSettings: GeneralSettings,
-    period: Long
-): Flow<Any> = flow {
-    when (field) {
-        is DoubleFieldType, is OneFieldType -> {
-            val action = when (field) {
-                is DoubleFieldType -> field.kaction
-                is OneFieldType -> field.kaction
-                else -> throw IllegalArgumentException("Invalid field type")
-            }
 
-            when {
-                action.name == "HEADWIND" && generalSettings.isheadwindenabled ->
-                    headwindFlow.collect { emit(it) }
-                else -> karooSystem.streamDataFlow(action.action, period)
-                    .collect { emit(it) }
-            }
-        }
-        else -> throw IllegalArgumentException("Unsupported field type")
-    }
-}.flowOn(Dispatchers.Default)
 
 fun multipleStreamValues(state: StreamState, kaction: KarooAction): Pair<Double, Double> {
     if (state !is StreamState.Streaming) return Pair(0.0, 0.0)
@@ -328,3 +334,5 @@ fun <T> retryFlow(
         }
     }
 }.flowOn(Dispatchers.IO)
+
+*/
