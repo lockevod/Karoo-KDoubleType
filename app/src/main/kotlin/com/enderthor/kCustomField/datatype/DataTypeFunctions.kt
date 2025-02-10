@@ -1,3 +1,4 @@
+// DataTypeFunctions.kt
 package com.enderthor.kCustomField.datatype
 
 import android.content.Context
@@ -29,6 +30,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.FlowCollector
 import kotlin.random.Random
 import timber.log.Timber
+import kotlinx.coroutines.flow.transform
+import kotlinx.coroutines.flow.takeWhile
+import kotlinx.coroutines.flow.map
+import java.util.concurrent.atomic.AtomicLong
+
+private const val RETRY_CHECK_STREAMS = 3
+private const val WAIT_STREAMS = 120000L // 120 seconds
+private const val STREAM_TIMEOUT = 15000L // 15 seconds
 
 object DataTypeCache {
     private const val COLOR_ZONE_CACHE_SIZE = 100
@@ -208,6 +217,19 @@ fun createHeadwindFlow(
         .collect { emit(it) }
 }.flowOn(Dispatchers.Default)
 
+@OptIn(FlowPreview::class)
+private suspend fun <T> Flow<T>.monitorStream(
+    fieldName: String,
+    lastEmissionTime: AtomicLong
+): Flow<T> = transform { value ->
+    val currentTime = System.currentTimeMillis()
+    lastEmissionTime.set(currentTime)
+    emit(value)
+}.catch { e ->
+    Timber.e(e, "Stream error in $fieldName")
+    throw e
+}
+
 fun getFieldFlow(
     karooSystem: KarooSystemService,
     field: Any,
@@ -215,22 +237,73 @@ fun getFieldFlow(
     generalSettings: GeneralSettings,
     period: Long
 ): Flow<Any> = flow {
-    when (field) {
-        is DoubleFieldType, is OneFieldType -> {
-            val action = when (field) {
-                is DoubleFieldType -> field.kaction
-                is OneFieldType -> field.kaction
-                else -> throw IllegalArgumentException("Invalid field type")
+    val lastEmissionTime = AtomicLong(System.currentTimeMillis())
+    var retryCount = 0
+    var lastCheckTime = 0L
+
+    while (true) {
+        try {
+            val streamFlow = when (field) {
+                is DoubleFieldType, is OneFieldType -> {
+                    val action = when (field) {
+                        is DoubleFieldType -> field.kaction
+                        is OneFieldType -> field.kaction
+                        else -> throw IllegalArgumentException("Invalid field type")
+                    }
+
+                    when {
+                        action.name == "HEADWIND" && generalSettings.isheadwindenabled ->
+                            headwindFlow.monitorStream("Headwind", lastEmissionTime)
+                        else -> karooSystem.streamDataFlow(action.action, period)
+                            .monitorStream(action.label, lastEmissionTime)
+                    }
+                }
+                else -> throw IllegalArgumentException("Unsupported field type")
             }
 
-            when {
-                action.name == "HEADWIND" && generalSettings.isheadwindenabled ->
-                    headwindFlow.collect { emit(it) }
-                else -> karooSystem.streamDataFlow(action.action, period)
-                    .collect { emit(it) }
+            streamFlow
+                .map { state ->
+                    when (state) {
+                        is StreamState.Idle, is StreamState.NotAvailable -> {
+                            Timber.d("Stream in inactive state (${state::class.simpleName}), waiting...")
+                            delay(WAIT_STREAMS)
+                            state
+                        }
+                        else -> state
+                    }
+                }
+                .takeWhile {
+                    val currentTime = System.currentTimeMillis()
+                    val timeSinceLastEmission = currentTime - lastEmissionTime.get()
+
+                    if (timeSinceLastEmission > STREAM_TIMEOUT && currentTime - lastCheckTime > WAIT_STREAMS) {
+                        lastCheckTime = currentTime
+                        if (retryCount < RETRY_CHECK_STREAMS) {
+                            retryCount++
+                            Timber.w("Stream timeout detected, attempt $retryCount/$RETRY_CHECK_STREAMS")
+                            false
+                        } else {
+                            Timber.e("Max retries reached, waiting before next check")
+                            delay(WAIT_STREAMS)
+                            retryCount = 0
+                            false
+                        }
+                    } else {
+                        true
+                    }
+                }
+                .collect { emit(it) }
+
+        } catch (e: Exception) {
+            Timber.e(e, "Error in stream flow")
+            if (retryCount < RETRY_CHECK_STREAMS) {
+                retryCount++
+                delay(1000)
+            } else {
+                retryCount = 0
+                delay(WAIT_STREAMS)
             }
         }
-        else -> throw IllegalArgumentException("Unsupported field type")
     }
 }.flowOn(Dispatchers.Default)
 
