@@ -25,6 +25,8 @@ import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.getZone
 import com.enderthor.kCustomField.extensions.slopeZones
 import com.enderthor.kCustomField.extensions.streamDataFlow
+import io.hammerhead.karooext.models.DataPoint
+import io.hammerhead.karooext.models.DataType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.FlowCollector
@@ -34,6 +36,7 @@ import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.map
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.coroutines.cancellation.CancellationException
 
 private const val RETRY_CHECK_STREAMS = 3
 private const val WAIT_STREAMS = 120000L // 120 seconds
@@ -44,6 +47,8 @@ object DataTypeCache {
     private const val CONVERT_VALUE_CACHE_SIZE = 200
     private const val COLOR_PROVIDER_CACHE_SIZE = 50
     const val CACHE_TTL = 60000L // 1 minuto
+    private const val INITIAL_CACHE_DELAY = 180000L // 3 minutos
+    private val startTime = System.currentTimeMillis()
 
     data class CacheEntry<T>(
         val value: T,
@@ -52,9 +57,13 @@ object DataTypeCache {
         fun isValid() = System.currentTimeMillis() - timestamp < CACHE_TTL
     }
 
-    internal val colorZoneCache = LruCache<String, CacheEntry<ColorProvider>>(COLOR_ZONE_CACHE_SIZE)
-    internal val convertValueCache = LruCache<String, CacheEntry<Double>>(CONVERT_VALUE_CACHE_SIZE)
-    internal val colorProviderCache = LruCache<String, CacheEntry<ColorProvider>>(COLOR_PROVIDER_CACHE_SIZE)
+    private val colorZoneCache = LruCache<String, CacheEntry<ColorProvider>>(COLOR_ZONE_CACHE_SIZE)
+    private val convertValueCache = LruCache<String, CacheEntry<Double>>(CONVERT_VALUE_CACHE_SIZE)
+    private val colorProviderCache = LruCache<String, CacheEntry<ColorProvider>>(COLOR_PROVIDER_CACHE_SIZE)
+
+    private fun isCacheEnabled(): Boolean {
+        return System.currentTimeMillis() - startTime > INITIAL_CACHE_DELAY
+    }
 
     fun clearCaches() {
         colorZoneCache.evictAll()
@@ -64,32 +73,50 @@ object DataTypeCache {
     }
 
     fun putColorZone(key: String, value: ColorProvider) {
-        colorZoneCache.put(key, CacheEntry(value))
+        if (isCacheEnabled()) {
+            colorZoneCache.put(key, CacheEntry(value))
+        }
     }
 
     fun getColorZone(key: String): CacheEntry<ColorProvider>? {
-        return colorZoneCache.get(key)
+        return if (isCacheEnabled()) {
+            colorZoneCache.get(key)?.takeIf { it.isValid() }
+        } else null
     }
 
     fun putConvertValue(key: String, value: Double) {
-        convertValueCache.put(key, CacheEntry(value))
+        if (isCacheEnabled()) {
+            convertValueCache.put(key, CacheEntry(value))
+        }
     }
 
     fun getConvertValue(key: String): CacheEntry<Double>? {
-        return convertValueCache.get(key)
+        return if (isCacheEnabled()) {
+            convertValueCache.get(key)?.takeIf { it.isValid() }
+        } else null
     }
 
     fun putColorProvider(key: String, value: ColorProvider) {
-        colorProviderCache.put(key, CacheEntry(value))
+        if (isCacheEnabled()) {
+            colorProviderCache.put(key, CacheEntry(value))
+        }
     }
 
     fun getColorProvider(key: String): CacheEntry<ColorProvider>? {
-        return colorProviderCache.get(key)
+        return if (isCacheEnabled()) {
+            colorProviderCache.get(key)?.takeIf { it.isValid() }
+        } else null
     }
 
-    fun getStats() = "ColorZone: ${colorZoneCache.size()}/${COLOR_ZONE_CACHE_SIZE}, " +
-            "ConvertValue: ${convertValueCache.size()}/${CONVERT_VALUE_CACHE_SIZE}, " +
-            "ColorProvider: ${colorProviderCache.size()}/${COLOR_PROVIDER_CACHE_SIZE}"
+    fun getStats(): String {
+        return if (isCacheEnabled()) {
+            "ColorZone: ${colorZoneCache.size()}/$COLOR_ZONE_CACHE_SIZE, " +
+                    "ConvertValue: ${convertValueCache.size()}/$CONVERT_VALUE_CACHE_SIZE, " +
+                    "ColorProvider: ${colorProviderCache.size()}/$COLOR_PROVIDER_CACHE_SIZE"
+        } else {
+            "Cache disabled (initial delay period)"
+        }
+    }
 }
 
 fun getColorZone(
@@ -230,6 +257,138 @@ private suspend fun <T> Flow<T>.monitorStream(
     throw e
 }
 
+
+fun getFieldFlow(
+    karooSystem: KarooSystemService,
+    field: Any,
+    headwindFlow: Flow<StreamHeadWindData>,
+    generalSettings: GeneralSettings,
+    period: Long
+): Flow<Any> = flow {
+    val lastEmissionTime = AtomicLong(System.currentTimeMillis())
+    var retryCount = 0
+    var lastCheckTime = 0L
+    var isFirstEmission = true
+
+    while (true) {
+        try {
+            val streamFlow = when (field) {
+                is DoubleFieldType, is OneFieldType -> {
+                    val action = when (field) {
+                        is DoubleFieldType -> field.kaction
+                        is OneFieldType -> field.kaction
+                        else -> throw IllegalArgumentException("Invalid field type")
+                    }
+
+                    when {
+                        action.name == "HEADWIND" && generalSettings.isheadwindenabled ->
+                            headwindFlow.monitorStream("Headwind", lastEmissionTime)
+                        else -> karooSystem.streamDataFlow(action.action, period)
+                            .monitorStream(action.label, lastEmissionTime)
+                    }
+                }
+                else -> throw IllegalArgumentException("Unsupported field type")
+            }
+
+            // Asegurar emisión inicial
+            if (isFirstEmission) {
+                emit(StreamState.Streaming(DataPoint(
+                    dataTypeId = when (field) {
+                        is DoubleFieldType -> field.kaction.action
+                        is OneFieldType -> field.kaction.action
+                        else -> ""
+                    },
+                    values = mapOf(DataType.Field.SINGLE to 0.0)
+                )))
+                isFirstEmission = false
+            }
+
+            streamFlow
+                .map { state ->
+                    when (state) {
+                        is StreamState.Idle, is StreamState.NotAvailable -> {
+                            Timber.d("Stream in inactive state (${state::class.simpleName}), waiting...")
+                            // Emitir último valor conocido o valor por defecto
+                            emit(state)
+                            delay(WAIT_STREAMS)
+                            state
+                        }
+                        else -> state
+                    }
+                }
+                .distinctUntilChanged() // Evitar emisiones duplicadas
+                .onStart {
+                    // Emitir estado inicial
+                    emit(StreamState.Streaming(DataPoint(
+                        dataTypeId = when (field) {
+                            is DoubleFieldType -> field.kaction.action
+                            is OneFieldType -> field.kaction.action
+                            else -> ""
+                        },
+                        values = mapOf(DataType.Field.SINGLE to 0.0)
+                    )))
+                }
+                .takeWhile {
+                    val currentTime = System.currentTimeMillis()
+                    val timeSinceLastEmission = currentTime - lastEmissionTime.get()
+
+                    if (timeSinceLastEmission > STREAM_TIMEOUT && currentTime - lastCheckTime > WAIT_STREAMS) {
+                        lastCheckTime = currentTime
+                        if (retryCount < RETRY_CHECK_STREAMS) {
+                            retryCount++
+                            Timber.w("Stream timeout detected, attempt $retryCount/$RETRY_CHECK_STREAMS")
+                            false
+                        } else {
+                            Timber.e("Max retries reached, waiting before next check")
+                            delay(WAIT_STREAMS)
+                            retryCount = 0
+                            false
+                        }
+                    } else {
+                        true
+                    }
+                }
+                .catch { e ->
+                    when (e) {
+                        is CancellationException -> {
+                            Timber.d("Flow cancelled, restarting stream")
+                            delay(1000)
+                            throw e
+                        }
+                        else -> throw e
+                    }
+                }
+                .collect {
+                    emit(it)
+                }
+
+        } catch (e: Exception) {
+            when (e) {
+                is CancellationException -> {
+                    Timber.d("Stream cancelled, attempting restart after brief delay")
+                    delay(1000)
+                    continue
+                }
+                else -> {
+                    Timber.e(e, "Error in stream flow")
+                    if (retryCount < RETRY_CHECK_STREAMS) {
+                        retryCount++
+                        delay(1000)
+                    } else {
+                        retryCount = 0
+                        delay(WAIT_STREAMS)
+                    }
+                }
+            }
+        }
+    }
+}.flowOn(Dispatchers.Default)
+    .catch { e ->
+        Timber.e(e, "Error in outer flow")
+        throw e
+    }
+
+/*
 fun getFieldFlow(
     karooSystem: KarooSystemService,
     field: Any,
@@ -292,20 +451,42 @@ fun getFieldFlow(
                         true
                     }
                 }
+                .catch { e ->
+                    when (e) {
+                        is CancellationException -> {
+                            Timber.d("Flow cancelled, restarting stream")
+                            delay(1000) // Pequeña pausa antes de reiniciar
+                            throw e // Propagar para que el retry externo lo maneje
+                        }
+                        else -> throw e
+                    }
+                }
                 .collect { emit(it) }
 
         } catch (e: Exception) {
-            Timber.e(e, "Error in stream flow")
-            if (retryCount < RETRY_CHECK_STREAMS) {
-                retryCount++
-                delay(1000)
-            } else {
-                retryCount = 0
-                delay(WAIT_STREAMS)
+            when (e) {
+                is CancellationException -> {
+                    Timber.d("Stream cancelled, attempting restart after brief delay")
+                    delay(1000)
+                    continue
+                }
+                else -> {
+                    Timber.e(e, "Error in stream flow")
+                    if (retryCount < RETRY_CHECK_STREAMS) {
+                        retryCount++
+                        delay(1000)
+                    } else {
+                        retryCount = 0
+                        delay(WAIT_STREAMS)
+                    }
+                }
             }
         }
     }
-}.flowOn(Dispatchers.Default)
+}.flowOn(Dispatchers.Default).catch { e ->
+    Timber.e(e, "Error in outer flow")
+    throw e
+}*/
 
 fun multipleStreamValues(state: StreamState, kaction: KarooAction): Pair<Double, Double> {
     if (state !is StreamState.Streaming) return Pair(0.0, 0.0)
