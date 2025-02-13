@@ -319,39 +319,57 @@ fun NotSupported(overlayText: String, fontSize: Int)
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , iconColor: ColorProvider, zonecolor: ColorProvider, fieldsize: FieldSize, iskaroo3: Boolean, clayout: FieldPosition,windtext: String, winddiff: Int, baseBitmap: Bitmap,selector: Boolean,textSize:Int,iszone: Boolean,ispreview:Boolean, secondValue:Double)
-{
-    val icon = action.icon
-    val label = action.label
-    val ispower= action.powerField
-
-    if(selector || (fieldsize == FieldSize.LARGE || fieldsize == FieldSize.EXTRA_LARGE))
+fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , iconColor: ColorProvider, zonecolor: ColorProvider, fieldsize: FieldSize, iskaroo3: Boolean, clayout: FieldPosition,windtext: String, winddiff: Int, baseBitmap: Bitmap,selector: Boolean,textSize:Int,iszone: Boolean,ispreview:Boolean, secondValue:Double, isinit: Boolean=false) {
+    if (!isinit)
     {
-        val number = formatNumber(dNumber, isInt)
-        val numberSecond = formatNumber(secondValue, isInt)
 
-        Box(modifier = GlanceModifier.fillMaxSize()) {
-            Row(modifier =  if (iskaroo3) GlanceModifier.fillMaxSize().cornerRadius(6.dp) else GlanceModifier.fillMaxSize())
-            {
-                Column(modifier = GlanceModifier.defaultWeight().background(zonecolor)) {
-                    when (fieldsize) {
+        val icon = action.icon
+        val label = action.label
+        val ispower = action.powerField
 
-                        FieldSize.SMALL -> Spacer(modifier = GlanceModifier.height(2.dp))
-                        FieldSize.MEDIUM -> Spacer(modifier = GlanceModifier.height(4.dp))
-                        else -> Spacer(modifier = GlanceModifier.height(1.dp))
+        if (selector || (fieldsize == FieldSize.LARGE || fieldsize == FieldSize.EXTRA_LARGE)) {
+            val number = formatNumber(dNumber, isInt)
+            val numberSecond = formatNumber(secondValue, isInt)
 
-                    }
-                    if (fieldsize == FieldSize.LARGE || fieldsize == FieldSize.EXTRA_LARGE) NotSupported("Size Not Supported", 24)
-                    else {
-                        OneIconRow(icon, iconColor, label.uppercase(),iszone,fieldsize)
-                        //Spacer(modifier = GlanceModifier.height(1.dp))
-                        OneNumberRow(number.take(6), clayout, fieldsize, (textSize * (if (ispreview) 0.8 else 1.0)).roundToInt(),iszone,iconColor,ispower,numberSecond.take(3))
+            Box(modifier = GlanceModifier.fillMaxSize()) {
+                Row(
+                    modifier = if (iskaroo3) GlanceModifier.fillMaxSize()
+                        .cornerRadius(6.dp) else GlanceModifier.fillMaxSize()
+                )
+                {
+                    Column(modifier = GlanceModifier.defaultWeight().background(zonecolor)) {
+                        when (fieldsize) {
+
+                            FieldSize.SMALL -> Spacer(modifier = GlanceModifier.height(2.dp))
+                            FieldSize.MEDIUM -> Spacer(modifier = GlanceModifier.height(4.dp))
+                            else -> Spacer(modifier = GlanceModifier.height(1.dp))
+
+                        }
+                        if (fieldsize == FieldSize.LARGE || fieldsize == FieldSize.EXTRA_LARGE) NotSupported(
+                            "Size Not Supported",
+                            24
+                        )
+                        else {
+                            OneIconRow(icon, iconColor, label.uppercase(), iszone, fieldsize)
+                            //Spacer(modifier = GlanceModifier.height(1.dp))
+                            OneNumberRow(
+                                number.take(6),
+                                clayout,
+                                fieldsize,
+                                (textSize * (if (ispreview) 0.8 else 1.0)).roundToInt(),
+                                iszone,
+                                iconColor,
+                                ispower,
+                                numberSecond.take(3)
+                            )
+                        }
                     }
                 }
             }
-        }
+        } else HeadwindDirection(baseBitmap, winddiff, textSize, windtext)
+    } else {
+        NotSupported("Searching...", textSize)
     }
-    else HeadwindDirection(baseBitmap, winddiff, textSize, windtext)
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
@@ -361,7 +379,7 @@ fun DoubleScreenSelector(
     selector: Int, showH: Boolean, leftNumber: Double, rightNumber: Double,leftField: DoubleFieldType, rightField: DoubleFieldType,
     iconColorLeft: ColorProvider, iconColorRight: ColorProvider,
     zoneColorLeft: ColorProvider, zoneColorRight: ColorProvider, fieldSize: FieldSize,
-    isKaroo3: Boolean, layout: FieldPosition, text: String, windDirection: Int, baseBitmap: Bitmap, isdivider:Boolean,  leftNumberSecond:Double = 0.0, rightNumberSecond:Double = 0.0
+    isKaroo3: Boolean, layout: FieldPosition, text: String, windDirection: Int, baseBitmap: Bitmap, isdivider:Boolean,  leftNumberSecond:Double = 0.0, rightNumberSecond:Double = 0.0, isinit:Boolean = false
 ) {
 
 
@@ -378,38 +396,114 @@ fun DoubleScreenSelector(
     val isLeftInt= (!(leftField.kaction.convert == "speed" || leftField.kaction.zone == "slopeZones" || leftField.kaction.label == "IF")) || (ispowerLeft)
     val isRightInt= !(rightField.kaction.convert == "speed" || rightField.kaction.zone == "slopeZones" || rightField.kaction.label == "IF")  || (ispowerRight)
 
+    if (!isinit) {
 
-    val newLeft = if (ispowerLeft) (formatNumber(leftNumber, true) + "-" + formatNumber(leftNumberSecond, true))
-    else if (!showH) formatNumber(leftNumber, isLeftInt)
-    else when (selector) {
-            0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString().take(3) else formatNumber(leftNumber, true)
+        val newLeft = if (ispowerLeft) (formatNumber(leftNumber, true) + "-" + formatNumber(
+            leftNumberSecond,
+            true
+        ))
+        else if (!showH) formatNumber(leftNumber, isLeftInt)
+        else when (selector) {
+            0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString()
+                .take(3) else formatNumber(leftNumber, true)
+
             else -> "0.0"
         }
 
 
-    val newRight = if (ispowerRight) (formatNumber(rightNumber, true) + "-" + formatNumber(rightNumberSecond, true))
-    else if (!showH) formatNumber(rightNumber, isRightInt)
-    else when (selector) {
-            1, 3 -> if (rightLabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString().take(3) else formatNumber(rightNumber, true)
+        val newRight = if (ispowerRight) (formatNumber(rightNumber, true) + "-" + formatNumber(
+            rightNumberSecond,
+            true
+        ))
+        else if (!showH) formatNumber(rightNumber, isRightInt)
+        else when (selector) {
+            1, 3 -> if (rightLabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString()
+                .take(3) else formatNumber(rightNumber, true)
+
             else -> "0.0"
         }
 
 
-    val icon1 = if (selector == 0 || selector == 3) leftIcon else 1
-    val icon2 = if (selector == 1 || selector == 3) rightIcon else 1
-    val iconColor1 = if (selector == 0 || selector == 3) iconColorLeft else ColorProvider(Color.Black, Color.Black)
-    val iconColor2 = if (selector == 1 || selector == 3) iconColorRight else ColorProvider(Color.Black, Color.Black)
-    val zoneColor1 = if (selector == 0 || selector == 3) zoneColorLeft else ColorProvider(Color.Black, Color.Black)
-    val zoneColor2 = if (selector == 1 || selector == 3) zoneColorRight else ColorProvider(Color.Black, Color.Black)
+        val icon1 = if (selector == 0 || selector == 3) leftIcon else 1
+        val icon2 = if (selector == 1 || selector == 3) rightIcon else 1
+        val iconColor1 = if (selector == 0 || selector == 3) iconColorLeft else ColorProvider(
+            Color.Black,
+            Color.Black
+        )
+        val iconColor2 = if (selector == 1 || selector == 3) iconColorRight else ColorProvider(
+            Color.Black,
+            Color.Black
+        )
+        val zoneColor1 = if (selector == 0 || selector == 3) zoneColorLeft else ColorProvider(
+            Color.Black,
+            Color.Black
+        )
+        val zoneColor2 = if (selector == 1 || selector == 3) zoneColorRight else ColorProvider(
+            Color.Black,
+            Color.Black
+        )
 
-   if (!showH || ispowerLeft || ispowerRight) {
-        when (fieldSize) {
-            FieldSize.SMALL -> DoubleTypesVerticalScreenSmall(newLeft, newRight, leftIcon, rightIcon, iconColorLeft, iconColorRight, zoneColorLeft, zoneColorRight, isKaroo3, layout,iszoneLeft,iszoneRight,isdivider)
-            FieldSize.MEDIUM, FieldSize.LARGE -> DoubleTypesVerticalScreenBig(newLeft, newRight, leftIcon, rightIcon, iconColorLeft, iconColorRight, zoneColorLeft, zoneColorRight, isKaroo3, layout,iszoneLeft,iszoneRight,isdivider)
-            FieldSize.EXTRA_LARGE -> NotSupported("Size Not Supported", 24)
+        if (!showH || ispowerLeft || ispowerRight) {
+            when (fieldSize) {
+                FieldSize.SMALL -> DoubleTypesVerticalScreenSmall(
+                    newLeft,
+                    newRight,
+                    leftIcon,
+                    rightIcon,
+                    iconColorLeft,
+                    iconColorRight,
+                    zoneColorLeft,
+                    zoneColorRight,
+                    isKaroo3,
+                    layout,
+                    iszoneLeft,
+                    iszoneRight,
+                    isdivider
+                )
+
+                FieldSize.MEDIUM, FieldSize.LARGE -> DoubleTypesVerticalScreenBig(
+                    newLeft,
+                    newRight,
+                    leftIcon,
+                    rightIcon,
+                    iconColorLeft,
+                    iconColorRight,
+                    zoneColorLeft,
+                    zoneColorRight,
+                    isKaroo3,
+                    layout,
+                    iszoneLeft,
+                    iszoneRight,
+                    isdivider
+                )
+
+                FieldSize.EXTRA_LARGE -> NotSupported("Size Not Supported", 24)
+            }
+        } else {
+            DoubleTypesScreenHorizontal(
+                newLeft,
+                newRight,
+                icon1,
+                icon2,
+                iconColor1,
+                iconColor2,
+                zoneColor1,
+                zoneColor2,
+                fieldSize,
+                isKaroo3,
+                layout,
+                selector,
+                text,
+                windDirection,
+                baseBitmap,
+                iszoneLeft,
+                iszoneRight,
+                isdivider
+            )
         }
-    } else {
-        DoubleTypesScreenHorizontal(newLeft, newRight, icon1, icon2, iconColor1, iconColor2, zoneColor1, zoneColor2, fieldSize, isKaroo3, layout, selector, text, windDirection, baseBitmap,iszoneLeft,iszoneRight,isdivider)
+    }
+    else {
+        NotSupported("Searching...", 21)
     }
 }
 

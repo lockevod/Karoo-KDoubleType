@@ -2,7 +2,6 @@
 package com.enderthor.kCustomField.datatype
 
 import android.content.Context
-import android.util.LruCache
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import androidx.glance.color.ColorProvider
@@ -38,86 +37,10 @@ import kotlinx.coroutines.flow.map
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.cancellation.CancellationException
 
+
 private const val RETRY_CHECK_STREAMS = 3
 private const val WAIT_STREAMS = 120000L // 120 seconds
 private const val STREAM_TIMEOUT = 15000L // 15 seconds
-
-object DataTypeCache {
-    private const val COLOR_ZONE_CACHE_SIZE = 100
-    private const val CONVERT_VALUE_CACHE_SIZE = 200
-    private const val COLOR_PROVIDER_CACHE_SIZE = 50
-    const val CACHE_TTL = 60000L // 1 minuto
-    private const val INITIAL_CACHE_DELAY = 180000L // 3 minutos
-    private val startTime = System.currentTimeMillis()
-
-    data class CacheEntry<T>(
-        val value: T,
-        val timestamp: Long = System.currentTimeMillis()
-    ) {
-        fun isValid() = System.currentTimeMillis() - timestamp < CACHE_TTL
-    }
-
-    private val colorZoneCache = LruCache<String, CacheEntry<ColorProvider>>(COLOR_ZONE_CACHE_SIZE)
-    private val convertValueCache = LruCache<String, CacheEntry<Double>>(CONVERT_VALUE_CACHE_SIZE)
-    private val colorProviderCache = LruCache<String, CacheEntry<ColorProvider>>(COLOR_PROVIDER_CACHE_SIZE)
-
-    private fun isCacheEnabled(): Boolean {
-        return System.currentTimeMillis() - startTime > INITIAL_CACHE_DELAY
-    }
-
-    fun clearCaches() {
-        colorZoneCache.evictAll()
-        convertValueCache.evictAll()
-        colorProviderCache.evictAll()
-        Timber.d("All caches cleared")
-    }
-
-    fun putColorZone(key: String, value: ColorProvider) {
-        if (isCacheEnabled()) {
-            colorZoneCache.put(key, CacheEntry(value))
-        }
-    }
-
-    fun getColorZone(key: String): CacheEntry<ColorProvider>? {
-        return if (isCacheEnabled()) {
-            colorZoneCache.get(key)?.takeIf { it.isValid() }
-        } else null
-    }
-
-    fun putConvertValue(key: String, value: Double) {
-        if (isCacheEnabled()) {
-            convertValueCache.put(key, CacheEntry(value))
-        }
-    }
-
-    fun getConvertValue(key: String): CacheEntry<Double>? {
-        return if (isCacheEnabled()) {
-            convertValueCache.get(key)?.takeIf { it.isValid() }
-        } else null
-    }
-
-    fun putColorProvider(key: String, value: ColorProvider) {
-        if (isCacheEnabled()) {
-            colorProviderCache.put(key, CacheEntry(value))
-        }
-    }
-
-    fun getColorProvider(key: String): CacheEntry<ColorProvider>? {
-        return if (isCacheEnabled()) {
-            colorProviderCache.get(key)?.takeIf { it.isValid() }
-        } else null
-    }
-
-    fun getStats(): String {
-        return if (isCacheEnabled()) {
-            "ColorZone: ${colorZoneCache.size()}/$COLOR_ZONE_CACHE_SIZE, " +
-                    "ConvertValue: ${convertValueCache.size()}/$CONVERT_VALUE_CACHE_SIZE, " +
-                    "ColorProvider: ${colorProviderCache.size()}/$COLOR_PROVIDER_CACHE_SIZE"
-        } else {
-            "Cache disabled (initial delay period)"
-        }
-    }
-}
 
 fun getColorZone(
     context: Context,
@@ -126,14 +49,7 @@ fun getColorZone(
     userProfile: UserProfile,
     isPaletteZwift: Boolean
 ): ColorProvider {
-    val cacheKey = "$zone-$value-$isPaletteZwift-${userProfile.hashCode()}"
 
-    DataTypeCache.getColorZone(cacheKey)?.let { cached ->
-        if (cached.isValid()) {
-            Timber.v("ColorZone cache hit: $cacheKey")
-            return cached.value
-        }
-    }
 
     val zoneData = when (zone) {
         "heartRateZones" -> userProfile.heartRateZones
@@ -148,10 +64,7 @@ fun getColorZone(
     return ColorProvider(
         day = Color(ContextCompat.getColor(context, colorResource)),
         night = Color(ContextCompat.getColor(context, colorResource))
-    ).also { color ->
-        DataTypeCache.putColorZone(cacheKey, color)
-        Timber.v("ColorZone cached: $cacheKey")
-    }
+    )
 }
 
 fun convertValue(
@@ -160,14 +73,7 @@ fun convertValue(
     unitType: UserProfile.PreferredUnit.UnitType,
     type: String
 ): Double {
-    val cacheKey = "${streamState.hashCode()}-$convert-$unitType-$type"
 
-    DataTypeCache.getConvertValue(cacheKey)?.let { cached ->
-        if (cached.isValid()) {
-            Timber.v("ConvertValue cache hit: $cacheKey")
-            return cached.value
-        }
-    }
 
     val value = when (type) {
         "TYPE_ELEVATION_REMAINING_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_REMAINING_ID")
@@ -187,21 +93,11 @@ fun convertValue(
         else -> value
     }
 
-    return convertedValue.also { result ->
-        DataTypeCache.putConvertValue(cacheKey, result)
-        Timber.v("ConvertValue cached: $cacheKey")
-    }
+    return convertedValue
 }
 
 fun getColorProvider(context: Context, action: KarooAction, colorzone: Boolean): ColorProvider {
-    val cacheKey = "${action.hashCode()}-$colorzone"
 
-    DataTypeCache.getColorProvider(cacheKey)?.let { cached ->
-        if (cached.isValid()) {
-            Timber.v("ColorProvider cache hit: $cacheKey")
-            return cached.value
-        }
-    }
 
     return (if (colorzone) {
         ColorProvider(Color.Black, Color.Black)
@@ -210,10 +106,7 @@ fun getColorProvider(context: Context, action: KarooAction, colorzone: Boolean):
             day = Color(ContextCompat.getColor(context, action.colorday)),
             night = Color(ContextCompat.getColor(context, action.colornight))
         )
-    }).also { color ->
-        DataTypeCache.putColorProvider(cacheKey, color)
-        Timber.v("ColorProvider cached: $cacheKey")
-    }
+    })
 }
 
 fun getFieldSize(size: Int): FieldSize {
@@ -388,106 +281,6 @@ fun getFieldFlow(
         throw e
     }
 
-/*
-fun getFieldFlow(
-    karooSystem: KarooSystemService,
-    field: Any,
-    headwindFlow: Flow<StreamHeadWindData>,
-    generalSettings: GeneralSettings,
-    period: Long
-): Flow<Any> = flow {
-    val lastEmissionTime = AtomicLong(System.currentTimeMillis())
-    var retryCount = 0
-    var lastCheckTime = 0L
-
-    while (true) {
-        try {
-            val streamFlow = when (field) {
-                is DoubleFieldType, is OneFieldType -> {
-                    val action = when (field) {
-                        is DoubleFieldType -> field.kaction
-                        is OneFieldType -> field.kaction
-                        else -> throw IllegalArgumentException("Invalid field type")
-                    }
-
-                    when {
-                        action.name == "HEADWIND" && generalSettings.isheadwindenabled ->
-                            headwindFlow.monitorStream("Headwind", lastEmissionTime)
-                        else -> karooSystem.streamDataFlow(action.action, period)
-                            .monitorStream(action.label, lastEmissionTime)
-                    }
-                }
-                else -> throw IllegalArgumentException("Unsupported field type")
-            }
-
-            streamFlow
-                .map { state ->
-                    when (state) {
-                        is StreamState.Idle, is StreamState.NotAvailable -> {
-                            Timber.d("Stream in inactive state (${state::class.simpleName}), waiting...")
-                            delay(WAIT_STREAMS)
-                            state
-                        }
-                        else -> state
-                    }
-                }
-                .takeWhile {
-                    val currentTime = System.currentTimeMillis()
-                    val timeSinceLastEmission = currentTime - lastEmissionTime.get()
-
-                    if (timeSinceLastEmission > STREAM_TIMEOUT && currentTime - lastCheckTime > WAIT_STREAMS) {
-                        lastCheckTime = currentTime
-                        if (retryCount < RETRY_CHECK_STREAMS) {
-                            retryCount++
-                            Timber.w("Stream timeout detected, attempt $retryCount/$RETRY_CHECK_STREAMS")
-                            false
-                        } else {
-                            Timber.e("Max retries reached, waiting before next check")
-                            delay(WAIT_STREAMS)
-                            retryCount = 0
-                            false
-                        }
-                    } else {
-                        true
-                    }
-                }
-                .catch { e ->
-                    when (e) {
-                        is CancellationException -> {
-                            Timber.d("Flow cancelled, restarting stream")
-                            delay(1000) // Pequeña pausa antes de reiniciar
-                            throw e // Propagar para que el retry externo lo maneje
-                        }
-                        else -> throw e
-                    }
-                }
-                .collect { emit(it) }
-
-        } catch (e: Exception) {
-            when (e) {
-                is CancellationException -> {
-                    Timber.d("Stream cancelled, attempting restart after brief delay")
-                    delay(1000)
-                    continue
-                }
-                else -> {
-                    Timber.e(e, "Error in stream flow")
-                    if (retryCount < RETRY_CHECK_STREAMS) {
-                        retryCount++
-                        delay(1000)
-                    } else {
-                        retryCount = 0
-                        delay(WAIT_STREAMS)
-                    }
-                }
-            }
-        }
-    }
-}.flowOn(Dispatchers.Default).catch { e ->
-    Timber.e(e, "Error in outer flow")
-    throw e
-}*/
-
 fun multipleStreamValues(state: StreamState, kaction: KarooAction): Pair<Double, Double> {
     if (state !is StreamState.Streaming) return Pair(0.0, 0.0)
 
@@ -568,7 +361,11 @@ fun <T> retryFlow(
         } catch (e: Throwable) {
             when (e) {
                 is IndexOutOfBoundsException, is Exception -> {
-                    Timber.e(e, "Error en attempt $attempts")
+                    if (e is CancellationException) {
+                        Timber.d("Job cancelled during attempt $attempts")
+                    } else {
+                        Timber.e(e, "Error en attempt $attempts")
+                    }
                     attempts++
                     if (attempts >= maxAttempts) {
                         onFailure(attempts, e)

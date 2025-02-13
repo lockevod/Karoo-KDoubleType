@@ -2,8 +2,6 @@ package com.enderthor.kCustomField.datatype
 
 import android.content.Context
 import android.graphics.BitmapFactory
-import android.util.LruCache
-import android.widget.RemoteViews
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
@@ -30,7 +28,6 @@ import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.Job
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.DataTypeImpl
@@ -66,21 +63,6 @@ abstract class CustomRollingTypeBase(
     protected val index: Int
 ) : DataTypeImpl(extension, datatype) {
 
-    companion object {
-        private const val CACHE_SIZE = 50
-        private const val INITIAL_CACHE_DELAY = 180000L // 3 minutos
-        private val startTime = System.currentTimeMillis()
-        private val viewCache = LruCache<String, CachedView>(CACHE_SIZE)
-    }
-
-    private data class CachedView(
-        val remoteViews: RemoteViews,
-        val timestamp: Long = System.currentTimeMillis()
-    ) {
-        fun isValid(rollingTime: Long): Boolean {
-            return System.currentTimeMillis() - timestamp < rollingTime
-        }
-    }
 
     protected val glance = GlanceRemoteViews()
     protected val firstField = { settings: OneFieldSettings -> settings.onefield }
@@ -93,52 +75,38 @@ abstract class CustomRollingTypeBase(
             RefreshTime.MID.time + RefreshTime.EXTRA_ROLLING.time else RefreshTime.HALF.time + RefreshTime.EXTRA_ROLLING.time
 
     private var viewjob: Job? = null
-    private var cacheCleanupJob: Job? = null
+    private var configJob: Job? = null
     private val isInitialized = AtomicBoolean(false)
+    private lateinit var emitterId: String
 
-    private fun isCacheEnabled(): Boolean {
-        return System.currentTimeMillis() - startTime > INITIAL_CACHE_DELAY
-    }
-
-    private fun clearViewCache() {
-        if (isCacheEnabled()) {
-            viewCache.evictAll()
-            Timber.d("Rolling view cache cleared")
-        }
-    }
-
-    private fun invalidateOldCache(rollingTime: Long) {
-        if (!isCacheEnabled()) return
-
-        val iterator = viewCache.snapshot().entries.iterator()
-        var invalidatedCount = 0
-
-        while (iterator.hasNext()) {
-            val entry = iterator.next()
-            if (!entry.value.isValid(rollingTime)) {
-                viewCache.remove(entry.key)
-                invalidatedCount++
-            }
-        }
-
-        if (invalidatedCount > 0) {
-            Timber.d("Invalidated $invalidatedCount rolling cached views")
-        }
-    }
 
     private fun cleanupJobs() {
         try {
-            viewjob?.cancel()
+            isInitialized.set(false)
+
+            viewjob?.let {
+                if (it.isActive) {
+                    it.cancel()
+                    Timber.d("DOUBLE ViewJob cancelled: $extension $index ViewEmitter@$emitterId")
+                }
+            }
             viewjob = null
 
-            cacheCleanupJob?.cancel()
-            cacheCleanupJob = null
 
-            isInitialized.set(false)
+            configJob?.let {
+                if (it.isActive) {
+                    it.cancel()
+                    Timber.d("ROLLING ConfigJob cancelled: $extension $index ViewEmitter@$emitterId")
+                }
+            }
+            configJob = null
+
         } catch (e: Exception) {
-            Timber.e(e, "Error cleaning up jobs")
+            Timber.e(e, "ROLLING Error cleaning up jobs: $extension $index ViewEmitter@$emitterId")
         }
     }
+
+
 
     override fun startStream(emitter: Emitter<StreamState>) {
         Timber.d("Starting Rolling type stream")
@@ -152,7 +120,7 @@ abstract class CustomRollingTypeBase(
                             extension
                         )
                     ))
-                    delay(refreshTime)
+                    delay(refreshTime - 200L)
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Stream Rolling error occurred")
@@ -183,20 +151,25 @@ abstract class CustomRollingTypeBase(
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         Timber.d("ROLLING StartView: field $extension index $index field $dataTypeId config: $config")
 
+        emitterId = emitter.toString().substringAfter("@")
         val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-        cleanupJobs()
-        DataTypeCache.clearCaches()
-        clearViewCache()
+        //cleanupJobs()
 
         val globalIndex = index
 
-        val configJob = scope.launch {
+         configJob = scope.launch {
             try {
                 emitter.onNext(UpdateGraphicConfig(showHeader = false))
-                awaitCancellation()
+                try {
+                    awaitCancellation()
+                } catch (e: CancellationException) {
+                    // Cancelación normal, no necesita logging
+                }
+            } catch (e: CancellationException) {
+                // Cancelación normal del job, no necesita logging
             } catch (e: Exception) {
-                Timber.e(e, "Error in config job")
+                Timber.e(e, "Error in config job ViewEmitter@$emitterId")
             }
         }
 
@@ -211,28 +184,37 @@ abstract class CustomRollingTypeBase(
                 val generalSettings = context.streamGeneralSettings()
                     .stateIn(scope, SharingStarted.WhileSubscribed(5000), GeneralSettings())
 
-                // Setup cache cleanup job
-                settings.first().getOrNull(globalIndex)?.let { setting ->
-                    cacheCleanupJob = scope.launch {
-                        try {
-                            while (isActive) {
-                                try {
-                                    val currentTTL = rollingtime(setting).time
-                                    delay(currentTTL / 2)
-                                    invalidateOldCache(currentTTL)
-                                } catch (e: CancellationException) {
-                                    // La cancelación es esperada, no necesitamos logging
-                                    break
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Unexpected error in cache cleanup cycle")
-                                }
-                            }
-                        } catch (e: CancellationException) {
-                            // Cancelación normal del job, no necesitamos logging
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error in cache cleanup job")
-                        }
+
+
+
+                try {
+                    if (!config.preview) {
+                        val startedRemoteViews = glance.compose(context, DpSize.Unspecified) {
+                            RollingFieldScreen(
+                                0.0,
+                                false,
+                                KarooAction.SPEED,
+                                ColorProvider(Color.Black, Color.White),
+                                ColorProvider(Color.White, Color.Black),
+                                FieldSize.MEDIUM,
+                                karooSystem.hardwareType == HardwareType.KAROO,
+                                FieldPosition.CENTER,
+                                "",
+                                0,
+                                baseBitmap,
+                                true,
+                                22,
+                                false,
+                                false,
+                                0.0,
+                                true
+                            )
+                        }.remoteViews
+                        emitter.updateView(startedRemoteViews)
+                        delay((800L..2000L).random())
                     }
+                }catch (e: Exception) {
+                    Timber.e(e, "ROLLING Error en vista inicial: $extension $globalIndex ViewEmitter@$emitterId")
                 }
 
                 isInitialized.set(true)
@@ -243,16 +225,16 @@ abstract class CustomRollingTypeBase(
                             .firstOrNull { (settings, _) -> globalIndex in settings.indices }
 
                         if (settingsFlow != null) {
-                            Timber.d("ROLLING INITIAL RETRYFLOW encontrado: $index  campo: $dataTypeId")
+                            Timber.d("ROLLING INITIAL RETRYFLOW encontrado: $index  campo: $dataTypeId ViewEmitter@$emitterId")
                             val (settings, generalSettings) = settingsFlow
                             emit(settings to generalSettings)
                         } else {
-                            Timber.e("ROLLING Index out of bounds: $globalIndex")
+                            Timber.e("ROLLING Index out of bounds: $globalIndex ViewEmitter@$emitterId")
                             throw IndexOutOfBoundsException("GlobalIndex out of bounds")
                         }
                     },
                     onFailure = { attempts, e ->
-                        Timber.e("Not valid Rolling index in $attempts attempts. Error: $e")
+                        Timber.e("Not valid Rolling index in $attempts attempts. Error: $e ViewEmitter@$emitterId")
                         emit(listOf(OneFieldSettings()) to GeneralSettings())
                     }
                 ).collectLatest { (settings, generalSettings) ->
@@ -339,7 +321,7 @@ abstract class CustomRollingTypeBase(
                     .debounce(refreshTime)
                     .onEach { (fieldStates, settingsData) ->
                         if (!isInitialized.get()) {
-                            Timber.w("ROLLING Skip update - not initialized: $extension $index")
+                            Timber.w("ROLLING Skip update - not initialized: $extension $index ViewEmitter@$emitterId")
                             return@onEach
                         }
 
@@ -406,7 +388,7 @@ abstract class CustomRollingTypeBase(
                                 )
                             }.remoteViews
 
-                            Timber.d("ROLLING Updating view: $extension $index cyclic: $cyclicIndex value: $value")
+                            Timber.d("ROLLING Updating view: $extension $index cyclic: $cyclicIndex value: $value ViewEmitter@$emitterId")
                             emitter.updateView(newView)
                         } catch (e: Exception) {
                             Timber.e(e, "ROLLING Error composing/updating view: $extension $index")
@@ -417,13 +399,13 @@ abstract class CustomRollingTypeBase(
                     }
                     .retryWhen { cause, attempt ->
                         if (attempt > 3) {
-                            Timber.e(cause, "Error collecting Rolling flow, stopping.. (attempt $attempt) Cause: $cause")
+                            Timber.e(cause, "Error collecting Rolling flow, stopping.. (attempt $attempt) Cause: $cause ViewEmitter@$emitterId")
                             cleanupJobs()
                             delay(Delay.RETRY_LONG.time)
                             startView(context, config, emitter)
                             false
                         } else {
-                            Timber.e(cause, "Error collecting Rolling flow, retrying... (attempt $attempt) Cause: $cause")
+                            Timber.e(cause, "Error collecting Rolling flow, retrying... (attempt $attempt) Cause: $cause ViewEmitter@$emitterId")
                             delay(Delay.RETRY_SHORT.time)
                             true
                         }
@@ -431,7 +413,7 @@ abstract class CustomRollingTypeBase(
                     .launchIn(scope)
 
             } catch (e: Exception) {
-                Timber.e(e, "ROLLING ViewJob error: $extension $index")
+                Timber.e(e, "ROLLING ViewJob error: $extension $index ViewEmitter@$emitterId")
                 cleanupJobs()
                 delay(1000)
                 startView(context, config, emitter)
@@ -439,11 +421,14 @@ abstract class CustomRollingTypeBase(
         }
 
         emitter.setCancellable {
-            Timber.d("ROLLING Stopping view: $extension $index")
-            cleanupJobs()
-            configJob.cancel()
-            DataTypeCache.clearCaches()
-            clearViewCache()
+            try {
+                Timber.d("Stopping ${if (extension.contains("double")) "Double" else "Rolling"} view with $emitter")
+                cleanupJobs()
+            } catch (e: CancellationException) {
+                // Cancelación normal, no necesita logging
+            } catch (e: Exception) {
+                Timber.e(e, "Error during view cancellation ViewEmitter@$emitterId")
+            }
         }
     }
 }
