@@ -1,7 +1,7 @@
 # KDouble Field  Extension
 
 > [!WARNING]  
-> This app is currently in beta stage and its main features might not work at all.
+> This app isnot currently in beta stage, but Extensions API are in their early stages and, sometimes, produces performance issues and crashes.
 
 KDoubleType allows to use custom fields with double types (HR,Power,etc)
 
