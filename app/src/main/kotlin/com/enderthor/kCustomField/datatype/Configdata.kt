@@ -162,7 +162,7 @@ data class GeneralSettings(
     val iscentervertical: FieldPosition = FieldPosition.CENTER,
     val ispalettezwift: Boolean = false,
     val iscenterkaroo: Boolean = false,
-    val isheadwindenabled: Boolean = true,
+    val isheadwindenabled: Boolean = false,
     val refreshCustom: RefreshTime = RefreshTime.HALF,
     val refreshRolling: RefreshTime = RefreshTime.HALF,
     val isdivider: Boolean = true,

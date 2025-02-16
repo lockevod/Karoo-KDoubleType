@@ -454,7 +454,7 @@ fun ConfGeneral() {
                     isdivider = it
                 })
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Enable Headwind Datafield (you need to have Headwind extension installed)?")
+                Text("Use divider line between fields?")
             }
 
             FilledTonalButton(modifier = Modifier.fillMaxWidth().height(50.dp), onClick = {
