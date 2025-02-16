@@ -35,21 +35,22 @@ val timeOptions = defaultRollingTimes
 fun TabLayout() {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Fields","Rolling","Conf.")
-    var karooConnected by remember { mutableStateOf(false) }
-    var iskaroo3 by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
-    val karooSystem = remember { KarooSystemService(ctx) }
 
+    val karooSystem = remember { KarooSystemService(ctx) }
+    var karooConnected by remember { mutableStateOf(false) }
+    val iskaroo3 by remember(karooConnected) {
+        derivedStateOf {
+            if (karooConnected) karooSystem.hardwareType == HardwareType.KAROO else false
+        }
+    }
 
     LaunchedEffect(Unit) {
         karooSystem.connect { connected ->
             karooConnected = connected
-            iskaroo3 = karooSystem.hardwareType == HardwareType.KAROO
         }
     }
 
-
-    Timber.d("en TABLAYOUT iskaroo3 $iskaroo3")
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(
             selectedTabIndex = selectedTabIndex,
@@ -60,11 +61,11 @@ fun TabLayout() {
                     selected = selectedTabIndex == index,
                     onClick = { selectedTabIndex = index },
                     text = { Text(text = title, fontSize = 11.sp) },
+
                 )
             }
         }
 
-       // Timber.d("iskaroo3 Rolling $iskaroo3")
 
         if (karooConnected) {
             when (selectedTabIndex) {
@@ -82,17 +83,6 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
 
     val coroutineScope = rememberCoroutineScope()
 
-    var doubleFieldSettingsList = remember { mutableStateListOf<DoubleFieldSettings> (DoubleFieldSettings(), DoubleFieldSettings(), DoubleFieldSettings(),DoubleFieldSettings(), DoubleFieldSettings()) }
-
-
-    LaunchedEffect(Unit) {
-        ctx.streamDoubleFieldSettings().collect { settings ->
-            if (settings.isNotEmpty()) {
-                doubleFieldSettingsList.clear()
-                doubleFieldSettingsList.addAll(settings)
-            }
-        }
-    }
 
     var savedDialogVisible by remember { mutableStateOf(false) }
     var oneFieldSettingsList = remember { mutableStateListOf<OneFieldSettings> (OneFieldSettings(), OneFieldSettings()) }
@@ -117,12 +107,12 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             oneFieldSettingsDerived.value.forEachIndexed { index, oneFieldSettings ->
-                if (index == 0  || (iskaroo3 && index == 1)) {
-                    if(index==1) {
+                if (index == 0  || (iskaroo3 && index >= 1)) {
+                    if(index>=1) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             "Be careful to use several custom fields simultaneously (custom and rolling) in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues",
-                            fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold
+                            fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                     }
@@ -249,11 +239,6 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
     var isheadwindenabled by remember { mutableStateOf(false) }
 
     var doubleFieldSettingsList = remember { mutableStateListOf<DoubleFieldSettings> (DoubleFieldSettings(), DoubleFieldSettings(), DoubleFieldSettings(),DoubleFieldSettings(), DoubleFieldSettings()) }
-    LaunchedEffect(Unit) {
-        ctx.streamGeneralSettings().collect { settings ->
-            isheadwindenabled = settings.isheadwindenabled
-        }
-    }
 
     LaunchedEffect(Unit) {
         ctx.streamDoubleFieldSettings().collect { settings ->
@@ -264,22 +249,12 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
         }
     }
 
-    var oneFieldSettingsList = remember { mutableStateListOf<OneFieldSettings> (OneFieldSettings(), OneFieldSettings()) }
-
-    LaunchedEffect(Unit) {
-        ctx.streamOneFieldSettings().collect { settings ->
-            if (settings.isNotEmpty()) {
-                oneFieldSettingsList.clear()
-                oneFieldSettingsList.addAll(settings)
-            }
-        }
-    }
 
     val doubleFieldSettingsDerived = remember {
             derivedStateOf { doubleFieldSettingsList.toList() }
     }
 
-    Timber.d("List size ${doubleFieldSettingsDerived.value.size} and iskaroo3 $iskaroo3")
+    //imber.d("List size ${doubleFieldSettingsDerived.value.size} and iskaroo3 $iskaroo3")
 
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
@@ -288,11 +263,11 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
         ) {
             doubleFieldSettingsDerived.value.forEachIndexed { index, doubleFieldSettings ->
                 if (index < 3 || (iskaroo3 && index in 3..5) ) {
-                    if(index==4) {
+                    if(index>=4) {
                      Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             "Be careful to use more than 4 custom fields simultaneously in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues",
-                            fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold
+                            fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                     }
@@ -354,7 +329,6 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
                 coroutineScope.launch {
                     savedDialogVisible = true
                     saveDoubleFieldSettings(ctx, doubleFieldSettingsList)
-                    saveOneFieldSettings(ctx, oneFieldSettingsList)
                 }
             }) {
                 Icon(Icons.Default.Done, contentDescription = "Save")

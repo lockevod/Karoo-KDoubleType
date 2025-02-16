@@ -121,7 +121,7 @@ fun HeadwindDirection(baseBitmap: Bitmap, bearing: Int, fontSize: Int, overlayTe
                             modifier = GlanceModifier.background(Color(1f, 1f, 1f, 0.4f), Color(0f, 0f, 0f, 0.4f)).padding(1.dp)
                         )
 
-                        Row(){
+                        Row{
                             Text(
                                 overlaySubText,
                                 maxLines = 1,
