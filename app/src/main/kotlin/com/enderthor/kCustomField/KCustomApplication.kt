@@ -26,22 +26,23 @@ class KCustomApplication : Application() {
                 }
             })
       } else {
-            Timber.plant(object : Tree() {
-                override fun isLoggable(tag: String?, priority: Int): Boolean {
-                    return priority > Log.DEBUG
-                }
+          Timber.plant(object : Tree() {
+              override fun isLoggable(tag: String?, priority: Int): Boolean {
+                  return priority > Log.INFO
+              }
 
-                override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
-                    Log.println(
-                        priority,
-                        tag,
-                        message + (if (t == null) "" else "\n" + t.message + "\n" + Log.getStackTraceString(
-                            t
-                        ))
-                    )
-                }
-            })
-        }
+              override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+                  Log.println(
+                      priority,
+                      tag,
+                      message + (if (t == null) "" else "\n" + t.message + "\n" + Log.getStackTraceString(
+                          t
+                      ))
+                  )
+              }
+
+          })
+          }
         Timber.d("Starting KCustom App")
     }
 }

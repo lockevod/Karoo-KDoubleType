@@ -128,7 +128,7 @@ fun createHeadwindFlow(
     }
         .onStart { emit(StreamHeadWindData(0.0, 0.0)) }
         .distinctUntilChanged()
-        .debounce(1000 + period)
+        .debounce(200 + period)
         .conflate()
         .catch { e ->
             Timber.e(e, "Error in headwindFlow")
@@ -345,9 +345,9 @@ fun getFieldState(
 }
 
 fun <T> retryFlow(
-    maxAttempts: Int = 6,
-    initialDelayMillis: Long = 190,
-    maxDelayMillis: Long = 600,
+    maxAttempts: Int = 8,
+    initialDelayMillis: Long = 80,
+    maxDelayMillis: Long = 400,
     action: suspend FlowCollector<T>.() -> Unit,
     onFailure: suspend FlowCollector<T>.(Int, Throwable) -> Unit
 ): Flow<T> = flow {

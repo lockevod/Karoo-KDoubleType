@@ -32,6 +32,10 @@ import com.enderthor.kCustomField.extensions.consumerFlow
 import com.enderthor.kCustomField.extensions.streamDoubleFieldSettings
 import com.enderthor.kCustomField.extensions.streamGeneralSettings
 import com.enderthor.kCustomField.R
+import com.enderthor.kCustomField.datatype.previewDoubleFieldSettings
+import com.enderthor.kCustomField.extensions.KarooCustomFieldExtension
+import com.enderthor.kCustomField.extensions.streamOneFieldSettings
+import com.enderthor.kCustomField.extensions.streamUserProfile
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
 import io.hammerhead.karooext.models.HardwareType
@@ -45,22 +49,27 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.stateIn
 import timber.log.Timber
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.random.Random
+import com.enderthor.kCustomField.datatype.previewDoubleFieldSettings
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
 abstract class CustomDoubleTypeBase(
-    private val karooSystem: KarooSystemService,
-    extension: String,
+    protected val karooSystem: KarooSystemService,
+    protected val karooExtension: KarooCustomFieldExtension,
     datatype: String,
     protected val globalIndex: Int
-) : DataTypeImpl(extension, datatype) {
+) : DataTypeImpl(karooExtension.extensionId, datatype) {
 
 
     protected val glance = GlanceRemoteViews()
@@ -69,14 +78,15 @@ abstract class CustomDoubleTypeBase(
     protected val ishorizontal = { settings: DoubleFieldSettings -> settings.ishorizontal }
 
     private val refreshTime: Long
-        get() = if (karooSystem.hardwareType == HardwareType.K2)
-            RefreshTime.MID.time else RefreshTime.HALF.time
+        get() = when (karooSystem.hardwareType) {
+            HardwareType.K2 -> RefreshTime.MID.time
+            else -> RefreshTime.HALF.time
+        }.coerceAtLeast(100L) // Aseguramos un mínim
 
     private var viewjob: Job? = null
     private var configJob: Job? = null
     private val isInitialized = AtomicBoolean(false)
     private lateinit var emitterId: String
-
 
 
     private fun cleanupJobs() {
@@ -105,36 +115,6 @@ abstract class CustomDoubleTypeBase(
         }
     }
 
-    private suspend fun initializeView(
-        scope: CoroutineScope,
-        context: Context
-    ): Triple<UserProfile, StateFlow<List<DoubleFieldSettings>>, StateFlow<GeneralSettings>> {
-        return try {
-            Triple(
-                karooSystem.consumerFlow<UserProfile>().first(),
-                context.streamDoubleFieldSettings().stateIn(
-                    scope,
-                    SharingStarted.WhileSubscribed(5000),
-                    listOf(DoubleFieldSettings())
-                ),
-                context.streamGeneralSettings().stateIn(
-                    scope,
-                    SharingStarted.WhileSubscribed(5000),
-                    GeneralSettings()
-                )
-            ).also {
-                isInitialized.set(true)
-                Timber.d("DOUBLE View initialized: $extension $globalIndex ViewEmitter@$emitterId")
-            }
-        } catch (e: CancellationException) {
-            Timber.d("DOUBLE Initialization cancelled: $extension $globalIndex ViewEmitter@$emitterId")
-            throw e
-        } catch (e: Exception) {
-            Timber.e(e, "DOUBLE Initialization error: $extension $globalIndex ViewEmitter@$emitterId")
-            throw e
-        }
-    }
-
     override fun startStream(emitter: Emitter<StreamState>) {
         Timber.d("DOUBLE Starting stream: $extension $globalIndex")
         CoroutineScope(Dispatchers.IO).launch {
@@ -147,7 +127,7 @@ abstract class CustomDoubleTypeBase(
                             extension
                         )
                     ))
-                    delay(refreshTime-200L)
+                   delay(refreshTime)
                 }
             } catch (e: CancellationException) {
                 Timber.d("DOUBLE Stream cancelled: $extension $globalIndex ViewEmitter@$emitterId")
@@ -180,9 +160,30 @@ abstract class CustomDoubleTypeBase(
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         Timber.d("DOUBLE StartView: field $extension index $globalIndex field $dataTypeId config: $config emitter: $emitter")
         emitterId = emitter.toString().substringAfter("@")
-        val scope = CoroutineScope(Dispatchers.IO)
+        val scope = CoroutineScope(Dispatchers.IO + Job())
 
-        //cleanupJobs()
+
+        val dataflow = context.streamDoubleFieldSettings()
+            .onStart {
+                Timber.d("Iniciando streamDoubleFieldSettings")
+                emit(previewDoubleFieldSettings as MutableList<DoubleFieldSettings>)
+            }
+            .combine(
+                context.streamGeneralSettings()
+                    .onStart {
+                        Timber.d("Iniciando streamGeneralSettings")
+                        emit(GeneralSettings())
+                    }
+            ) { settings, generalSettings ->
+                settings to generalSettings
+            }.combine(
+                karooSystem.streamUserProfile()
+
+            ) { (settings, generalSettings), userProfile ->
+                GlobalConfigState(settings, generalSettings, userProfile)
+            }
+
+
 
         configJob = scope.launch {
             try {
@@ -204,126 +205,46 @@ abstract class CustomDoubleTypeBase(
         viewjob = scope.launch {
             try {
                 Timber.d("DOUBLE Starting view: $extension $globalIndex ViewEmitter@$emitterId")
-                val (userProfile, settingsFlow, generalSettingsFlow) = initializeView(scope, context)
-
-                var fieldNumber: Int = 3
-                var clayout: FieldPosition = FieldPosition.CENTER
-
+               // val (userProfile, settingsFlow, generalSettingsFlow) = initializeView(scope, context)
+                //Esperar entre 10 ms y 200 ms antes de empezar
+                //delay(15L + (Random.nextInt(3) * 15L))
                 try {
-
                     // Carga inicial rápida
                     if (!config.preview) {
                             try {
                                 val initialRemoteViews = glance.compose(context, DpSize.Unspecified) {
-                                    DoubleScreenSelector(
-                                        3, // Valor por defecto
-                                        true, // horizontal por defecto
-                                        0.0,
-                                        0.0,
-                                        firstField(settingsFlow.value[0]),
-                                        secondField(settingsFlow.value[0]),
-                                        ColorProvider(Color.Black, Color.White),
-                                        ColorProvider(Color.Black, Color.White),
-                                        ColorProvider(Color.White, Color.Black),
-                                        ColorProvider(Color.White, Color.Black),
-                                        getFieldSize(config.gridSize.second),
-                                        karooSystem.hardwareType == HardwareType.KAROO,
-                                        FieldPosition.CENTER, // Posición por defecto
-                                        "",
-                                        0,
-                                        baseBitmap,
-                                        true,
-                                        0.0,
-                                        0.0,
-                                        true// divider desactivado inicialmente
-                                    )
+                                 NotSupported("Searching ...",21)
                                 }.remoteViews
                                 emitter.updateView(initialRemoteViews)
 
-                                // Esperar 2 segundos antes de continuar con el resto
-                                delay((800L..2000L).random())
+                                // Esperar 100, 200 o 300 ms antes de continuar con el resto
+                                delay(100L + (Random.nextInt(2) * 100L))
                             } catch (e: Exception) {
                                 Timber.e(e, "DOUBLE Error en vista inicial: $extension $globalIndex ViewEmitter@$emitterId")
                             }
                        // Esperar a que termine la vista inicial
                     }
 
-                    retryFlow(
-                        action = {
-                            val settingsFlow = combine(settingsFlow, generalSettingsFlow) { settings, generalSettings -> settings to generalSettings }
-                                .firstOrNull { (settings, _) -> globalIndex in settings.indices }
+                    Timber.d("DOUBLE Starting view flow: $extension $globalIndex ViewEmitter@$emitterId karooSystem@$karooSystem ")
 
-                            if (settingsFlow != null) {
-                                Timber.d("DOUBLE INITIAL RETRYFLOW encontrado: $globalIndex  campo: $dataTypeId ViewEmitter@$emitterId")
-                                val (settings, generalSettings) = settingsFlow
-                                emit(settings to generalSettings)
-                            } else {
-                                Timber.e("DOUBLE INITIAL index out of Bounds: $globalIndex ViewEmitter@$emitterId")
-                                throw IndexOutOfBoundsException("Index out of Bounds ViewEmitter@$emitterId")
-                            }
-                        },
-                        onFailure = { attempts, e ->
-                            Timber.e("DOUBLE INITIAL index not valid in $attempts attemps. Error: $e ViewEmitter@$emitterId")
-                            emit(listOf(DoubleFieldSettings()) to GeneralSettings())
-                        }
-                    ).collectLatest { (settings, generalSettings) ->
-                        if (globalIndex in settings.indices) {
-                            val primaryField = firstField(settings[globalIndex])
-                            val secondaryField = secondField(settings[globalIndex])
 
-                            fieldNumber = when {
-                                generalSettings.isheadwindenabled -> when {
-                                    primaryField.kaction.name == "HEADWIND" -> if (secondaryField.kaction.name == "HEADWIND") 2 else 0
-                                    secondaryField.kaction.name == "HEADWIND" -> 1
-                                    else -> 3
-                                }
-                                else -> 3
+                    dataflow.flatMapLatest { state ->
+                            val (settings, generalSettings, userProfile) = state
+
+                            if (userProfile == null) {
+                                Timber.d("DOUBLE UserProfile no disponible")
+                                return@flatMapLatest flowOf(Triple(
+                                    StreamState.Searching,
+                                    StreamState.Searching,
+                                    state
+                                ))
                             }
 
-                            clayout = when {
-                                fieldNumber != 3 -> FieldPosition.CENTER
-                                generalSettings.iscenterkaroo -> when (config.alignment) {
-                                    ViewConfig.Alignment.CENTER -> FieldPosition.CENTER
-                                    ViewConfig.Alignment.LEFT -> FieldPosition.LEFT
-                                    ViewConfig.Alignment.RIGHT -> FieldPosition.RIGHT
-                                }
-                                ishorizontal(settings[globalIndex]) -> generalSettings.iscenteralign
-                                else -> generalSettings.iscentervertical
-                            }
+                            val currentSettings = settings.getOrNull(globalIndex)
+                                ?: throw IndexOutOfBoundsException("Invalid index $globalIndex")
 
-                           if (!config.preview) {
-                                val initialRemoteViews = glance.compose(context, DpSize.Unspecified) {
-                                    DoubleScreenSelector(
-                                        fieldNumber,
-                                        ishorizontal(settings[globalIndex]),
-                                        0.0,
-                                        0.0,
-                                        primaryField,
-                                        secondaryField,
-                                        ColorProvider(Color.Black, Color.White),
-                                        ColorProvider(Color.Black, Color.White),
-                                        ColorProvider(Color.White, Color.Black),
-                                        ColorProvider(Color.White, Color.Black),
-                                        getFieldSize(config.gridSize.second),
-                                        karooSystem.hardwareType == HardwareType.KAROO,
-                                        clayout,
-                                        "",
-                                        0,
-                                        baseBitmap,
-                                        generalSettings.isdivider
-                                    )
-                                }.remoteViews
-                                emitter.updateView(initialRemoteViews)
-
-                            }
-                        }
-                    }
-
-                    combine(settingsFlow, generalSettingsFlow) { settings, generalSettings -> settings to generalSettings }
-                        .flatMapLatest { (settings, generalSettings) ->
-                            val currentSetting = settings[globalIndex]
-                            val primaryField = firstField(currentSetting)
-                            val secondaryField = secondField(currentSetting)
+                            val primaryField = firstField(currentSettings)
+                            val secondaryField = secondField(currentSettings)
 
                             val headwindFlow =
                                 if (listOf(primaryField, secondaryField).any { it.kaction.name == "HEADWIND" } && generalSettings.isheadwindenabled)
@@ -333,19 +254,22 @@ abstract class CustomDoubleTypeBase(
                             val secondFieldFlow = if (!config.preview) getFieldFlow(karooSystem, secondaryField, headwindFlow, generalSettings, refreshTime) else previewFlow()
 
                             combine(firstFieldFlow, secondFieldFlow) { firstState, secondState ->
-                                Quadruple(firstState, secondState, settings, generalSettings)
+                                Triple(firstState, secondState, state)
                             }
                         }
-                        .debounce(refreshTime)
-                        .onEach { (firstFieldState, secondFieldState, settings, generalSettings) ->
-                            if (!isInitialized.get()) {
-                                Timber.d("DOUBLE Waiting for initialization: $extension $globalIndex")
+                        .onEach { (firstFieldState, secondFieldState, globalConfig) ->
+
+                            val (setting, generalSettings, userProfile) = globalConfig
+
+                            if (userProfile == null) {
+                                Timber.d("UserProfile no disponible")
                                 return@onEach
                             }
+                            val settings = setting[globalIndex]
 
                             val (firstvalue, firstIconcolor, firstColorzone, isleftzone, firstvalueRight) = getFieldState(
                                 firstFieldState,
-                                firstField(settings[globalIndex]),
+                                firstField(settings),
                                 context,
                                 userProfile,
                                 generalSettings.ispalettezwift
@@ -353,7 +277,7 @@ abstract class CustomDoubleTypeBase(
 
                             val (secondvalue, secondIconcolor, secondColorzone, isrightzone, secondvalueRight) = getFieldState(
                                 secondFieldState,
-                                secondField(settings[globalIndex]),
+                                secondField((settings)),
                                 context,
                                 userProfile,
                                 generalSettings.ispalettezwift
@@ -365,21 +289,21 @@ abstract class CustomDoubleTypeBase(
                                 windData.diff to windData.windSpeed.roundToInt().toString()
                             } else 0.0 to ""
 
-                            fieldNumber = when {
+                            val fieldNumber = when {
                                 firstFieldState is StreamState && secondFieldState is StreamState -> 3
                                 firstFieldState is StreamState -> 0
                                 secondFieldState is StreamState -> 1
                                 else -> 2
                             }
 
-                            clayout = when {
-                                fieldNumber != 3 -> FieldPosition.CENTER
+                            val clayout = when {
+                                //fieldNumber != 3 -> FieldPosition.CENTER
                                 generalSettings.iscenterkaroo -> when (config.alignment) {
                                     ViewConfig.Alignment.CENTER -> FieldPosition.CENTER
                                     ViewConfig.Alignment.LEFT -> FieldPosition.LEFT
                                     ViewConfig.Alignment.RIGHT -> FieldPosition.RIGHT
                                 }
-                                ishorizontal(settings[globalIndex]) -> generalSettings.iscenteralign
+                                ishorizontal(settings) -> generalSettings.iscenteralign
                                 else -> generalSettings.iscentervertical
                             }
 
@@ -387,11 +311,11 @@ abstract class CustomDoubleTypeBase(
                                 val newView = glance.compose(context, DpSize.Unspecified) {
                                     DoubleScreenSelector(
                                         fieldNumber,
-                                        ishorizontal(settings[globalIndex]),
+                                        ishorizontal(settings),
                                         firstvalue,
                                         secondvalue,
-                                        firstField(settings[globalIndex]),
-                                        secondField(settings[globalIndex]),
+                                        firstField(settings),
+                                        secondField(settings),
                                         firstIconcolor,
                                         secondIconcolor,
                                         firstColorzone,
@@ -467,7 +391,6 @@ abstract class CustomDoubleTypeBase(
         emitter.setCancellable {
             try {
                 Timber.d("DOUBLE Stopping view: $extension $globalIndex ViewEmitter@$emitterId")
-                isInitialized.set(false)
                 cleanupJobs()
             } catch (e: CancellationException) {
                 Timber.d("DOUBLE Normal cancellation during cleanup: $extension $globalIndex ViewEmitter@$emitterId")

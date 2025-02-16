@@ -17,18 +17,27 @@ import androidx.glance.text.*
 import androidx.glance.unit.ColorProvider
 import kotlin.math.roundToInt
 
-@Composable
-fun formatNumber(number: Double, isInt: Boolean): String = buildString {
-    if (isInt) {
-        append(number.roundToInt().toString().take(5))
+
+fun formatTimeFromSeconds(seconds: Double): String {
+    val totalMinutes = (seconds / 60).toInt()
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return "${hours}:${minutes.toString().padStart(2, '0')}"
+}
+
+
+fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false): String = buildString {
+    if (isTime) {
+        append(formatTimeFromSeconds(number))
     } else {
-        append(((number * 10.0).roundToInt() / 10.0).toString().take(5))
+        if (isInt) append(number.roundToInt().toString().take(5))
+        else append(((number * 10.0).roundToInt() / 10.0).toString().take(5))
     }
 }
 
 
 @Composable
-fun VerticalDivider(isTopField: Boolean, fieldSize: FieldSize) {
+fun VerticalDivider(isTopField: Boolean, fieldSize: FieldSize, isdivider: Boolean) {
     val height = when {
         isTopField -> 10.dp
         fieldSize == FieldSize.LARGE -> 28.dp
@@ -37,7 +46,7 @@ fun VerticalDivider(isTopField: Boolean, fieldSize: FieldSize) {
     Box(modifier = GlanceModifier.fillMaxWidth().height(height)) {
         Row(modifier = GlanceModifier.fillMaxSize()) {
             Column(modifier = GlanceModifier.defaultWeight()) {}
-            Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(ColorProvider(Color.Black, Color.White)))
+            if (isdivider) Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(ColorProvider(Color.Black, Color.White)))
             Column(modifier = GlanceModifier.defaultWeight()) {}
         }
     }
@@ -159,15 +168,18 @@ fun OneIconRow(
             horizontalAlignment = Alignment.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
+
             val displayText = text.takeIf { it.length <= 10 } ?: text.split(" ", limit = 2)
                 .let { parts -> if (parts.size > 1) "${parts[0]}\n${parts[1]}" else text }
+
+            val adjustedFontSize = if ((displayText.count { it == '\n' } + 1) == 2) (fontSize.value * 0.85).sp else fontSize
 
             Text(
                 text = displayText,
                 maxLines = 2,
                 style = TextStyle(
                     fontWeight = FontWeight.Bold,
-                    fontSize = fontSize,
+                    fontSize = adjustedFontSize,
                     fontFamily = FontFamily.Monospace,
                     color = if (iszone) iconColor else ColorProvider(Color.Black, Color.White),
                     textAlign = TextAlign.End
@@ -517,7 +529,7 @@ fun DoubleTypesScreenHorizontal(
     isKaroo3: Boolean, layout: FieldPosition, selector: Int, text: String, windDirection: Int, baseBitmap: Bitmap,iszoneLeft: Boolean,iszoneRight: Boolean,isdivider:Boolean
 ) {
 
-    VerticalDivider(true, fieldSize)
+    VerticalDivider(true, fieldSize,isdivider)
     Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
 
         Row(modifier = GlanceModifier.fillMaxSize().let { if (isKaroo3) it.cornerRadius(8.dp) else it }) {
@@ -538,7 +550,7 @@ fun DoubleTypesScreenHorizontal(
             }
         }
     }
-    VerticalDivider(false, fieldSize)
+    VerticalDivider(false, fieldSize,isdivider)
 }
 
 

@@ -6,14 +6,16 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import com.enderthor.kCustomField.R
 import io.hammerhead.karooext.models.DataType.Field
+import io.hammerhead.karooext.models.UserProfile
 
 
-data class Quadruple<out A, out B, out C, out D>(
+
+/*data class Quadruple<out A, out B, out C, out D>(
     val first: A,
     val second: B,
     val third: C,
     val fourth: D
-)
+)*/
 
 data class Quintuple<out A, out B, out C, out D, out E>(
     val first: A,
@@ -128,9 +130,9 @@ data class OneFieldType(val kaction: KarooAction, val iszone: Boolean, val isact
 data class OneFieldSettings(
     var index: Int = 0,
     var onefield: OneFieldType = OneFieldType(KarooAction.HR, true, true),
-    var secondfield: OneFieldType = OneFieldType(KarooAction.HEADWIND, false,true),
-    var thirdfield: OneFieldType = OneFieldType(KarooAction.SPEED, false,true),
-    var rollingtime: RollingTime = RollingTime("LOW", "5s", 5000L),
+    var secondfield: OneFieldType = OneFieldType(KarooAction.SPEED, false,false),
+    var thirdfield: OneFieldType = OneFieldType(KarooAction.SPEED, false,false),
+    var rollingtime: RollingTime = RollingTime("ZERO","0",0L),
 )
 
 @Serializable
@@ -166,14 +168,21 @@ data class GeneralSettings(
     val isdivider: Boolean = true,
 )
 
+data class GlobalConfigState(
+    val settings: List<DoubleFieldSettings>,
+    val generalSettings: GeneralSettings,
+    val userProfile: UserProfile? = null
+)
+
 
 val defaultSettings = Json.encodeToString(CustomFieldSettings())
 val defaultGeneralSettings = Json.encodeToString(GeneralSettings())
 /*val previewDoubleHorizontalFieldSettings = listOf(DoubleFieldSettings(0, DoubleFieldType(KarooAction.SPEED, false),DoubleFieldType(KarooAction.HR, true),true,true))
 val previewDoubleVerticalFieldSettings = listOf(DoubleFieldSettings(0, DoubleFieldType(KarooAction.SPEED, false),DoubleFieldType(KarooAction.HR, true),false,true))
-val defaultDoubleFieldSettings = Json.encodeToString(listOf(DoubleFieldSettings(index=0),DoubleFieldSettings(1, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(2, DoubleFieldType(KarooAction.IF, false),DoubleFieldType(KarooAction.TSS, false),false,true),DoubleFieldSettings(3, DoubleFieldType(KarooAction.ELEV_GAIN, false),DoubleFieldType(KarooAction.ELEV_REMAIN,false),false,true),DoubleFieldSettings(4, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.SLOPE, true),false,true),DoubleFieldSettings(5, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.SLOPE, false),false,true)))
 */
-val previewOneFieldSettings = listOf(OneFieldSettings(index=0),OneFieldSettings(1, OneFieldType(KarooAction.SPEED, false, true),OneFieldType(KarooAction.SPEED, false, false),OneFieldType(KarooAction.SPEED, false, false),RollingTime("ZERO", "0s", 0L)),OneFieldSettings(2, OneFieldType(KarooAction.SPEED, false, true),OneFieldType(KarooAction.SPEED, false, false),OneFieldType(KarooAction.SPEED, false, false),RollingTime("ZERO", "0s", 0L)))
+val previewDoubleFieldSettings = listOf(DoubleFieldSettings(index=0),DoubleFieldSettings(1, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(2, DoubleFieldType(KarooAction.IF, false),DoubleFieldType(KarooAction.TSS, false),false,true),DoubleFieldSettings(3, DoubleFieldType(KarooAction.ELEV_GAIN, false),DoubleFieldType(KarooAction.ELEV_REMAIN,false),false,true),DoubleFieldSettings(4, DoubleFieldType(KarooAction.SPEED, false),DoubleFieldType(KarooAction.SLOPE, true),false,true),DoubleFieldSettings(5, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),false,true))
+val defaultDoubleFieldSettings = Json.encodeToString(previewDoubleFieldSettings)
+val previewOneFieldSettings = listOf(OneFieldSettings(index=0),OneFieldSettings(1, OneFieldType(KarooAction.POWER_NORMALIZED, false, true),OneFieldType(KarooAction.POWER20m, false, true),OneFieldType(KarooAction.SPEED, false, false),RollingTime("MED", "20s", 20000L)),OneFieldSettings(2, OneFieldType(KarooAction.DISTANCE, false, true),OneFieldType(KarooAction.DISTANCE_REMAIN, false, true),OneFieldType(KarooAction.TIMETODEST, false, true),RollingTime("MED", "20s", 20000L)))
 val defaultOneFieldSettings = Json.encodeToString(previewOneFieldSettings)
 val defaultRollingTimes = listOf(
     RollingTime("LOW", "5s", 5000L),
