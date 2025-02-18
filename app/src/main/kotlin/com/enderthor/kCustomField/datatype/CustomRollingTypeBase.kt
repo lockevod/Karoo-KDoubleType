@@ -258,9 +258,9 @@ abstract class CustomRollingTypeBase(
                             if (listOf(primaryField, secondaryField, thirdField).any { it.kaction.name == "HEADWIND" } && generalSetting.isheadwindenabled && !config.preview)
                                 createHeadwindFlow(karooSystem, refreshTime) else flowOf(StreamHeadWindData(0.0, 0.0))
 
-                        val firstFieldFlow = if (!config.preview) getFieldFlow(karooSystem, primaryField, headwindFlow, generalSetting, refreshTime) else previewFlow()
-                        val secondFieldFlow = if (!config.preview) getFieldFlow(karooSystem, secondaryField, headwindFlow, generalSetting, refreshTime) else previewFlow()
-                        val thirdFieldFlow = if (!config.preview) getFieldFlow(karooSystem, thirdField, headwindFlow, generalSetting, refreshTime) else previewFlow()
+                        val firstFieldFlow = if (!config.preview) karooSystem.getFieldFlow(primaryField, headwindFlow, generalSetting) else previewFlow()
+                        val secondFieldFlow = if (!config.preview) karooSystem.getFieldFlow(secondaryField, headwindFlow, generalSetting) else previewFlow()
+                        val thirdFieldFlow = if (!config.preview) karooSystem.getFieldFlow(thirdField, headwindFlow, generalSetting) else previewFlow()
 
                         combine(firstFieldFlow, secondFieldFlow, thirdFieldFlow) { firstField, secondField, thirdField ->
                             Triple(firstField, secondField, thirdField)

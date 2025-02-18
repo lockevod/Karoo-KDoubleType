@@ -31,15 +31,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.FlowCollector
 import kotlin.random.Random
 import timber.log.Timber
-import kotlinx.coroutines.flow.transform
-import kotlinx.coroutines.flow.takeWhile
-import kotlinx.coroutines.flow.map
-import java.util.concurrent.atomic.AtomicLong
+
+
+import kotlinx.coroutines.flow.retryWhen
+import kotlinx.coroutines.flow.timeout
+
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.milliseconds
 
 
-private const val RETRY_CHECK_STREAMS = 3
-private const val WAIT_STREAMS = 120000L // 120 seconds
+private const val RETRY_CHECK_STREAMS = 4
+private const val WAIT_STREAMS_SHORT = 3000L // 3 seconds
+private const val WAIT_STREAMS_NORMAL = 60000L // 1 minute
+private const val WAIT_STREAMS_LONG = 240000L // 4 minutes
 private const val STREAM_TIMEOUT = 15000L // 15 seconds
 
 fun getColorZone(
@@ -136,9 +140,9 @@ fun createHeadwindFlow(
         }
         .collect { emit(it) }
 }.flowOn(Dispatchers.Default)
-
+/*
 @OptIn(FlowPreview::class)
-private suspend fun <T> Flow<T>.monitorStream(
+private fun <T> Flow<T>.monitorStream(
     fieldName: String,
     lastEmissionTime: AtomicLong
 ): Flow<T> = transform { value ->
@@ -149,9 +153,96 @@ private suspend fun <T> Flow<T>.monitorStream(
     Timber.e(e, "Stream error in $fieldName")
     throw e
 }
+*/
+@OptIn(FlowPreview::class)
+fun KarooSystemService.getFieldFlow(
+    field: Any,
+    headwindFlow: Flow<StreamHeadWindData>,
+    generalSettings: GeneralSettings,
+    period: Long=0L
+): Flow<Any> = flow {
 
+    val (actionId, action) = when (field) {
+        is DoubleFieldType -> field.kaction.action to field.kaction
+        is OneFieldType -> field.kaction.action to field.kaction
+        else -> throw IllegalArgumentException("Tipo de campo no soportado")
+    }
 
-fun getFieldFlow(
+    val streamFlow = try {
+        when {
+            action.name == "HEADWIND" && generalSettings.isheadwindenabled -> {
+                headwindFlow
+                    .onStart {
+                        Timber.d("Emisión inicial headwindFlow")
+                        emit(StreamHeadWindData(0.0, 0.0))
+                    }
+                    .catch { e ->
+                        Timber.e(e, "Error en headwindFlow")
+                        throw e  // Se propaga al retryWhen
+                    }
+                    .timeout(STREAM_TIMEOUT.milliseconds)
+            }
+            else -> streamDataFlow(action.action, period)
+                .onStart {
+                    Timber.d("Emisión inicial headwindFlow")
+                    emit(StreamState.Streaming(DataPoint(
+                        dataTypeId = actionId,
+                        values = mapOf(DataType.Field.SINGLE to 0.0)
+                    )))
+                }
+                .catch { e ->
+                    Timber.e(e, "Error en streamDataFlow")
+                    throw e  // Se propaga al retryWhen
+                }
+                .timeout(STREAM_TIMEOUT.milliseconds)
+        }
+    } catch (e: Exception) {
+        Timber.e(e, "Error al crear streamFlow")
+        throw e  // Se propaga al retryWhen
+    }
+
+    streamFlow
+        .distinctUntilChanged()
+        .retryWhen { cause, attempt ->
+            if (attempt > RETRY_CHECK_STREAMS*2) {
+                Timber.w("Timeout en stream, intento $attempt")
+                false
+            }
+            else if (attempt > RETRY_CHECK_STREAMS) {
+                Timber.e("Máximo de reintentos alcanzado")
+                val backoffDelay = (1000L * (1 shl attempt.toInt()))
+                    .coerceAtMost(WAIT_STREAMS_NORMAL)
+                delay(backoffDelay)
+                true
+            } else {
+                Timber.w("Reintentando stream, intento $attempt")
+                delay(WAIT_STREAMS_SHORT)
+                true
+            }
+        }
+        .catch { e ->
+            Timber.e(e, "Error critico en stream")
+            throw e
+        }
+        .collect { state ->
+            when (state) {
+                is StreamState.Idle, is StreamState.Searching -> {
+                    Timber.d("Stream inactivo: ${state::class.simpleName}")
+                    emit(mapOf(DataType.Field.SINGLE to 0.0))
+                    delay(STREAM_TIMEOUT)
+                }
+                 is StreamState.NotAvailable -> {
+                    Timber.d("Stream inactivo: ${state::class.simpleName}")
+                    emit(mapOf(DataType.Field.SINGLE to 0.0))
+                    delay(WAIT_STREAMS_LONG)
+                }
+                else -> emit(state)
+            }
+        }
+}
+
+/*
+fun getFieldFlow2(
     karooSystem: KarooSystemService,
     field: Any,
     headwindFlow: Flow<StreamHeadWindData>,
@@ -203,7 +294,7 @@ fun getFieldFlow(
                             Timber.d("Stream in inactive state (${state::class.simpleName}), waiting...")
                             // Emitir último valor conocido o valor por defecto
                             emit(state)
-                            delay(WAIT_STREAMS)
+                            delay(WAIT_STREAMS_SHORT)
                             state
                         }
                         else -> state
@@ -225,7 +316,7 @@ fun getFieldFlow(
                     val currentTime = System.currentTimeMillis()
                     val timeSinceLastEmission = currentTime - lastEmissionTime.get()
 
-                    if (timeSinceLastEmission > STREAM_TIMEOUT && currentTime - lastCheckTime > WAIT_STREAMS) {
+                    if (timeSinceLastEmission > STREAM_TIMEOUT && currentTime - lastCheckTime > WAIT_STREAMS_SHORT) {
                         lastCheckTime = currentTime
                         if (retryCount < RETRY_CHECK_STREAMS) {
                             retryCount++
@@ -233,7 +324,7 @@ fun getFieldFlow(
                             false
                         } else {
                             Timber.e("Max retries reached, waiting before next check")
-                            delay(WAIT_STREAMS)
+                            delay(WAIT_STREAMS_SHORT)
                             retryCount = 0
                             false
                         }
@@ -269,18 +360,18 @@ fun getFieldFlow(
                         delay(1000)
                     } else {
                         retryCount = 0
-                        delay(WAIT_STREAMS)
+                        delay(WAIT_STREAMS_SHORT)
                     }
                 }
             }
         }
     }
-}.flowOn(Dispatchers.Default)
+}.flowOn(Dispatchers.IO)
     .catch { e ->
         Timber.e(e, "Error in outer flow")
         throw e
     }
-
+*/
 fun multipleStreamValues(state: StreamState, kaction: KarooAction): Pair<Double, Double> {
     if (state !is StreamState.Streaming) return Pair(0.0, 0.0)
 

@@ -46,7 +46,7 @@ val onefieldKey = stringPreferencesKey("onefieldsettings")
 
 
 suspend fun saveGeneralSettings(context: Context, settings: GeneralSettings) {
-   // Timber.d("saveSettings IN $settings")
+
     context.dataStore.edit { t ->
         t[generalsettingsKey] = Json.encodeToString(settings)
     }
