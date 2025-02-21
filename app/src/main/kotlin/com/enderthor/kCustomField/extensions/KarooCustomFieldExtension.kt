@@ -29,25 +29,19 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", BuildConfig.VER
     lateinit var karooSystem: KarooSystemService
     private var serviceJob: Job? = null
 
-    private val extensionIdentifier = "kcustomfield"
-    val extensionId: String get() = extensionIdentifier
 
-
-
-
-    private val scope = CoroutineScope(Dispatchers.IO)
 
     override val types by lazy {
         listOf(
-            CustomDoubleType(karooSystem, this@KarooCustomFieldExtension, "custom-one", 0) ,
-            CustomDoubleType(karooSystem, this@KarooCustomFieldExtension, "custom-two", 1) ,
-            CustomDoubleType(karooSystem, this@KarooCustomFieldExtension, "custom-three", 2) ,
-            CustomDoubleType(karooSystem, this@KarooCustomFieldExtension, "vertical-one", 3) ,
-            CustomDoubleType(karooSystem, this@KarooCustomFieldExtension, "vertical-two", 4) ,
-            CustomDoubleType(karooSystem, this@KarooCustomFieldExtension, "vertical-three", 5) ,
-            CustomRollingType(karooSystem, extension, "rolling-one", 0),
-            CustomRollingType(karooSystem, extension, "rolling-two", 1),
-            CustomRollingType(karooSystem, extension, "rolling-three", 2)
+            CustomDoubleType(karooSystem,  "custom-one", 0) ,
+            CustomDoubleType(karooSystem,  "custom-two", 1) ,
+            CustomDoubleType(karooSystem, "custom-three", 2) ,
+            CustomDoubleType(karooSystem,  "vertical-one", 3) ,
+            CustomDoubleType(karooSystem,  "vertical-two", 4) ,
+            CustomDoubleType(karooSystem,  "vertical-three", 5),
+            CustomRollingType(karooSystem,  "rolling-one", 0),
+            CustomRollingType(karooSystem,  "rolling-two", 1),
+            CustomRollingType(karooSystem,  "rolling-three", 2)
         )
     }
 
@@ -68,7 +62,7 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", BuildConfig.VER
     }
 
     override fun onDestroy() {
-        scope.cancel()
+
         serviceJob?.cancel()
         karooSystem.disconnect()
         super.onDestroy()

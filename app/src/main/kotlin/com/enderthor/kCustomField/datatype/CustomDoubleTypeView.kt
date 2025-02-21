@@ -15,6 +15,8 @@ import androidx.glance.preview.ExperimentalGlancePreviewApi
 import androidx.glance.preview.Preview
 import androidx.glance.text.*
 import androidx.glance.unit.ColorProvider
+import java.text.DateFormat
+import java.util.Calendar
 import kotlin.math.roundToInt
 
 
@@ -26,8 +28,25 @@ fun formatTimeFromSeconds(seconds: Double): String {
 }
 
 
-fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false): String = buildString {
-    if (isTime) {
+fun minutesToLocalizedTime(minutes: Int): String {
+    val calendar = Calendar.getInstance()
+    calendar.set(Calendar.HOUR_OF_DAY, (minutes % 1440) / 60)
+    calendar.set(Calendar.MINUTE, minutes % 60)
+    return DateFormat.getTimeInstance(DateFormat.SHORT).format(calendar.time)
+}
+fun epochToTimeOfDay(epochMillis: Double): String {
+    val calendar = Calendar.getInstance()
+    calendar.timeInMillis = epochMillis.toLong()
+    return DateFormat.getTimeInstance(DateFormat.SHORT).format(calendar.time)
+}
+
+
+fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivil: Boolean = false): String = buildString {
+
+    if (isCivil) {
+        append(epochToTimeOfDay(number))
+    }
+    else if (isTime) {
         append(formatTimeFromSeconds(number))
     } else {
         if (isInt) append(number.roundToInt().toString().take(5))
@@ -338,10 +357,12 @@ fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , ic
         val icon = action.icon
         val label = action.label
         val ispower = action.powerField
+        val isTime = action.action == KarooAction.TIMETODEST.action
+        val isCivil = action.action == KarooAction.CIVIL_DUSK.action || action.action == KarooAction.CIVIL_DAWN.action
 
         if (selector || (fieldsize == FieldSize.LARGE || fieldsize == FieldSize.EXTRA_LARGE)) {
-            val number = formatNumber(dNumber, isInt)
-            val numberSecond = formatNumber(secondValue, isInt)
+            val number = formatNumber(dNumber, isInt,isTime,isCivil)
+            val numberSecond = formatNumber(secondValue, isInt,isTime,isCivil)
 
             Box(modifier = GlanceModifier.fillMaxSize()) {
                 Row(
@@ -407,30 +428,33 @@ fun DoubleScreenSelector(
     val ispowerRight= rightField.kaction.powerField
     val isLeftInt= (!(leftField.kaction.convert == "speed" || leftField.kaction.zone == "slopeZones" || leftField.kaction.label == "IF")) || (ispowerLeft)
     val isRightInt= !(rightField.kaction.convert == "speed" || rightField.kaction.zone == "slopeZones" || rightField.kaction.label == "IF")  || (ispowerRight)
+    val leftCivil=leftField.kaction.action==KarooAction.CIVIL_DUSK.action ||  leftField.kaction.action==KarooAction.CIVIL_DAWN.action
+    val rightCivil=rightField.kaction.action==KarooAction.CIVIL_DUSK.action ||  rightField.kaction.action==KarooAction.CIVIL_DAWN.action
+    val leftTime=leftField.kaction.action==KarooAction.TIMETODEST.action
+    val rightTime=rightField.kaction.action==KarooAction.TIMETODEST.action
 
-    if (!isinit) {
-
-        val newLeft = if (ispowerLeft) (formatNumber(leftNumber, true) + "-" + formatNumber(
-            leftNumberSecond,
-            true
-        ))
-        else if (!showH) formatNumber(leftNumber, isLeftInt)
-        else when (selector) {
-            0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString()
-                .take(3) else formatNumber(leftNumber, true)
-
-            else -> "0.0"
-        }
+    //Timber.d("")
 
 
-        val newRight = if (ispowerRight) (formatNumber(rightNumber, true) + "-" + formatNumber(
+        val newLeft =
+            if (ispowerLeft) (formatNumber(leftNumber, true) + "-" + formatNumber(leftNumberSecond, true))
+            else if (!showH) formatNumber(leftNumber, isLeftInt)
+            else when (selector) {
+                0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString()
+                    .take(3) else formatNumber(leftNumber, true,leftTime,leftCivil)
+
+                else -> "0.0"
+            }
+
+
+        val newRight = if (ispowerRight) (formatNumber(rightNumber, true,) + "-" + formatNumber(
             rightNumberSecond,
             true
         ))
         else if (!showH) formatNumber(rightNumber, isRightInt)
         else when (selector) {
             1, 3 -> if (rightLabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString()
-                .take(3) else formatNumber(rightNumber, true)
+                .take(3) else formatNumber(rightNumber, true,rightTime,rightCivil)
 
             else -> "0.0"
         }
@@ -513,10 +537,8 @@ fun DoubleScreenSelector(
                 isdivider
             )
         }
-    }
-    else {
-        NotSupported("Searching...", 21)
-    }
+
+
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)

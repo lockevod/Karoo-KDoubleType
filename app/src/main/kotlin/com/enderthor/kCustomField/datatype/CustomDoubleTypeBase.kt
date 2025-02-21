@@ -58,7 +58,6 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.stateIn
 import timber.log.Timber
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 import com.enderthor.kCustomField.datatype.previewDoubleFieldSettings
@@ -66,10 +65,9 @@ import com.enderthor.kCustomField.datatype.previewDoubleFieldSettings
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
 abstract class CustomDoubleTypeBase(
     protected val karooSystem: KarooSystemService,
-    protected val karooExtension: KarooCustomFieldExtension,
     datatype: String,
     protected val globalIndex: Int
-) : DataTypeImpl(karooExtension.extensionId, datatype) {
+) : DataTypeImpl("kcustomfield", datatype) {
 
 
     protected val glance = GlanceRemoteViews()
@@ -83,37 +81,7 @@ abstract class CustomDoubleTypeBase(
             else -> RefreshTime.HALF.time
         }.coerceAtLeast(100L) // Aseguramos un mínim
 
-    private var viewjob: Job? = null
-    private var configJob: Job? = null
-    private val isInitialized = AtomicBoolean(false)
-    private lateinit var emitterId: String
 
-
-    private fun cleanupJobs() {
-        try {
-            isInitialized.set(false)
-
-            viewjob?.let {
-                if (it.isActive) {
-                    it.cancel()
-                    Timber.d("DOUBLE ViewJob cancelled: $extension $globalIndex ViewEmitter@$emitterId")
-                }
-            }
-            viewjob = null
-
-
-            configJob?.let {
-                if (it.isActive) {
-                    it.cancel()
-                    Timber.d("DOUBLE ConfigJob cancelled: $extension $globalIndex ViewEmitter@$emitterId")
-                }
-            }
-            configJob = null
-
-        } catch (e: Exception) {
-            Timber.e(e, "DOUBLE Error cleaning up jobs: $extension $globalIndex ViewEmitter@$emitterId")
-        }
-    }
 
     override fun startStream(emitter: Emitter<StreamState>) {
         Timber.d("DOUBLE Starting stream: $extension $globalIndex")
@@ -130,14 +98,14 @@ abstract class CustomDoubleTypeBase(
                    delay(refreshTime)
                 }
             } catch (e: CancellationException) {
-                Timber.d("DOUBLE Stream cancelled: $extension $globalIndex ViewEmitter@$emitterId")
+                Timber.d("DOUBLE Stream cancelled: $extension $globalIndex ")
             } catch (e: Exception) {
-                Timber.e(e, "DOUBLE Stream error: $extension $globalIndex ViewEmitter@$emitterId")
+                Timber.e(e, "DOUBLE Stream error: $extension $globalIndex ")
                 emitter.onError(e)
             }
         }.also { job ->
             emitter.setCancellable {
-                Timber.d("DOUBLE Stopping stream: $extension $globalIndex ViewEmitter@$emitterId")
+                Timber.d("DOUBLE Stopping stream: $extension $globalIndex ")
                 job.cancel()
             }
         }
@@ -159,33 +127,24 @@ abstract class CustomDoubleTypeBase(
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         Timber.d("DOUBLE StartView: field $extension index $globalIndex field $dataTypeId config: $config emitter: $emitter")
-        emitterId = emitter.toString().substringAfter("@")
-        val scope = CoroutineScope(Dispatchers.IO + Job())
+
+        val scope = CoroutineScope(Dispatchers.IO)
 
 
         val dataflow = context.streamDoubleFieldSettings()
-            .onStart {
-                Timber.d("Iniciando streamDoubleFieldSettings")
-                emit(previewDoubleFieldSettings as MutableList<DoubleFieldSettings>)
-            }
             .combine(
                 context.streamGeneralSettings()
-                    .onStart {
-                        Timber.d("Iniciando streamGeneralSettings")
-                        emit(GeneralSettings())
-                    }
             ) { settings, generalSettings ->
                 settings to generalSettings
             }.combine(
                 karooSystem.streamUserProfile()
-
             ) { (settings, generalSettings), userProfile ->
+                Timber.d("DOUBLE Flow dataflow UserProfile: $userProfile settings: $settings generalSettings: $generalSettings")
                 GlobalConfigState(settings, generalSettings, userProfile)
             }
 
 
-
-        configJob = scope.launch {
+        val configJob = scope.launch {
             try {
                 emitter.onNext(UpdateGraphicConfig(showHeader = false))
                 try {
@@ -196,19 +155,16 @@ abstract class CustomDoubleTypeBase(
             } catch (e: CancellationException) {
                 // Cancelación normal del job
             } catch (e: Exception) {
-                Timber.e(e, "DOUBLE Error in config job: $extension $globalIndex ViewEmitter@$emitterId")
+                Timber.e(e, "DOUBLE Error in config job: $extension $globalIndex ")
             }
         }
 
         val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
 
-        viewjob = scope.launch {
+        val viewjob = scope.launch {
             try {
-                Timber.d("DOUBLE Starting view: $extension $globalIndex ViewEmitter@$emitterId")
-               // val (userProfile, settingsFlow, generalSettingsFlow) = initializeView(scope, context)
-                //Esperar entre 10 ms y 200 ms antes de empezar
-                //delay(15L + (Random.nextInt(3) * 15L))
-                try {
+                Timber.d("DOUBLE Starting view: $extension $globalIndex ")
+
                     // Carga inicial rápida
                     if (!config.preview) {
                             try {
@@ -220,12 +176,12 @@ abstract class CustomDoubleTypeBase(
                                 // Esperar 100, 200 o 300 ms antes de continuar con el resto
                                 delay(100L + (Random.nextInt(2) * 100L))
                             } catch (e: Exception) {
-                                Timber.e(e, "DOUBLE Error en vista inicial: $extension $globalIndex ViewEmitter@$emitterId")
+                                Timber.e(e, "DOUBLE Error en vista inicial: $extension $globalIndex ")
                             }
                        // Esperar a que termine la vista inicial
                     }
 
-                    Timber.d("DOUBLE Starting view flow: $extension $globalIndex ViewEmitter@$emitterId karooSystem@$karooSystem ")
+                    Timber.d("DOUBLE Starting view flow: $extension $globalIndex  karooSystem@$karooSystem ")
 
 
                     dataflow.flatMapLatest { state ->
@@ -283,11 +239,11 @@ abstract class CustomDoubleTypeBase(
                                 generalSettings.ispalettezwift
                             )
 
-                            val (winddiff, windtext) = if (firstFieldState !is StreamState || secondFieldState !is StreamState) {
-                                val windData = (firstFieldState as? StreamHeadWindData)
-                                    ?: (secondFieldState as StreamHeadWindData)
-                                windData.diff to windData.windSpeed.roundToInt().toString()
-                            } else 0.0 to ""
+                            val (winddiff, windtext) = when {
+                                firstFieldState is StreamHeadWindData -> firstFieldState.diff to firstFieldState.windSpeed.roundToInt().toString()
+                                secondFieldState is StreamHeadWindData -> secondFieldState.diff to secondFieldState.windSpeed.roundToInt().toString()
+                                else -> 0.0 to ""
+                            }
 
                             val fieldNumber = when {
                                 firstFieldState is StreamState && secondFieldState is StreamState -> 3
@@ -343,59 +299,43 @@ abstract class CustomDoubleTypeBase(
                             when (e) {
                                 is CancellationException -> {
                                     Timber.d("DOUBLE Flow cancelled: $extension $globalIndex")
-                                    throw e
                                 }
                                 else -> {
                                     Timber.e(e, "DOUBLE Flow error: $extension $globalIndex")
-                                    throw e
+
                                 }
                             }
                         }
                         .retryWhen { cause, attempt ->
-                            when (cause) {
-                                is CancellationException -> {
-                                    Timber.d("DOUBLE Flow cancelled during retry: $extension $globalIndex ViewEmitter@$emitterId")
-                                    false
-                                }
-                                else -> {
                                     if (attempt > 3) {
-                                        Timber.e(cause, "DOUBLE Max retries reached: $extension $globalIndex (attempt $attempt) ViewEmitter@$emitterId")
-                                        cleanupJobs()
+                                        Timber.e(cause, "DOUBLE Max retries reached: $extension $globalIndex (attempt $attempt) ")
                                         delay(Delay.RETRY_LONG.time)
-                                        startView(context, config, emitter)
-                                        false
+                                        true
                                     } else {
-                                        Timber.w(cause, "DOUBLE Retrying flow: $extension $globalIndex (attempt $attempt) ViewEmitter@$emitterId")
+                                        Timber.w(cause, "DOUBLE Retrying flow: $extension $globalIndex (attempt $attempt) ")
                                         delay(Delay.RETRY_SHORT.time)
                                         true
                                     }
-                                }
                             }
-                        }
                         .launchIn(scope)
-                } catch (e: CancellationException) {
-                    Timber.d("DOUBLE View operation cancelled: $extension $globalIndex ViewEmitter@$emitterId")
-                    throw e
-                }
-            } catch (e: CancellationException) {
-                Timber.d("DOUBLE ViewJob cancelled: $extension $globalIndex ViewEmitter@$emitterId")
+
+
             } catch (e: Exception) {
-                Timber.e(e, "DOUBLE ViewJob error: $extension $globalIndex ViewEmitter@$emitterId")
-                if (!scope.isActive) return@launch
-                cleanupJobs()
-                delay(1000)
+                Timber.e(e, "DOUBLE ViewJob error: $extension $globalIndex ")
+                //if (!scope.isActive) return@launch
+                delay(10000L)
                 startView(context, config, emitter)
             }
         }
 
         emitter.setCancellable {
             try {
-                Timber.d("DOUBLE Stopping view: $extension $globalIndex ViewEmitter@$emitterId")
-                cleanupJobs()
-            } catch (e: CancellationException) {
-                Timber.d("DOUBLE Normal cancellation during cleanup: $extension $globalIndex ViewEmitter@$emitterId")
+                Timber.d("DOUBLE Stopping view: $extension $globalIndex ")
+                viewjob.cancel()
+                configJob.cancel()
+
             } catch (e: Exception) {
-                Timber.e(e, "DOUBLE Error during view cancellation: $extension $globalIndex ViewEmitter@$emitterId")
+                Timber.e(e, "DOUBLE Error during view cancellation: $extension $globalIndex ")
             }
         }
     }
