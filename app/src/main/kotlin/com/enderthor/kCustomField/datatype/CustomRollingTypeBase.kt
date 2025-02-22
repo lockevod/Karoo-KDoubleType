@@ -33,6 +33,7 @@ import com.enderthor.kCustomField.extensions.consumerFlow
 import com.enderthor.kCustomField.extensions.streamOneFieldSettings
 import com.enderthor.kCustomField.extensions.streamGeneralSettings
 import com.enderthor.kCustomField.R
+import com.enderthor.kCustomField.extensions.streamDataFlow
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
 import io.hammerhead.karooext.models.HardwareType
@@ -131,6 +132,12 @@ abstract class CustomRollingTypeBase(
 
         val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
 
+        val flow= if (config.preview) {
+            previewFlow()
+        } else {
+            karooSystem.streamDataFlow(dataTypeId)
+        }
+
         val viewJob = scope.launch {
 
             try {
@@ -207,6 +214,8 @@ abstract class CustomRollingTypeBase(
                     .flatMapLatest { (settings, generalSetting, cyclicIndex) ->
                         val currentSetting = settings.getOrNull(globalIndex)
                             ?: return@flatMapLatest flowOf(Triple(previewOneFieldSettings, GeneralSettings(), 0) to Triple(settings, generalSetting, cyclicIndex))
+
+
 
                         val primaryField = firstField(currentSetting)
                         val secondaryField = secondField(currentSetting)

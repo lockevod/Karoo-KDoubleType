@@ -1,23 +1,15 @@
 package com.enderthor.kCustomField.extensions
 
 import android.content.Context
-
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 
-
 import com.enderthor.kCustomField.datatype.DoubleFieldSettings
-
 import com.enderthor.kCustomField.datatype.GeneralSettings
-
-
 import com.enderthor.kCustomField.datatype.OneFieldSettings
-
 import com.enderthor.kCustomField.datatype.defaultDoubleFieldSettings
 import com.enderthor.kCustomField.datatype.defaultGeneralSettings
-
 import com.enderthor.kCustomField.datatype.defaultOneFieldSettings
-
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.DataPoint
@@ -32,7 +24,6 @@ import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.serialization.encodeToString
@@ -156,4 +147,3 @@ inline fun <reified T : KarooEvent> KarooSystemService.consumerFlow(): Flow<T> {
         }
     }
 }
-

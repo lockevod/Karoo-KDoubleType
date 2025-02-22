@@ -15,6 +15,7 @@ import androidx.glance.preview.ExperimentalGlancePreviewApi
 import androidx.glance.preview.Preview
 import androidx.glance.text.*
 import androidx.glance.unit.ColorProvider
+import timber.log.Timber
 import java.text.DateFormat
 import java.util.Calendar
 import kotlin.math.roundToInt
@@ -433,25 +434,29 @@ fun DoubleScreenSelector(
     val leftTime=leftField.kaction.action==KarooAction.TIMETODEST.action
     val rightTime=rightField.kaction.action==KarooAction.TIMETODEST.action
 
-    //Timber.d("")
+    Timber.d("leftField: $leftField, selector: $selector")
 
 
-        val newLeft =
-            if (ispowerLeft) (formatNumber(leftNumber, true) + "-" + formatNumber(leftNumberSecond, true))
-            else if (!showH) formatNumber(leftNumber, isLeftInt)
-            else when (selector) {
-                0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString()
-                    .take(3) else formatNumber(leftNumber, true,leftTime,leftCivil)
+    if (!isinit) {
 
-                else -> "0.0"
-            }
+        val newLeft = if (ispowerLeft) (formatNumber(leftNumber, true) + "-" + formatNumber(
+            leftNumberSecond,
+            true
+        ))
+        else if (!showH) formatNumber(leftNumber, isLeftInt,leftTime,leftCivil)
+        else when (selector) {
+            0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString()
+                .take(3) else formatNumber(leftNumber, true,leftTime,leftCivil)
+
+            else -> "0.0"
+        }
 
 
-        val newRight = if (ispowerRight) (formatNumber(rightNumber, true,) + "-" + formatNumber(
+        val newRight = if (ispowerRight) (formatNumber(rightNumber, true) + "-" + formatNumber(
             rightNumberSecond,
             true
         ))
-        else if (!showH) formatNumber(rightNumber, isRightInt)
+        else if (!showH) formatNumber(rightNumber, isRightInt,rightTime,rightCivil)
         else when (selector) {
             1, 3 -> if (rightLabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString()
                 .take(3) else formatNumber(rightNumber, true,rightTime,rightCivil)
@@ -537,8 +542,10 @@ fun DoubleScreenSelector(
                 isdivider
             )
         }
-
-
+    }
+    else {
+        NotSupported("Searching...", 21)
+    }
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)

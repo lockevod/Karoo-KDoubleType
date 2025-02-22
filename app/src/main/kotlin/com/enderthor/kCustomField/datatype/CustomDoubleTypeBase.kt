@@ -61,6 +61,7 @@ import timber.log.Timber
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 import com.enderthor.kCustomField.datatype.previewDoubleFieldSettings
+import kotlinx.coroutines.cancel
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
 abstract class CustomDoubleTypeBase(
@@ -122,7 +123,7 @@ abstract class CustomDoubleTypeBase(
             ))
             delay(Delay.PREVIEW.time)
         }
-    }.flowOn(Dispatchers.IO)
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
@@ -174,7 +175,7 @@ abstract class CustomDoubleTypeBase(
                                 emitter.updateView(initialRemoteViews)
 
                                 // Esperar 100, 200 o 300 ms antes de continuar con el resto
-                                delay(100L + (Random.nextInt(2) * 100L))
+                                delay(100L + (Random.nextInt(4) * 80L))
                             } catch (e: Exception) {
                                 Timber.e(e, "DOUBLE Error en vista inicial: $extension $globalIndex ")
                             }
@@ -246,12 +247,13 @@ abstract class CustomDoubleTypeBase(
                             }
 
                             val fieldNumber = when {
-                                firstFieldState is StreamState && secondFieldState is StreamState -> 3
-                                firstFieldState is StreamState -> 0
-                                secondFieldState is StreamState -> 1
-                                else -> 2
+                                firstFieldState is StreamHeadWindData && secondFieldState is StreamHeadWindData -> 2
+                                firstFieldState is StreamHeadWindData -> 1
+                                secondFieldState is StreamHeadWindData -> 0
+                                else -> 3
                             }
 
+                            Timber.d("firstFieldState: $firstFieldState secondFieldState: $secondFieldState fieldNumber: $fieldNumber")
                             val clayout = when {
                                 //fieldNumber != 3 -> FieldPosition.CENTER
                                 generalSettings.iscenterkaroo -> when (config.alignment) {
@@ -288,22 +290,13 @@ abstract class CustomDoubleTypeBase(
                                     )
                                 }.remoteViews
 
-
+                                Timber.d("Values firstField: " +  firstField(settings) +" secondField: " + secondField(settings))
                                 Timber.d("DOUBLE Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
                                 emitter.updateView(newView)
                             } catch (e: Exception) {
-                                Timber.e(e, "DOUBLE Error composing/updating view: $extension $globalIndex")
-                            }
-                        }
-                        .catch { e ->
-                            when (e) {
-                                is CancellationException -> {
-                                    Timber.d("DOUBLE Flow cancelled: $extension $globalIndex")
-                                }
-                                else -> {
-                                    Timber.e(e, "DOUBLE Flow error: $extension $globalIndex")
-
-                                }
+                                Timber.e(e, "DOUBLE Error composing/updating view: $extension $globalIndex $e")
+                                delay(Delay.RETRY_SHORT.time)
+                                throw e
                             }
                         }
                         .retryWhen { cause, attempt ->
@@ -317,8 +310,6 @@ abstract class CustomDoubleTypeBase(
                                         true
                                     }
                             }
-                        .launchIn(scope)
-
 
             } catch (e: Exception) {
                 Timber.e(e, "DOUBLE ViewJob error: $extension $globalIndex ")
@@ -333,6 +324,7 @@ abstract class CustomDoubleTypeBase(
                 Timber.d("DOUBLE Stopping view: $extension $globalIndex ")
                 viewjob.cancel()
                 configJob.cancel()
+                //scope.cancel()
 
             } catch (e: Exception) {
                 Timber.e(e, "DOUBLE Error during view cancellation: $extension $globalIndex ")

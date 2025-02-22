@@ -1,4 +1,3 @@
-// DataTypeFunctions.kt
 package com.enderthor.kCustomField.datatype
 
 import android.content.Context
@@ -16,7 +15,6 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.FlowPreview
@@ -26,7 +24,6 @@ import com.enderthor.kCustomField.extensions.slopeZones
 import com.enderthor.kCustomField.extensions.streamDataFlow
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.FlowCollector
 import kotlin.random.Random
@@ -69,6 +66,21 @@ fun getColorZone(
         day = Color(ContextCompat.getColor(context, colorResource)),
         night = Color(ContextCompat.getColor(context, colorResource))
     )
+}
+
+fun convertValueStart(
+    streamState: StreamState,
+    type: String
+): Double {
+
+    return  when (type) {
+        "TYPE_ELEVATION_REMAINING_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_REMAINING_ID")
+        "TYPE_DISTANCE_TO_DESTINATION_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_DISTANCE_TO_DESTINATION_ID")
+        "TYPE_VERTICAL_SPEED_ID", "TYPE_AVERAGE_VERTICAL_SPEED_30S_ID" ->
+            (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_VERTICAL_SPEED_ID")
+        else -> (streamState as? StreamState.Streaming)?.dataPoint?.singleValue
+    } ?: 0.0
+
 }
 
 fun convertValue(
@@ -139,7 +151,7 @@ fun createHeadwindFlow(
             emit(StreamHeadWindData(0.0, 0.0))
         }
         .collect { emit(it) }
-}.flowOn(Dispatchers.Default)
+}
 
 @OptIn(FlowPreview::class)
 fun KarooSystemService.getFieldFlow(
@@ -280,6 +292,46 @@ fun getFieldState(
     }
 }
 
+fun updateFieldStateView(
+    fieldSettings: Any,
+    context: Context,
+    userProfile: UserProfile,
+    isPaletteZwift: Boolean,
+    value: Double
+): Triple<ColorProvider, ColorProvider, Boolean> {
+    val (kaction, iszone) = when (fieldSettings) {
+        is DoubleFieldType -> fieldSettings.kaction to fieldSettings.iszone
+        is OneFieldType -> fieldSettings.kaction to fieldSettings.iszone
+        else -> throw IllegalArgumentException("Unsupported field type")
+    }
+
+
+    val iconColor = getColorProvider(context, kaction, iszone)
+    val colorZone = if ((kaction.zone in listOf("heartRateZones", "powerZones", "slopeZones")) && iszone) {
+        getColorZone(context, kaction.zone, value, userProfile, isPaletteZwift)
+    } else {
+        ColorProvider(Color.White, Color.Black)
+    }
+
+    return Triple(iconColor, colorZone, iszone)
+}
+
+
+fun getFieldStateView(
+    field: Any,
+    context: Context,
+    userProfile: UserProfile,
+    isPaletteZwift: Boolean,
+    isHeadwind: Boolean,
+    value: Double
+): Triple<ColorProvider, ColorProvider, Boolean> {
+    return if (!isHeadwind) {
+        updateFieldStateView(field, context, userProfile, isPaletteZwift,value)
+    } else {
+        Triple( ColorProvider(Color.White, Color.Black), ColorProvider(Color.White, Color.Black), false)
+    }
+}
+
 fun <T> retryFlow(
     maxAttempts: Int = 8,
     initialDelayMillis: Long = 80,
@@ -314,4 +366,4 @@ fun <T> retryFlow(
             }
         }
     }
-}.flowOn(Dispatchers.IO)
+}

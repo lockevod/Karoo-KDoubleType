@@ -9,14 +9,14 @@ import io.hammerhead.karooext.models.DataType.Field
 import io.hammerhead.karooext.models.UserProfile
 
 
-/*
+
 data class Quadruple<out A, out B, out C, out D>(
     val first: A,
     val second: B,
     val third: C,
     val fourth: D
 )
-*/
+
 data class Quintuple<out A, out B, out C, out D, out E>(
     val first: A,
     val second: B,
