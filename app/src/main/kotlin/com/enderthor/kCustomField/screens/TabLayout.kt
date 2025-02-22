@@ -23,9 +23,6 @@ import kotlinx.coroutines.launch
 
 import com.enderthor.kCustomField.datatype.*
 import com.enderthor.kCustomField.extensions.*
-import io.hammerhead.karooext.KarooSystemService
-import io.hammerhead.karooext.models.HardwareType
-import timber.log.Timber
 
 
 val alignmentOptions = listOf(FieldPosition.LEFT, FieldPosition.CENTER, FieldPosition.RIGHT)
@@ -37,19 +34,7 @@ fun TabLayout() {
     val tabs = listOf("Fields","Rolling","Conf.")
     val ctx = LocalContext.current
 
-    val karooSystem = remember { KarooSystemService(ctx) }
-    var karooConnected by remember { mutableStateOf(false) }
-    val iskaroo3 by remember(karooConnected) {
-        derivedStateOf {
-            if (karooConnected) karooSystem.hardwareType == HardwareType.KAROO else false
-        }
-    }
 
-    LaunchedEffect(Unit) {
-        karooSystem.connect { connected ->
-            karooConnected = connected
-        }
-    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(
@@ -67,13 +52,13 @@ fun TabLayout() {
         }
 
 
-        if (karooConnected) {
+
             when (selectedTabIndex) {
-                0 -> ConfFields(ctx, iskaroo3)
-                1 -> ConfRolling(ctx, iskaroo3)
+                0 -> ConfFields(ctx, true)
+                1 -> ConfRolling(ctx, true)
                 2 -> ConfGeneral()
             }
-        }
+
     }
 }
 
@@ -86,6 +71,14 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
 
     var savedDialogVisible by remember { mutableStateOf(false) }
     var oneFieldSettingsList = remember { mutableStateListOf<OneFieldSettings> (OneFieldSettings(), OneFieldSettings()) }
+    var generalSettings by remember { mutableStateOf(GeneralSettings()) }
+
+    // Añadir stream de configuración general
+    LaunchedEffect(Unit) {
+        ctx.streamGeneralSettings().collect { settings ->
+            generalSettings = settings
+        }
+    }
 
     LaunchedEffect(Unit) {
         ctx.streamOneFieldSettings().collect { settings ->
@@ -107,7 +100,6 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             oneFieldSettingsDerived.value.forEachIndexed { index, oneFieldSettings ->
-                if (index == 0  || (iskaroo3 && index >= 1)) {
                     if(index>=1) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -121,7 +113,8 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
                         enabled = true,
                         firstpos = true,
                         label="First Field",
-                        action=oneFieldSettings.onefield
+                        action=oneFieldSettings.onefield,
+                        isheadwindenabled = generalSettings.isheadwindenabled
                     ) { newAction ->
                         val updatedZone =
                             if (newAction.kaction.zone == "none") false else oneFieldSettings.onefield.iszone
@@ -141,7 +134,8 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
                         enabled=true,
                         firstpos=false,
                         label="Second Field",
-                        action=oneFieldSettings.secondfield
+                        action=oneFieldSettings.secondfield,
+                        isheadwindenabled = generalSettings.isheadwindenabled
                     ) { newAction ->
 
                         val updatedZone =
@@ -169,7 +163,8 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
                         firstpos=false,
                         label="Third Field",
                         action= oneFieldSettings.thirdfield,
-                        enabled = oneFieldSettings.secondfield.isactive
+                        enabled = oneFieldSettings.secondfield.isactive,
+                        isheadwindenabled = generalSettings.isheadwindenabled
                     ) { newAction ->
                         val updatedZone =
                             if (newAction.kaction.zone == "none") false else oneFieldSettings.thirdfield.iszone
@@ -199,7 +194,7 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
                                     oneFieldSettingsList[index].copy(rollingtime = timeOptions[it])
                             })
                     }
-                }
+
                 if (!oneFieldSettings.secondfield.isactive) oneFieldSettingsList[index] =
                     oneFieldSettingsList[index].copy(rollingtime = RollingTime("ZERO","0",0L))
             }
@@ -236,9 +231,16 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
     val coroutineScope = rememberCoroutineScope()
 
     var savedDialogVisible by remember { mutableStateOf(false) }
-    var isheadwindenabled by remember { mutableStateOf(false) }
 
     var doubleFieldSettingsList = remember { mutableStateListOf<DoubleFieldSettings> (DoubleFieldSettings(), DoubleFieldSettings(), DoubleFieldSettings(),DoubleFieldSettings(), DoubleFieldSettings()) }
+
+    var generalSettings by remember { mutableStateOf(GeneralSettings()) }
+
+    LaunchedEffect(Unit) {
+        ctx.streamGeneralSettings().collect { settings ->
+            generalSettings = settings
+        }
+    }
 
     LaunchedEffect(Unit) {
         ctx.streamDoubleFieldSettings().collect { settings ->
@@ -263,7 +265,7 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
         ) {
             doubleFieldSettingsDerived.value.forEachIndexed { index, doubleFieldSettings ->
                 if (index < 3 || (iskaroo3 && index in 3..5) ) {
-                    if(index>=4) {
+                    if(index>4) {
                      Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             "Be careful to use more than 4 custom fields simultaneously in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues",
@@ -276,7 +278,7 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
                     DropdownDoubleField(
                         "First Field",
                         doubleFieldSettings.onefield,
-                        isheadwindenabled
+                        generalSettings.isheadwindenabled
                     ) { newAction ->
                         val updatedZone =
                             if (newAction.kaction.zone == "none") false else doubleFieldSettings.onefield.iszone
@@ -299,7 +301,7 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
                     DropdownDoubleField(
                         "Second Field",
                         doubleFieldSettings.secondfield,
-                        isheadwindenabled
+                        generalSettings.isheadwindenabled
                     ) { newAction ->
                         val updatedZone =
                             if (newAction.kaction.zone == "none") false else doubleFieldSettings.secondfield.iszone
@@ -454,7 +456,7 @@ fun ConfGeneral() {
                     isdivider = it
                 })
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Enable Headwind Datafield (you need to have Headwind extension installed)?")
+                Text("Enable Divider in datafields ?")
             }
 
             FilledTonalButton(modifier = Modifier.fillMaxWidth().height(50.dp), onClick = {
