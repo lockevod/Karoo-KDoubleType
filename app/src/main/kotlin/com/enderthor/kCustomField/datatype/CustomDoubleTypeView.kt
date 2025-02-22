@@ -15,27 +15,19 @@ import androidx.glance.preview.ExperimentalGlancePreviewApi
 import androidx.glance.preview.Preview
 import androidx.glance.text.*
 import androidx.glance.unit.ColorProvider
-import timber.log.Timber
 import java.text.DateFormat
 import java.util.Calendar
 import kotlin.math.roundToInt
 
 
-fun formatTimeFromSeconds(seconds: Double): String {
+private fun formatTimeFromSeconds(seconds: Double): String {
     val totalMinutes = (seconds / 60).toInt()
     val hours = totalMinutes / 60
     val minutes = totalMinutes % 60
     return "${hours}:${minutes.toString().padStart(2, '0')}"
 }
 
-
-fun minutesToLocalizedTime(minutes: Int): String {
-    val calendar = Calendar.getInstance()
-    calendar.set(Calendar.HOUR_OF_DAY, (minutes % 1440) / 60)
-    calendar.set(Calendar.MINUTE, minutes % 60)
-    return DateFormat.getTimeInstance(DateFormat.SHORT).format(calendar.time)
-}
-fun epochToTimeOfDay(epochMillis: Double): String {
+private fun epochToTimeOfDay(epochMillis: Double): String {
     val calendar = Calendar.getInstance()
     calendar.timeInMillis = epochMillis.toLong()
     return DateFormat.getTimeInstance(DateFormat.SHORT).format(calendar.time)
@@ -57,7 +49,7 @@ fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivi
 
 
 @Composable
-fun VerticalDivider(isTopField: Boolean, fieldSize: FieldSize, isdivider: Boolean) {
+private fun VerticalDivider(isTopField: Boolean, fieldSize: FieldSize, isdivider: Boolean) {
     val height = when {
         isTopField -> 10.dp
         fieldSize == FieldSize.LARGE -> 28.dp
@@ -73,7 +65,7 @@ fun VerticalDivider(isTopField: Boolean, fieldSize: FieldSize, isdivider: Boolea
 }
 
 @Composable
-fun IconRow(
+private fun IconRow(
     icon: Int,
     colorFilter: ColorFilter,
     layout: FieldPosition,
@@ -99,7 +91,7 @@ fun IconRow(
 
 
 @Composable
-fun NumberRow(
+private fun NumberRow(
     number: String,
     zoneColor: ColorProvider,
     layout: FieldPosition,
@@ -149,7 +141,7 @@ fun NumberRow(
 
 
 @Composable
-fun OneIconRow(
+private fun OneIconRow(
     icon: Int,
     iconColor: ColorProvider,
     text: String,
@@ -210,7 +202,7 @@ fun OneIconRow(
 }
 
 @Composable
-fun OneNumberRow(
+private fun OneNumberRow(
     number: String,
     layout: FieldPosition,
     fieldSize: FieldSize,
@@ -254,7 +246,7 @@ fun OneNumberRow(
 
 
 @Composable
-fun HorizontalScreenContent(number: String, icon: Int, colorFilter: ColorProvider, layout: FieldPosition, iszone: Boolean) {
+private fun HorizontalScreenContent(number: String, icon: Int, colorFilter: ColorProvider, layout: FieldPosition, iszone: Boolean) {
    val colorIcon= ColorFilter.tint(colorFilter)
     Row(
         modifier = GlanceModifier.fillMaxWidth(),
@@ -304,7 +296,7 @@ fun HorizontalScreenContent(number: String, icon: Int, colorFilter: ColorProvide
 
 
 @Composable
-fun SingleHorizontalField(icon: Int, iconColor: ColorProvider, layout: FieldPosition, fieldSize: FieldSize, zoneColor: ColorProvider, number: String, isheadwind: Boolean, iszone: Boolean) {
+private fun SingleHorizontalField(icon: Int, iconColor: ColorProvider, layout: FieldPosition, fieldSize: FieldSize, zoneColor: ColorProvider, number: String, isheadwind: Boolean, iszone: Boolean) {
     val height = when (fieldSize) {
         FieldSize.LARGE -> 12.dp
         FieldSize.SMALL -> 6.dp
@@ -351,17 +343,17 @@ fun NotSupported(overlayText: String, fontSize: Int)
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , iconColor: ColorProvider, zonecolor: ColorProvider, fieldsize: FieldSize, iskaroo3: Boolean, clayout: FieldPosition,windtext: String, winddiff: Int, baseBitmap: Bitmap,selector: Boolean,textSize:Int,iszone: Boolean,ispreview:Boolean, secondValue:Double, isinit: Boolean=false) {
-    if (!isinit)
-    {
+fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , iconColor: ColorProvider, zonecolor: ColorProvider, fieldsize: FieldSize, iskaroo3: Boolean, clayout: FieldPosition,windtext: String, winddiff: Int, baseBitmap: Bitmap,selector: Boolean,textSize:Int,iszone: Boolean,ispreview:Boolean, secondValue:Double) {
 
-        val icon = action.icon
-        val label = action.label
-        val ispower = action.powerField
-        val isTime = action.action == KarooAction.TIMETODEST.action
-        val isCivil = action.action == KarooAction.CIVIL_DUSK.action || action.action == KarooAction.CIVIL_DAWN.action
+    val icon = action.icon
+    val label = action.label
+    val ispower = action.powerField
+    val isTime = action.action == KarooAction.TIMETODEST.action
+    val isCivil =
+        action.action == KarooAction.CIVIL_DUSK.action || action.action == KarooAction.CIVIL_DAWN.action
 
-        if (selector || (fieldsize == FieldSize.LARGE || fieldsize == FieldSize.EXTRA_LARGE)) {
+
+    if (selector) {
             val number = formatNumber(dNumber, isInt,isTime,isCivil)
             val numberSecond = formatNumber(secondValue, isInt,isTime,isCivil)
 
@@ -401,9 +393,6 @@ fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , ic
                 }
             }
         } else HeadwindDirection(baseBitmap, winddiff, textSize, windtext)
-    } else {
-        NotSupported("Searching...", textSize)
-    }
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
@@ -413,7 +402,7 @@ fun DoubleScreenSelector(
     selector: Int, showH: Boolean, leftNumber: Double, rightNumber: Double,leftField: DoubleFieldType, rightField: DoubleFieldType,
     iconColorLeft: ColorProvider, iconColorRight: ColorProvider,
     zoneColorLeft: ColorProvider, zoneColorRight: ColorProvider, fieldSize: FieldSize,
-    isKaroo3: Boolean, layout: FieldPosition, text: String, windDirection: Int, baseBitmap: Bitmap, isdivider:Boolean,  leftNumberSecond:Double = 0.0, rightNumberSecond:Double = 0.0, isinit:Boolean = false
+    isKaroo3: Boolean, layout: FieldPosition, text: String, windDirection: Int, baseBitmap: Bitmap, isdivider:Boolean,  leftNumberSecond:Double = 0.0, rightNumberSecond:Double = 0.0
 ) {
 
 
@@ -434,10 +423,7 @@ fun DoubleScreenSelector(
     val leftTime=leftField.kaction.action==KarooAction.TIMETODEST.action
     val rightTime=rightField.kaction.action==KarooAction.TIMETODEST.action
 
-    Timber.d("leftField: $leftField, selector: $selector")
 
-
-    if (!isinit) {
 
         val newLeft = if (ispowerLeft) (formatNumber(leftNumber, true) + "-" + formatNumber(
             leftNumberSecond,
@@ -542,16 +528,12 @@ fun DoubleScreenSelector(
                 isdivider
             )
         }
-    }
-    else {
-        NotSupported("Searching...", 21)
-    }
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun DoubleTypesScreenHorizontal(
+private fun DoubleTypesScreenHorizontal(
     leftNumber: String, rightNumber: String, leftIcon: Int, rightIcon: Int,
     iconColorLeft: ColorProvider, iconColorRight: ColorProvider,
     zoneColor1: ColorProvider, zoneColor2: ColorProvider, fieldSize: FieldSize,
@@ -586,7 +568,7 @@ fun DoubleTypesScreenHorizontal(
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun DoubleTypesVerticalScreenSmall(
+private fun DoubleTypesVerticalScreenSmall(
     leftNumber: String, rightNumber: String, leftIcon: Int, rightIcon: Int,
     iconColorLeft: ColorProvider, iconColorRight: ColorProvider,
     zoneColor1: ColorProvider, zoneColor2: ColorProvider, isKaroo3: Boolean, layout: FieldPosition, iszoneLeft: Boolean, iszoneRight: Boolean, isdivider: Boolean
@@ -609,7 +591,7 @@ fun DoubleTypesVerticalScreenSmall(
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun DoubleTypesVerticalScreenBig(
+private fun DoubleTypesVerticalScreenBig(
     leftNumber: String, rightNumber: String, leftIcon: Int, rightIcon: Int,
     iconColorLeft: ColorProvider, iconColorRight: ColorProvider,
     zoneColor1: ColorProvider, zoneColor2: ColorProvider, isKaroo3: Boolean, layout: FieldPosition,iszoneLeft: Boolean,iszoneRight: Boolean,isdivider: Boolean
@@ -632,7 +614,7 @@ fun DoubleTypesVerticalScreenBig(
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun HeadwindDirectionDoubleType(baseBitmap: Bitmap, bearing: Int, fontSize: Int, overlayText: String) {
+private fun HeadwindDirectionDoubleType(baseBitmap: Bitmap, bearing: Int, fontSize: Int, overlayText: String) {
     Spacer(modifier = GlanceModifier.fillMaxWidth().height(10.dp))
     Box(
         modifier = GlanceModifier.fillMaxSize().padding(2.dp),

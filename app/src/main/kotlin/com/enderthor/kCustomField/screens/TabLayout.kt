@@ -23,9 +23,6 @@ import kotlinx.coroutines.launch
 
 import com.enderthor.kCustomField.datatype.*
 import com.enderthor.kCustomField.extensions.*
-import io.hammerhead.karooext.KarooSystemService
-import io.hammerhead.karooext.models.HardwareType
-import timber.log.Timber
 
 
 val alignmentOptions = listOf(FieldPosition.LEFT, FieldPosition.CENTER, FieldPosition.RIGHT)
@@ -37,19 +34,7 @@ fun TabLayout() {
     val tabs = listOf("Fields","Rolling","Conf.")
     val ctx = LocalContext.current
 
-    val karooSystem = remember { KarooSystemService(ctx) }
-    var karooConnected by remember { mutableStateOf(false) }
-    val iskaroo3 by remember(karooConnected) {
-        derivedStateOf {
-            if (karooConnected) karooSystem.hardwareType == HardwareType.KAROO else false
-        }
-    }
 
-    LaunchedEffect(Unit) {
-        karooSystem.connect { connected ->
-            karooConnected = connected
-        }
-    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(
@@ -67,13 +52,13 @@ fun TabLayout() {
         }
 
 
-        if (karooConnected) {
+
             when (selectedTabIndex) {
-                0 -> ConfFields(ctx, iskaroo3)
-                1 -> ConfRolling(ctx, iskaroo3)
+                0 -> ConfFields(ctx, true)
+                1 -> ConfRolling(ctx, true)
                 2 -> ConfGeneral()
             }
-        }
+
     }
 }
 
@@ -107,7 +92,6 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             oneFieldSettingsDerived.value.forEachIndexed { index, oneFieldSettings ->
-                if (index == 0  || (iskaroo3 && index >= 1)) {
                     if(index>=1) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -199,7 +183,7 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
                                     oneFieldSettingsList[index].copy(rollingtime = timeOptions[it])
                             })
                     }
-                }
+
                 if (!oneFieldSettings.secondfield.isactive) oneFieldSettingsList[index] =
                     oneFieldSettingsList[index].copy(rollingtime = RollingTime("ZERO","0",0L))
             }
@@ -454,7 +438,7 @@ fun ConfGeneral() {
                     isdivider = it
                 })
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Use divider line between fields?")
+                Text("Enable Divider in datafields ?")
             }
 
             FilledTonalButton(modifier = Modifier.fillMaxWidth().height(50.dp), onClick = {

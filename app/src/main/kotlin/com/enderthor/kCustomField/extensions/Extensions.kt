@@ -45,7 +45,7 @@ suspend fun saveGeneralSettings(context: Context, settings: GeneralSettings) {
 }
 
 fun Context.streamGeneralSettings(): Flow<GeneralSettings> {
-   // Timber.d("streamSettings IN")
+    // Timber.d("streamSettings IN")
     return dataStore.data.map { settingsJson ->
         try {
             jsonWithUnknownKeys.decodeFromString<GeneralSettings>(
@@ -59,24 +59,28 @@ fun Context.streamGeneralSettings(): Flow<GeneralSettings> {
 }
 
 suspend fun saveDoubleFieldSettings(context: Context, settings: List<DoubleFieldSettings>) {
-   // Timber.d("saveSettings IN $settings")
+    // Timber.d("saveSettings IN $settings")
     context.dataStore.edit { t ->
         t[doublefieldKey] = Json.encodeToString(settings)
     }
 }
-
 fun Context.streamDoubleFieldSettings(): Flow<List<DoubleFieldSettings>> {
-  //  Timber.d("streamSettings DoubleField IN")
     return dataStore.data.map { settingsJson ->
         try {
-            if (settingsJson.contains(doublefieldKey)) {
-
-               jsonWithUnknownKeys.decodeFromString<List<DoubleFieldSettings>>(
+            val decodedSettings = if (settingsJson.contains(doublefieldKey)) {
+                jsonWithUnknownKeys.decodeFromString<List<DoubleFieldSettings>>(
                     settingsJson[doublefieldKey] ?: defaultDoubleFieldSettings
                 )
-
             } else {
                 jsonWithUnknownKeys.decodeFromString<List<DoubleFieldSettings>>(defaultDoubleFieldSettings)
+            }
+
+            if (decodedSettings.size == 5) {
+                decodedSettings + DoubleFieldSettings(
+                    index = 5
+                )
+            } else {
+                decodedSettings
             }
         } catch (e: Throwable) {
             Timber.tag("KarooDualTypeExtension").e(e, "Failed to read preferences")
@@ -85,9 +89,8 @@ fun Context.streamDoubleFieldSettings(): Flow<List<DoubleFieldSettings>> {
     }.distinctUntilChanged()
 }
 
-
 suspend fun saveOneFieldSettings(context: Context, settings: List<OneFieldSettings>) {
-   // Timber.d("saveSettings IN $settings")
+    // Timber.d("saveSettings IN $settings")
     context.dataStore.edit { t ->
         t[onefieldKey] = Json.encodeToString(settings)
     }
@@ -95,16 +98,22 @@ suspend fun saveOneFieldSettings(context: Context, settings: List<OneFieldSettin
 
 
 fun Context.streamOneFieldSettings(): Flow<List<OneFieldSettings>> {
-    //  Timber.d("streamSettings OneField IN")
     return dataStore.data.map { settingsJson ->
         try {
-            if (settingsJson.contains(onefieldKey)) {
-
-                 jsonWithUnknownKeys.decodeFromString<List<OneFieldSettings>>(
-                    settingsJson[onefieldKey] ?: defaultOneFieldSettings)
-
-            }  else {
+            val decodedSettings = if (settingsJson.contains(onefieldKey)) {
+                jsonWithUnknownKeys.decodeFromString<List<OneFieldSettings>>(
+                    settingsJson[onefieldKey] ?: defaultOneFieldSettings
+                )
+            } else {
                 jsonWithUnknownKeys.decodeFromString<List<OneFieldSettings>>(defaultOneFieldSettings)
+            }
+
+            if (decodedSettings.size == 2) {
+                decodedSettings + OneFieldSettings(
+                    index = 2
+                )
+            } else {
+                decodedSettings
             }
         } catch (e: Throwable) {
             Timber.tag("KarooDualTypeExtension").e(e, "Failed to read OneFieldpreferences")
@@ -122,7 +131,7 @@ fun KarooSystemService.streamDataFlow(dataTypeId: String): Flow<StreamState> {
             removeConsumer(listenerId)
         }
     }.onStart {
-            emit(StreamState.Streaming(DataPoint(dataTypeId, mapOf(DataType.Field.SINGLE to 0.0), ""))) }
+        emit(StreamState.Streaming(DataPoint(dataTypeId, mapOf(DataType.Field.SINGLE to 0.0), ""))) }
 }
 
 fun KarooSystemService.streamUserProfile(): Flow<UserProfile> {

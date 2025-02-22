@@ -119,7 +119,7 @@ data class DoubleFieldSettings(
     val ishorizontal: Boolean = true,
     val isenabled: Boolean = true,
 
-)
+    )
 
 enum class RefreshTime( val time: Long) {
     HALF (400L),  MID(800L) , EXTRA_ROLLING(200L);

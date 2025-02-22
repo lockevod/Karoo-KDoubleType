@@ -24,14 +24,18 @@ import com.enderthor.kCustomField.extensions.slopeZones
 import com.enderthor.kCustomField.extensions.streamDataFlow
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.flowOn
 import kotlin.random.Random
 import timber.log.Timber
 
 
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.timeout
+import kotlinx.coroutines.isActive
 
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.milliseconds
@@ -42,6 +46,18 @@ private const val WAIT_STREAMS_SHORT = 3000L // 3 seconds
 private const val WAIT_STREAMS_NORMAL = 60000L // 1 minute
 private const val WAIT_STREAMS_LONG = 240000L // 4 minutes
 private const val STREAM_TIMEOUT = 15000L // 15 seconds
+
+internal object ViewState {
+    @Volatile
+    private var _isCancelled = false
+
+    val isCancelledByEmitter: Boolean
+        get() = _isCancelled
+
+    fun setCancelled(value: Boolean) {
+        _isCancelled = value
+    }
+}
 
 fun getColorZone(
     context: Context,
@@ -68,20 +84,6 @@ fun getColorZone(
     )
 }
 
-fun convertValueStart(
-    streamState: StreamState,
-    type: String
-): Double {
-
-    return  when (type) {
-        "TYPE_ELEVATION_REMAINING_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_REMAINING_ID")
-        "TYPE_DISTANCE_TO_DESTINATION_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_DISTANCE_TO_DESTINATION_ID")
-        "TYPE_VERTICAL_SPEED_ID", "TYPE_AVERAGE_VERTICAL_SPEED_30S_ID" ->
-            (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_VERTICAL_SPEED_ID")
-        else -> (streamState as? StreamState.Streaming)?.dataPoint?.singleValue
-    } ?: 0.0
-
-}
 
 fun convertValue(
     streamState: StreamState,
@@ -152,7 +154,7 @@ fun createHeadwindFlow(
         }
         .collect { emit(it) }
 }
-
+/*
 @OptIn(FlowPreview::class)
 fun KarooSystemService.getFieldFlow(
     field: Any,
@@ -200,7 +202,7 @@ fun KarooSystemService.getFieldFlow(
     streamFlow
         .distinctUntilChanged()
         .retryWhen { cause, attempt ->
-           if (attempt > RETRY_CHECK_STREAMS) {
+            if (attempt > RETRY_CHECK_STREAMS) {
                 Timber.e("Máximo de reintentos alcanzado en action.name: ${action.name}")
                 val backoffDelay = (1000L * (1 shl attempt.toInt()))
                     .coerceAtMost(WAIT_STREAMS_NORMAL)
@@ -219,15 +221,138 @@ fun KarooSystemService.getFieldFlow(
                     emit(mapOf(DataType.Field.SINGLE to 0.0))
                     delay(STREAM_TIMEOUT)
                 }
-                 /*is StreamState.NotAvailable -> {
-                    Timber.d("Stream inactivo: ${state::class.simpleName}")
-                    emit(mapOf(DataType.Field.SINGLE to 0.0))
-                    delay(WAIT_STREAMS_LONG)
-                }*/
+                /*is StreamState.NotAvailable -> {
+                   Timber.d("Stream inactivo: ${state::class.simpleName}")
+                   emit(mapOf(DataType.Field.SINGLE to 0.0))
+                   delay(WAIT_STREAMS_LONG)
+               }*/
                 else -> emit(state)
             }
         }
 }
+*/
+@OptIn(FlowPreview::class)
+fun KarooSystemService.getFieldFlow(
+    field: Any,
+    headwindFlow: Flow<StreamHeadWindData>,
+    generalSettings: GeneralSettings,
+): Flow<Any> = flow {
+
+    try {
+        val (actionId, action) = when (field) {
+            is DoubleFieldType -> field.kaction.action to field.kaction
+            is OneFieldType -> field.kaction.action to field.kaction
+            else -> throw IllegalArgumentException("Tipo de campo no soportado")
+        }
+
+        Timber.d("Stream action.name: ${action.name} y actionId: $actionId")
+
+        while (currentCoroutineContext().isActive) {
+            try {
+                val streamFlow = when {
+                    action.name == "HEADWIND" && generalSettings.isheadwindenabled -> {
+                        headwindFlow
+                            .onStart {
+                                Timber.d("Emisión inicial headwindFlow en action.name: ${action.name}")
+                                emit(StreamHeadWindData(0.0, 0.0))
+                            }
+                            .catch { e ->
+                                when (e) {
+                                    is CancellationException -> {
+                                        if (ViewState.isCancelledByEmitter) throw e
+                                        Timber.d("Cancelación ignorada en headwindFlow")
+                                        emit(StreamHeadWindData(0.0, 0.0))
+                                    }
+                                    else -> {
+                                        Timber.e(e, "Error en headwindFlow")
+                                        emit(StreamHeadWindData(0.0, 0.0))
+                                    }
+                                }
+                            }
+                            .timeout(STREAM_TIMEOUT.milliseconds)
+                    }
+                    else -> streamDataFlow(action.action)
+                        .onStart {
+                            Timber.d("Emisión inicial streamDataFlow en action.name: ${action.name}")
+                            emit(StreamState.Streaming(DataPoint(
+                                dataTypeId = actionId,
+                                values = mapOf(DataType.Field.SINGLE to 0.0)
+                            )))
+                        }
+                        .catch { e ->
+                            when (e) {
+                                is CancellationException -> {
+                                    if (ViewState.isCancelledByEmitter) throw e
+                                    Timber.d("Cancelación ignorada en streamDataFlow")
+                                    emit(StreamState.NotAvailable)
+                                }
+                                else -> {
+                                    Timber.e(e, "Error en streamDataFlow")
+                                    emit(StreamState.NotAvailable)
+                                }
+                            }
+                        }
+                        .timeout(STREAM_TIMEOUT.milliseconds)
+                }
+
+                streamFlow
+                    .distinctUntilChanged()
+                    .collect { state ->
+                        emit(state)
+                    }
+
+            } catch (e: Exception) {
+                when (e) {
+                    is CancellationException -> {
+                        if (ViewState.isCancelledByEmitter) {
+                            Timber.d("getFieldFlow cancelado por emitter para ${action.name}")
+                            throw e
+                        }
+                        Timber.d("Cancelación ignorada en getFieldFlow para ${action.name}")
+                        emit(StreamState.NotAvailable)
+                        delay(WAIT_STREAMS_SHORT)
+                    }
+                    else -> {
+                        Timber.e(e, "Error en getFieldFlow para ${action.name}")
+                        emit(StreamState.NotAvailable)
+                        delay(WAIT_STREAMS_SHORT)
+                    }
+                }
+            }
+        }
+    } catch (e: CancellationException) {
+        if (ViewState.isCancelledByEmitter) {
+            Timber.d("getFieldFlow cancelado por emitter")
+            throw e
+        }
+        Timber.d("Cancelación ignorada en getFieldFlow")
+        emit(StreamState.NotAvailable)
+    }
+}.flowOn(Dispatchers.IO)
+    .retryWhen { cause, attempt ->
+        when {
+            cause is CancellationException && !ViewState.isCancelledByEmitter -> true
+            attempt > RETRY_CHECK_STREAMS -> {
+                Timber.e("Máximo de reintentos alcanzado")
+                delay(WAIT_STREAMS_NORMAL)
+                true
+            }
+            else -> {
+                Timber.w("Reintentando stream, intento $attempt")
+                delay(WAIT_STREAMS_SHORT)
+                true
+            }
+        }
+    }
+    .catch { e ->
+        when {
+            e is CancellationException && ViewState.isCancelledByEmitter -> throw e
+            else -> {
+                Timber.e(e, "Error fatal en getFieldFlow")
+                emit(StreamState.NotAvailable)
+            }
+        }
+    }
 
 fun multipleStreamValues(state: StreamState, kaction: KarooAction): Pair<Double, Double> {
     if (state !is StreamState.Streaming) return Pair(0.0, 0.0)
@@ -289,46 +414,6 @@ fun getFieldState(
         updateFieldState(fieldState, field, context, userProfile, isPaletteZwift)
     } else {
         Quintuple(0.0, ColorProvider(Color.White, Color.Black), ColorProvider(Color.White, Color.Black), false, 0.0)
-    }
-}
-
-fun updateFieldStateView(
-    fieldSettings: Any,
-    context: Context,
-    userProfile: UserProfile,
-    isPaletteZwift: Boolean,
-    value: Double
-): Triple<ColorProvider, ColorProvider, Boolean> {
-    val (kaction, iszone) = when (fieldSettings) {
-        is DoubleFieldType -> fieldSettings.kaction to fieldSettings.iszone
-        is OneFieldType -> fieldSettings.kaction to fieldSettings.iszone
-        else -> throw IllegalArgumentException("Unsupported field type")
-    }
-
-
-    val iconColor = getColorProvider(context, kaction, iszone)
-    val colorZone = if ((kaction.zone in listOf("heartRateZones", "powerZones", "slopeZones")) && iszone) {
-        getColorZone(context, kaction.zone, value, userProfile, isPaletteZwift)
-    } else {
-        ColorProvider(Color.White, Color.Black)
-    }
-
-    return Triple(iconColor, colorZone, iszone)
-}
-
-
-fun getFieldStateView(
-    field: Any,
-    context: Context,
-    userProfile: UserProfile,
-    isPaletteZwift: Boolean,
-    isHeadwind: Boolean,
-    value: Double
-): Triple<ColorProvider, ColorProvider, Boolean> {
-    return if (!isHeadwind) {
-        updateFieldStateView(field, context, userProfile, isPaletteZwift,value)
-    } else {
-        Triple( ColorProvider(Color.White, Color.Black), ColorProvider(Color.White, Color.Black), false)
     }
 }
 
