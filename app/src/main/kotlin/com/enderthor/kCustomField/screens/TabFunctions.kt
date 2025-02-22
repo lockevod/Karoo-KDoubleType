@@ -137,9 +137,15 @@ fun KarooKeyDropdown(remotekey: String, options: List<DropdownOption>, selectedO
 }
 
 @Composable
-fun DropdownOneField(enabled: Boolean, firstpos: Boolean, label: String, action: OneFieldType, onActionChange: (OneFieldType) -> Unit) {
+fun DropdownOneField(enabled: Boolean, firstpos: Boolean, label: String, action: OneFieldType,  isheadwindenabled: Boolean = false, onActionChange: (OneFieldType) -> Unit) {
 
     var dropdownOptions = KarooAction.entries.map { DropdownOption(it.action.toString(), it.label) }
+
+    if (!isheadwindenabled) {
+        dropdownOptions = dropdownOptions.filter { it.id != KarooAction.HEADWIND.action.toString() }
+    }
+
+
     if (!firstpos) dropdownOptions = listOf(DropdownOption("none", "None")) + dropdownOptions
 
 
