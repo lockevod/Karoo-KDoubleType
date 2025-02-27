@@ -98,6 +98,8 @@ fun convertValue(
         "TYPE_DISTANCE_TO_DESTINATION_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_DISTANCE_TO_DESTINATION_ID")
         "TYPE_VERTICAL_SPEED_ID", "TYPE_AVERAGE_VERTICAL_SPEED_30S_ID" ->
             (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_VERTICAL_SPEED_ID")
+        "SHIFTING_FRONT_GEAR" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_SHIFTING_FRONT_GEAR_ID")
+        "SHIFTING_REAR_GEAR" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_SHIFTING_FRONT_REAR_ID")
         else -> (streamState as? StreamState.Streaming)?.dataPoint?.singleValue
     } ?: 0.0
 
@@ -154,83 +156,7 @@ fun createHeadwindFlow(
         }
         .collect { emit(it) }
 }
-/*
-@OptIn(FlowPreview::class)
-fun KarooSystemService.getFieldFlow(
-    field: Any,
-    headwindFlow: Flow<StreamHeadWindData>,
-    generalSettings: GeneralSettings,
-): Flow<Any> = flow {
 
-    val (actionId, action) = when (field) {
-        is DoubleFieldType -> field.kaction.action to field.kaction
-        is OneFieldType -> field.kaction.action to field.kaction
-        else -> throw IllegalArgumentException("Tipo de campo no soportado")
-    }
-
-    Timber.d("Stream action.name: ${action.name} y actionId: $actionId")
-
-    val streamFlow =
-        when {
-            action.name == "HEADWIND" && generalSettings.isheadwindenabled -> {
-                headwindFlow
-                    .onStart {
-                        Timber.d("Emisión inicial headwindFlow en action.name: ${action.name} y actionId: $actionId")
-                        emit(StreamHeadWindData(0.0, 0.0))
-                    }
-                    .catch { e ->
-                        Timber.e(e, "Error en headwindFlow")
-                        throw e  // Se propaga al retryWhen
-                    }
-                    .timeout(STREAM_TIMEOUT.milliseconds)
-            }
-            else -> streamDataFlow(action.action)
-                .onStart {
-                    Timber.d("Emisión inicial streamDataFlow en action.name: ${action.name} y actionId: $actionId")
-                    emit(StreamState.Streaming(DataPoint(
-                        dataTypeId = actionId,
-                        values = mapOf(DataType.Field.SINGLE to 0.0)
-                    )))
-                }
-                .catch { e ->
-                    Timber.e(e, "Error en streamDataFlow")
-                    throw e  // Se propaga al retryWhen
-                }
-                .timeout(STREAM_TIMEOUT.milliseconds)
-        }
-
-    streamFlow
-        .distinctUntilChanged()
-        .retryWhen { cause, attempt ->
-            if (attempt > RETRY_CHECK_STREAMS) {
-                Timber.e("Máximo de reintentos alcanzado en action.name: ${action.name}")
-                val backoffDelay = (1000L * (1 shl attempt.toInt()))
-                    .coerceAtMost(WAIT_STREAMS_NORMAL)
-                delay(backoffDelay)
-                true
-            } else {
-                Timber.w("Reintentando stream action.name: ${action.name}, intento $attempt")
-                delay(WAIT_STREAMS_SHORT)
-                true
-            }
-        }
-        .collect { state ->
-            when (state) {
-                is StreamState.Idle, is StreamState.Searching, is StreamState.NotAvailable -> {
-                    Timber.d("Stream inactivo ${action.name}  =>: ${state::class.simpleName}")
-                    emit(mapOf(DataType.Field.SINGLE to 0.0))
-                    delay(STREAM_TIMEOUT)
-                }
-                /*is StreamState.NotAvailable -> {
-                   Timber.d("Stream inactivo: ${state::class.simpleName}")
-                   emit(mapOf(DataType.Field.SINGLE to 0.0))
-                   delay(WAIT_STREAMS_LONG)
-               }*/
-                else -> emit(state)
-            }
-        }
-}
-*/
 @OptIn(FlowPreview::class)
 fun KarooSystemService.getFieldFlow(
     field: Any,

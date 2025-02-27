@@ -1,8 +1,5 @@
 # KDouble Field  Extension
 
-> [!WARNING]  
-> This app is currently in beta stage and its main features might not work at all.
-
 KDoubleType allows to use custom fields with double types (HR,Power,etc)
 
 ## Requirements
@@ -47,8 +44,8 @@ In this case, you have to select Timklge headwind field also in this profile.
 - The max number of every field horizontal is 3 digits, but it's better if you don't mix two types with 3 digits always.
 - Not intensive tested with all the fields, please report any issue. For example, number adaptation for the fields is not tested with all the fields.
 - If you use several fields your Karoo can be freeze especially if you have a Karoo 2. I've made several performance improvements but be careful to use 5 fields + rolling + headwind (in the same rolling or custom fields).. it's a lot of data to process.
-
-## Credits
+- New Headwind releases doesn't work with KDouble extension because the new version doesn't stream wind data (v1.2.5 and later). You can use the last version of Headwind app (v1.2.4) to use the headwind field in KDouble extension.
+- Hammerhead API has some bugs with the custom fields, they're working in a fix, but I've implemented some local fixes to avoid the Karoo freeze (but it can be happen).
 
 - Made possible by the generous usage terms of timklge (apache 2.0). He has a great development and I use part of his code to create this extension.
   https://github.com/timklge?tab=repositories
