@@ -28,6 +28,7 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 - Add custom fields to your profiles (HR, Power, etc).
 - You can add horizontal or vertical fields.
 - You can add rolling fields and select de rolling period (ie. change every 5-10-20-30 seconds between three fields...)
+- You can add an extra time for the first field (in rolling fields). This x3 the rolling period.
 - You can configure the fields in the configuration tab and select if you want colored zones or not.
 
 ## Configuration
