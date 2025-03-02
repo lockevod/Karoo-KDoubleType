@@ -25,11 +25,9 @@ import com.enderthor.kCustomField.extensions.streamDataFlow
 import com.enderthor.kCustomField.extensions.streamUserProfile
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.coroutines.flow.flowOn
 import kotlin.random.Random
 import timber.log.Timber
 

@@ -19,6 +19,7 @@ import timber.log.Timber
 import java.text.DateFormat
 import java.util.Calendar
 import kotlin.math.roundToInt
+import java.util.Locale
 
 
 fun formatTimeRemaining(timeMs: Double): String {
@@ -27,9 +28,9 @@ fun formatTimeRemaining(timeMs: Double): String {
     val minutes = totalMinutes % 60
 
     return if (hours > 0) {
-        String.format("%02d:%02d", hours, minutes)
+        String.format(Locale.US, "%02d:%02d", hours, minutes)
     } else {
-        String.format("%d", minutes)
+        String.format(Locale.US, "%d", minutes)
     }
 }
 

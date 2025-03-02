@@ -94,113 +94,147 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
     }
 
 
-    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .background(MaterialTheme.colorScheme.background)) {
         Column(
-            modifier = Modifier.padding(5.dp).verticalScroll(rememberScrollState()).fillMaxWidth(),
+            modifier = Modifier
+                .padding(5.dp)
+                .verticalScroll(rememberScrollState())
+                .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             oneFieldSettingsDerived.value.forEachIndexed { index, oneFieldSettings ->
-                    if(index>=1) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            "Be careful to use several custom fields simultaneously (custom and rolling) in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues",
-                            fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-                    TopAppBar(title = { Text("Rolling Field ${index + 1}") })
-                    DropdownOneField(
-                        enabled = true,
-                        firstpos = true,
-                        label="First Field",
-                        action=oneFieldSettings.onefield,
-                        isheadwindenabled = generalSettings.isheadwindenabled
-                    ) { newAction ->
-                        val updatedZone =
-                            if (newAction.kaction.zone == "none") false else oneFieldSettings.onefield.iszone
-                        val updatednewAction = newAction.copy(iszone = updatedZone)
-                        oneFieldSettingsList[index] =
-                            oneFieldSettings.copy(onefield = updatednewAction)
-                    }
-                    ZoneMultiSwitch(
-                        0,
-                        oneFieldSettings.onefield.iszone,
-                        oneFieldSettings.onefield.kaction.zone != "none"
-                    ) { newZone ->
-                        oneFieldSettingsList[index].onefield =
-                            oneFieldSettings.onefield.copy(iszone = newZone)
-                    }
-                    DropdownOneField(
-                        enabled=true,
-                        firstpos=false,
-                        label="Second Field",
-                        action=oneFieldSettings.secondfield,
-                        isheadwindenabled = generalSettings.isheadwindenabled
-                    ) { newAction ->
+                if (index >= 1) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Be careful to use several custom fields simultaneously (custom and rolling) in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues",
+                        fontSize = 14.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                TopAppBar(title = { Text("Rolling Field ${index + 1}") })
+                DropdownOneField(
+                    enabled = true,
+                    firstpos = true,
+                    label = "First Field",
+                    action = oneFieldSettings.onefield,
+                    isheadwindenabled = generalSettings.isheadwindenabled
+                ) { newAction ->
+                    val updatedZone =
+                        if (newAction.kaction.zone == "none") false else oneFieldSettings.onefield.iszone
+                    val updatednewAction = newAction.copy(iszone = updatedZone)
+                    oneFieldSettingsList[index] =
+                        oneFieldSettings.copy(onefield = updatednewAction)
+                }
+                ZoneMultiSwitch(
+                    0,
+                    oneFieldSettings.onefield.iszone,
+                    oneFieldSettings.onefield.kaction.zone != "none"
+                ) { newZone ->
+                    oneFieldSettingsList[index].onefield =
+                        oneFieldSettings.onefield.copy(iszone = newZone)
+                }
+                DropdownOneField(
+                    enabled = true,
+                    firstpos = false,
+                    label = "Second Field",
+                    action = oneFieldSettings.secondfield,
+                    isheadwindenabled = generalSettings.isheadwindenabled
+                ) { newAction ->
 
-                        val updatedZone =
-                            if (newAction.kaction.zone == "none") false else oneFieldSettings.secondfield.iszone
-                        val updatednewAction = newAction.copy(iszone = updatedZone)
-                      // Timber.d("NEW ACTION SECONDFIELD $updatednewAction")
-                        oneFieldSettingsList[index] =
-                            oneFieldSettings.copy(secondfield = updatednewAction)
-                        if (newAction.kaction.zone == "none")  oneFieldSettingsList[index] = oneFieldSettings.copy(
-                            secondfield = updatednewAction,
-                            thirdfield =  updatednewAction
+                    val updatedZone =
+                        if (newAction.kaction.zone == "none") false else oneFieldSettings.secondfield.iszone
+                    val updatednewAction = newAction.copy(iszone = updatedZone)
+                    // Timber.d("NEW ACTION SECONDFIELD $updatednewAction")
+                    oneFieldSettingsList[index] =
+                        oneFieldSettings.copy(secondfield = updatednewAction)
+                    /*if (newAction.kaction.zone == "none") oneFieldSettingsList[index] =
+                        oneFieldSettings.copy(secondfield = updatednewAction)
+                    else oneFieldSettingsList[index] =
+                        oneFieldSettings.copy(secondfield = updatednewAction)*/
+                    if (!newAction.isactive) {
+                        val noneThirdField = oneFieldSettings.thirdfield.copy(
+                            isactive = false,
+                            kaction = newAction.kaction
                         )
-                        else  oneFieldSettingsList[index] =
-                            oneFieldSettings.copy(secondfield = updatednewAction)
+                        oneFieldSettingsList[index] = oneFieldSettings.copy(
+                            secondfield = updatednewAction,
+                            thirdfield = noneThirdField
+                        )
+                    } else {
+                        oneFieldSettingsList[index] = oneFieldSettings.copy(secondfield = updatednewAction)
                     }
-                    ZoneMultiSwitch(
-                        0,
-                        oneFieldSettings.secondfield.iszone,
-                        oneFieldSettings.secondfield.kaction.zone != "none"
-                    ) { newZone ->
-                        oneFieldSettingsList[index].secondfield =
-                            oneFieldSettings.secondfield.copy(iszone = newZone)
-                    }
-                    DropdownOneField(
-                        firstpos=false,
-                        label="Third Field",
-                        action= oneFieldSettings.thirdfield,
+                }
+                ZoneMultiSwitch(
+                    0,
+                    oneFieldSettings.secondfield.iszone,
+                    oneFieldSettings.secondfield.kaction.zone != "none"
+                ) { newZone ->
+                    oneFieldSettingsList[index].secondfield =
+                        oneFieldSettings.secondfield.copy(iszone = newZone)
+                }
+                DropdownOneField(
+                    firstpos = false,
+                    label = "Third Field",
+                    action = oneFieldSettings.thirdfield,
+                    enabled = oneFieldSettings.secondfield.isactive,
+                    isheadwindenabled = generalSettings.isheadwindenabled
+                ) { newAction ->
+                    val updatedZone =
+                        if (newAction.kaction.zone == "none") false else oneFieldSettings.thirdfield.iszone
+                    val updatednewAction = newAction.copy(iszone = updatedZone)
+                    oneFieldSettingsList[index] =
+                        oneFieldSettings.copy(thirdfield = updatednewAction)
+                }
+                ZoneMultiSwitch(
+                    0,
+                    oneFieldSettings.thirdfield.iszone,
+                    oneFieldSettings.thirdfield.kaction.zone != "none"
+                ) { newZone ->
+                    oneFieldSettingsList[index].thirdfield =
+                        oneFieldSettings.thirdfield.copy(iszone = newZone)
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Rolling Time?")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    MultiToggleButton(
                         enabled = oneFieldSettings.secondfield.isactive,
-                        isheadwindenabled = generalSettings.isheadwindenabled
-                    ) { newAction ->
-                        val updatedZone =
-                            if (newAction.kaction.zone == "none") false else oneFieldSettings.thirdfield.iszone
-                        val updatednewAction = newAction.copy(iszone = updatedZone)
-                        oneFieldSettingsList[index] =
-                            oneFieldSettings.copy(thirdfield = updatednewAction)
-                    }
-                    ZoneMultiSwitch(
-                        0,
-                        oneFieldSettings.thirdfield.iszone,
-                        oneFieldSettings.thirdfield.kaction.zone != "none"
-                    ) { newZone ->
-                        oneFieldSettingsList[index].thirdfield =
-                            oneFieldSettings.thirdfield.copy(iszone = newZone)
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Rolling Time (0 no rolling)?")
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        MultiToggleButton(
-                            enabled = oneFieldSettings.secondfield.isactive,
-                            currentSelection=  if (oneFieldSettings.secondfield.isactive) timeOptions.indexOf(oneFieldSettings.rollingtime) else 0,
-                            toggleStates= timeOptions.map { it.name },
-                            onToggleChange = {
-                                oneFieldSettingsList[index] =
-                                    oneFieldSettingsList[index].copy(rollingtime = timeOptions[it])
-                            })
-                    }
+                        currentSelection = if (oneFieldSettings.secondfield.isactive) timeOptions.indexOf(
+                            oneFieldSettings.rollingtime
+                        ) else 0,
+                        toggleStates = timeOptions.map { it.name },
+                        onToggleChange = {
+                            oneFieldSettingsList[index] =
+                                oneFieldSettingsList[index].copy(rollingtime = timeOptions[it])
+                        })
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = oneFieldSettings.isextratime, onCheckedChange = {
+                        oneFieldSettingsList[index] = oneFieldSettingsList[index].copy(isextratime = it)
+                    })
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text("Enable Extra Time for First Field (x3 time)?")
+                }
+
 
                 if (!oneFieldSettings.secondfield.isactive) oneFieldSettingsList[index] =
-                    oneFieldSettingsList[index].copy(rollingtime = RollingTime("ZERO","0",0L))
+                    oneFieldSettingsList[index].copy(rollingtime = RollingTime("ZERO", "0", 0L))
+
+
+
             }
 
 
-            FilledTonalButton(modifier = Modifier.fillMaxWidth().height(50.dp), onClick = {
+            FilledTonalButton(modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp), onClick = {
                 coroutineScope.launch {
                     savedDialogVisible = true
                     saveOneFieldSettings(ctx, oneFieldSettingsList)
@@ -258,9 +292,14 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
 
     //imber.d("List size ${doubleFieldSettingsDerived.value.size} and iskaroo3 $iskaroo3")
 
-    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .background(MaterialTheme.colorScheme.background)) {
         Column(
-            modifier = Modifier.padding(5.dp).verticalScroll(rememberScrollState()).fillMaxWidth(),
+            modifier = Modifier
+                .padding(5.dp)
+                .verticalScroll(rememberScrollState())
+                .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             doubleFieldSettingsDerived.value.forEachIndexed { index, doubleFieldSettings ->
@@ -327,7 +366,9 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
                 }
             }
 
-            FilledTonalButton(modifier = Modifier.fillMaxWidth().height(50.dp), onClick = {
+            FilledTonalButton(modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp), onClick = {
                 coroutineScope.launch {
                     savedDialogVisible = true
                     saveDoubleFieldSettings(ctx, doubleFieldSettingsList)
@@ -379,8 +420,13 @@ fun ConfGeneral() {
     }
 
 
-    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Column(modifier = Modifier.padding(5.dp).verticalScroll(rememberScrollState()).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .background(MaterialTheme.colorScheme.background)) {
+        Column(modifier = Modifier
+            .padding(5.dp)
+            .verticalScroll(rememberScrollState())
+            .fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
             TopAppBar(title = { Text("Fields Alignment") })
 
@@ -448,18 +494,10 @@ fun ConfGeneral() {
                 Text("Zwift Color palette?")
             }
 
-            Spacer(modifier = Modifier.height(2.dp))
-            TopAppBar(title = { Text("Use Divider Line?") })
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(checked = isdivider, onCheckedChange = {
-                    isdivider = it
-                })
-                Spacer(modifier = Modifier.width(10.dp))
-                Text("Enable Divider in datafields ?")
-            }
-
-            FilledTonalButton(modifier = Modifier.fillMaxWidth().height(50.dp), onClick = {
+            FilledTonalButton(modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp), onClick = {
                 val newGeneralSettings = GeneralSettings(
                     ispalettezwift = ispalettezwift,
                     iscenteralign = iscenteralign,

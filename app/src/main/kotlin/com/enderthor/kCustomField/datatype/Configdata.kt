@@ -109,6 +109,7 @@ data class OneFieldSettings(
     var secondfield: OneFieldType = OneFieldType(KarooAction.CADENCE, false,false),
     var thirdfield: OneFieldType = OneFieldType(KarooAction.POWER, false,false),
     var rollingtime: RollingTime = RollingTime("ZERO","0",0L),
+    var isextratime: Boolean = false,
 )
 
 @Serializable
@@ -150,7 +151,6 @@ data class GlobalConfigState(
     val userProfile: UserProfile? = null
 )
 
-const val TIEMPO_SIN_DATOS_PARA_CERO = 2000L
 
 val defaultGeneralSettings = Json.encodeToString(GeneralSettings())
 val previewDoubleFieldSettings = listOf(DoubleFieldSettings(index=0),DoubleFieldSettings(1, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(2, DoubleFieldType(KarooAction.IF, false),DoubleFieldType(KarooAction.TSS, false),false,true),DoubleFieldSettings(3, DoubleFieldType(KarooAction.ELEV_GAIN, false),DoubleFieldType(KarooAction.ELEV_REMAIN,false),false,true),DoubleFieldSettings(4, DoubleFieldType(KarooAction.SPEED, false),DoubleFieldType(KarooAction.SLOPE, true),false,true),DoubleFieldSettings(5, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),false,true))
