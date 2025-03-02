@@ -22,6 +22,7 @@ import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.getZone
 import com.enderthor.kCustomField.extensions.slopeZones
 import com.enderthor.kCustomField.extensions.streamDataFlow
+import com.enderthor.kCustomField.extensions.streamUserProfile
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +45,6 @@ import kotlin.time.Duration.Companion.milliseconds
 private const val RETRY_CHECK_STREAMS = 4
 private const val WAIT_STREAMS_SHORT = 3000L // 3 seconds
 private const val WAIT_STREAMS_NORMAL = 60000L // 1 minute
-private const val WAIT_STREAMS_LONG = 240000L // 4 minutes
 private const val STREAM_TIMEOUT = 15000L // 15 seconds
 
 internal object ViewState {
@@ -164,6 +164,7 @@ fun KarooSystemService.getFieldFlow(
     generalSettings: GeneralSettings,
 ): Flow<Any> = flow {
 
+
     try {
         val (actionId, action) = when (field) {
             is DoubleFieldType -> field.kaction.action to field.kaction
@@ -173,22 +174,38 @@ fun KarooSystemService.getFieldFlow(
 
         Timber.d("Stream action.name: ${action.name} y actionId: $actionId")
 
+
+            if (action.name == "HEADWIND" && generalSettings.isheadwindenabled) {
+                Timber.d("Emisión inicial headwindFlow en action.name: ${action.name}")
+                emit(StreamHeadWindData(0.0, 0.0))
+            } else {
+                Timber.d("Emisión inicial streamDataFlow en action.name: ${action.name}")
+                emit(
+                    StreamState.Streaming(
+                        DataPoint(
+                            dataTypeId = actionId,
+                            values = mapOf(DataType.Field.SINGLE to 0.0)
+                        )
+                    )
+                )
+            }
+
+
+
         while (currentCoroutineContext().isActive) {
             try {
                 val streamFlow = when {
                     action.name == "HEADWIND" && generalSettings.isheadwindenabled -> {
                         headwindFlow
-                            .onStart {
-                                Timber.d("Emisión inicial headwindFlow en action.name: ${action.name}")
-                                emit(StreamHeadWindData(0.0, 0.0))
-                            }
+
                             .catch { e ->
                                 when (e) {
                                     is CancellationException -> {
                                         if (ViewState.isCancelledByEmitter) throw e
                                         Timber.d("Cancelación ignorada en headwindFlow")
-                                        emit(StreamHeadWindData(0.0, 0.0))
+                                        //emit(StreamHeadWindData(0.0, 0.0))
                                     }
+
                                     else -> {
                                         Timber.e(e, "Error en headwindFlow")
                                         emit(StreamHeadWindData(0.0, 0.0))
@@ -197,21 +214,37 @@ fun KarooSystemService.getFieldFlow(
                             }
                             .timeout(STREAM_TIMEOUT.milliseconds)
                     }
+
+                    action.name == "VO2MAX" -> {
+                        // Obtenemos potencia normalizada y calculamos VO2max
+                        streamDataFlow(DataType.Type.NORMALIZED_POWER)
+                            .combine(streamUserProfile()) { powerState, profile ->
+                                if (powerState is StreamState.Streaming) {
+                                    val powerValue = powerState.dataPoint.singleValue ?: 0.0
+                                    val vo2max = calculateVO2max(powerValue, profile)
+                                    StreamState.Streaming(
+                                        DataPoint(
+                                            dataTypeId = "VO2MAX",
+                                            values = mapOf(DataType.Field.SINGLE to vo2max)
+                                        )
+                                    )
+                                } else {
+                                    StreamState.Searching
+                                }
+                            }
+                            .timeout(STREAM_TIMEOUT.milliseconds)
+                    }
+
                     else -> streamDataFlow(action.action)
-                        .onStart {
-                            Timber.d("Emisión inicial streamDataFlow en action.name: ${action.name}")
-                            emit(StreamState.Streaming(DataPoint(
-                                dataTypeId = actionId,
-                                values = mapOf(DataType.Field.SINGLE to 0.0)
-                            )))
-                        }
+                        
                         .catch { e ->
                             when (e) {
                                 is CancellationException -> {
                                     if (ViewState.isCancelledByEmitter) throw e
                                     Timber.d("Cancelación ignorada en streamDataFlow")
-                                    emit(StreamState.NotAvailable)
+                                    //emit(StreamState.NotAvailable)
                                 }
+
                                 else -> {
                                     Timber.e(e, "Error en streamDataFlow")
                                     emit(StreamState.NotAvailable)
@@ -221,9 +254,8 @@ fun KarooSystemService.getFieldFlow(
                         .timeout(STREAM_TIMEOUT.milliseconds)
                 }
 
-                streamFlow
-                    .distinctUntilChanged()
-                    .collect { state ->
+                streamFlow.distinctUntilChanged().collect { state ->
+                        Timber.d("Emisión streamDataFlow en action.name: ${action.name} con valor $state")
                         emit(state)
                     }
 
@@ -235,9 +267,10 @@ fun KarooSystemService.getFieldFlow(
                             throw e
                         }
                         Timber.d("Cancelación ignorada en getFieldFlow para ${action.name}")
-                        emit(StreamState.NotAvailable)
+                        //emit(StreamState.NotAvailable)
                         delay(WAIT_STREAMS_SHORT)
                     }
+
                     else -> {
                         Timber.e(e, "Error en getFieldFlow para ${action.name}")
                         emit(StreamState.NotAvailable)
@@ -252,19 +285,21 @@ fun KarooSystemService.getFieldFlow(
             throw e
         }
         Timber.d("Cancelación ignorada en getFieldFlow")
-        emit(StreamState.NotAvailable)
+        //emit(StreamState.NotAvailable)
     }
-}.flowOn(Dispatchers.IO)
-    .retryWhen { cause, attempt ->
+}.retryWhen { cause, attempt ->
         when {
             cause is CancellationException && !ViewState.isCancelledByEmitter -> true
             attempt > RETRY_CHECK_STREAMS -> {
                 Timber.e("Máximo de reintentos alcanzado")
+                emit(StreamState.NotAvailable)
                 delay(WAIT_STREAMS_NORMAL)
                 true
             }
+
             else -> {
                 Timber.w("Reintentando stream, intento $attempt")
+                emit(StreamState.Idle)
                 delay(WAIT_STREAMS_SHORT)
                 true
             }
@@ -279,6 +314,14 @@ fun KarooSystemService.getFieldFlow(
             }
         }
     }
+
+fun calculateVO2max(powerValue: Double, userProfile: UserProfile): Double {
+    val weight = userProfile.weight
+    val wattsPerKg = powerValue / weight
+
+    //  Hawley & Noakes
+    return 10.8 * wattsPerKg + 7.0
+}
 
 fun multipleStreamValues(state: StreamState, kaction: KarooAction): Pair<Double, Double> {
     if (state !is StreamState.Streaming) return Pair(0.0, 0.0)

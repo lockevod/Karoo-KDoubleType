@@ -9,14 +9,14 @@ import io.hammerhead.karooext.models.DataType.Field
 import io.hammerhead.karooext.models.UserProfile
 
 
-
+/*
 data class Quadruple<out A, out B, out C, out D>(
     val first: A,
     val second: B,
     val third: C,
     val fourth: D
 )
-
+*/
 data class Quintuple<out A, out B, out C, out D, out E>(
     val first: A,
     val second: B,
@@ -82,6 +82,7 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     TORQUE(DataType.Type.TORQUE_EFFECTIVENESS, "Torque", R.drawable.ic_torque, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
     TSS(DataType.Type.TRAINING_STRESS_SCORE, "TSS", R.drawable.ic_tss, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     VAM(DataType.Type.VERTICAL_SPEED, "VAM3s", R.drawable.ic_vam, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    VO2MAX(DataType.dataTypeId("vo2", "VO2max"), "VO2max", R.drawable.ic_vo2max, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
 }
 
 enum class FieldSize {
@@ -149,6 +150,7 @@ data class GlobalConfigState(
     val userProfile: UserProfile? = null
 )
 
+const val TIEMPO_SIN_DATOS_PARA_CERO = 2000L
 
 val defaultGeneralSettings = Json.encodeToString(GeneralSettings())
 val previewDoubleFieldSettings = listOf(DoubleFieldSettings(index=0),DoubleFieldSettings(1, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(2, DoubleFieldType(KarooAction.IF, false),DoubleFieldType(KarooAction.TSS, false),false,true),DoubleFieldSettings(3, DoubleFieldType(KarooAction.ELEV_GAIN, false),DoubleFieldType(KarooAction.ELEV_REMAIN,false),false,true),DoubleFieldSettings(4, DoubleFieldType(KarooAction.SPEED, false),DoubleFieldType(KarooAction.SLOPE, true),false,true),DoubleFieldSettings(5, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),false,true))
