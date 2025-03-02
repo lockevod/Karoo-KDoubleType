@@ -5,6 +5,8 @@
 
 KDoubleType allows to use custom fields with double types (HR,Power,etc)
 
+<a href="https://www.buymeacoffee.com/enderthor" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
 ## Requirements
 - Karoo (tested on last Karoo ) with version 1.527 or later
 - Tested with Karoo 3 and metric configuration
