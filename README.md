@@ -1,6 +1,11 @@
 # KDouble Field  Extension
 
+> [!WARNING]  
+> This app is not in beta stage, but Extensions API are in their early stages and, sometimes, produces performance issues and crashes.
+
 KDoubleType allows to use custom fields with double types (HR,Power,etc)
+
+<a href="https://www.buymeacoffee.com/enderthor" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 
 ## Requirements
 - Karoo (tested on last Karoo ) with version 1.527 or later
@@ -27,8 +32,7 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 
 - Add custom fields to your profiles (HR, Power, etc).
 - You can add horizontal or vertical fields.
-- You can add rolling fields and select de rolling period (ie. change every 5-10-20-30 seconds between three fields...)
-- You can add an extra time for the first field (in rolling fields). This x3 the rolling period.
+- You can add rolling fields and select de rolling period (ie. change every 5-10-20-30 seconds between three fields...). You can chose one/two/three rolling mesures, if you chose only one.. then you only have one messure in this field.
 - You can configure the fields in the configuration tab and select if you want colored zones or not.
 
 ## Configuration
@@ -45,8 +49,10 @@ In this case, you have to select Timklge headwind field also in this profile.
 - The max number of every field horizontal is 3 digits, but it's better if you don't mix two types with 3 digits always.
 - Not intensive tested with all the fields, please report any issue. For example, number adaptation for the fields is not tested with all the fields.
 - If you use several fields your Karoo can be freeze especially if you have a Karoo 2. I've made several performance improvements but be careful to use 5 fields + rolling + headwind (in the same rolling or custom fields).. it's a lot of data to process.
-- New Headwind releases doesn't work with KDouble extension because the new version doesn't stream wind data (v1.2.5 and later). You can use the last version of Headwind app (v1.2.4) to use the headwind field in KDouble extension.
-- Hammerhead API has some bugs with the custom fields, they're working in a fix, but I've implemented some local fixes to avoid the Karoo freeze (but it can be happen).
+- Extensions (Hammerhead API) have a problem with rendering (sometimes and it's random)... if you have some field that dissapears when you use custom fields, you can try to change ride profile, kill ride app or reboot karoo. Sorry, but I cannot solve this at this moment (we're talking with Hammerhead).
+- Karoo 2 has low resources. Kdouble limit number of fields you can use in Karoo. Please be careful (also with Karoo 3) if you use several custom field, several extensions (apps) and you have a lot of these fields in your profile...
+
+## Credits
 
 - Made possible by the generous usage terms of timklge (apache 2.0). He has a great development and I use part of his code to create this extension.
   https://github.com/timklge?tab=repositories
@@ -56,6 +62,8 @@ In this case, you have to select Timklge headwind field also in this profile.
 - Thanks to DC Rainmaker for the great guide to sideload apps.
 - Thanks to Boxicons for the great icons.
 - Thanks to iconduck.com for the great icons.
+- Credits and copyright. Please respect license and specific parts licencsers (icons, etc). If you use this app you're agree.
+- KDouble doesn't save or share any information for it's use, but it use firebase crashlytics service only for crashes in app (and firebase use this crash information). I only use this information to prevent new crashes in the app. Please if you isn't agree with Firebase use (this conditions are in firebase web and can change, please read it), please you cannot use app. If you use it you are agree with all conditions and copyrights.
 
 ## Links
 
