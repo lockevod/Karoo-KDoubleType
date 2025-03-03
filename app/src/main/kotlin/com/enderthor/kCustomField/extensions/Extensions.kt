@@ -12,8 +12,6 @@ import com.enderthor.kCustomField.datatype.defaultGeneralSettings
 import com.enderthor.kCustomField.datatype.defaultOneFieldSettings
 
 import io.hammerhead.karooext.KarooSystemService
-import io.hammerhead.karooext.models.DataPoint
-import io.hammerhead.karooext.models.DataType
 import io.hammerhead.karooext.models.KarooEvent
 import io.hammerhead.karooext.models.OnStreamState
 import io.hammerhead.karooext.models.StreamState
@@ -25,7 +23,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -130,8 +127,7 @@ fun KarooSystemService.streamDataFlow(dataTypeId: String): Flow<StreamState> {
         awaitClose {
             removeConsumer(listenerId)
         }
-    }.onStart {
-        emit(StreamState.Streaming(DataPoint(dataTypeId, mapOf(DataType.Field.SINGLE to 0.0), ""))) }
+    }
 }
 
 fun KarooSystemService.streamUserProfile(): Flow<UserProfile> {

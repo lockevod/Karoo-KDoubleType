@@ -4,6 +4,7 @@ import io.hammerhead.karooext.models.UserProfile
 import com.enderthor.kCustomField.R
 import kotlinx.serialization.Serializable
 import kotlin.math.absoluteValue
+import kotlin.math.floor
 
 @Serializable
 data class zoneslope(val min: Double, val max: Double)
@@ -46,10 +47,10 @@ val zones = mapOf(
 
 inline fun <reified T> getZone(userZones: List<T>, value: Double): Zone? {
     val zoneList = zones[userZones.size] ?: return null
+    val valueabs = floor(value.absoluteValue)
 
-    val valueabs=value.absoluteValue
-
-    userZones.forEachIndexed { index, zone ->
+    for (i in userZones.indices) {
+        val zone = userZones[i]
         val min = when (zone) {
             is UserProfile.Zone -> zone.min.toDouble()
             is zoneslope -> zone.min
@@ -60,9 +61,23 @@ inline fun <reified T> getZone(userZones: List<T>, value: Double): Zone? {
             is zoneslope -> zone.max
             else -> return null
         }
+
         if (valueabs >= min && valueabs < max) {
-            return zoneList.getOrNull(index) ?: Zone.Zone7
+            return zoneList.getOrNull(i) ?: Zone.Zone7
         }
     }
+
+    // Si el valor es mayor o igual al máximo de la última zona
+    val lastZone = userZones.lastOrNull() ?: return null
+    val lastMax = when (lastZone) {
+        is UserProfile.Zone -> lastZone.max.toDouble()
+        is zoneslope -> 99.0
+        else -> return null
+    }
+
+    if (valueabs >= lastMax) {
+        return zoneList.lastOrNull()
+    }
+
     return null
 }

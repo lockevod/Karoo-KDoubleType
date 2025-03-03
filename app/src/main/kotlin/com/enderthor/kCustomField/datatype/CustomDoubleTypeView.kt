@@ -15,16 +15,23 @@ import androidx.glance.preview.ExperimentalGlancePreviewApi
 import androidx.glance.preview.Preview
 import androidx.glance.text.*
 import androidx.glance.unit.ColorProvider
+import timber.log.Timber
 import java.text.DateFormat
 import java.util.Calendar
 import kotlin.math.roundToInt
+import java.util.Locale
 
 
-private fun formatTimeFromSeconds(seconds: Double): String {
-    val totalMinutes = (seconds / 60).toInt()
+fun formatTimeRemaining(timeMs: Double): String {
+    val totalMinutes = (timeMs / 60000).toInt() // Convertir ms a minutos
     val hours = totalMinutes / 60
     val minutes = totalMinutes % 60
-    return "${hours}:${minutes.toString().padStart(2, '0')}"
+
+    return if (hours > 0) {
+        String.format(Locale.US, "%02d:%02d", hours, minutes)
+    } else {
+        String.format(Locale.US, "%d", minutes)
+    }
 }
 
 private fun epochToTimeOfDay(epochMillis: Double): String {
@@ -37,10 +44,14 @@ private fun epochToTimeOfDay(epochMillis: Double): String {
 fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivil: Boolean = false): String = buildString {
 
     if (isCivil) {
+        Timber.d("Civil: $number")
+        Timber.d("Civil Converted: ${epochToTimeOfDay(number)}")
         append(epochToTimeOfDay(number))
     }
     else if (isTime) {
-        append(formatTimeFromSeconds(number))
+        Timber.d("Time: $number")
+        Timber.d("Time Converted: ${formatTimeRemaining(number)}")
+        append(formatTimeRemaining(number))
     } else {
         if (isInt) append(number.roundToInt().toString().take(5))
         else append(((number * 10.0).roundToInt() / 10.0).toString().take(5))

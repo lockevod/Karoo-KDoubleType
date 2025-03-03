@@ -3,9 +3,9 @@
   "packageName": "com.enderthor.kCustomField",
   "latestApkUrl": "https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.apk",
   "iconUrl": "https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.png",
-  "latestVersion": "2.2.0",
-  "latestVersionCode": 202502224,
+  "latestVersion": "2.4.0",
+  "latestVersionCode": 202503061,
   "developer": "Enderthor",
   "description": "This extension for Karoo allows to use custom fields with double types (HR,Power,etc).",
-  "releaseNotes": "Several and major changes to fix problems with  hammerhead extensions. More measures, more fields to select. "
+  "releaseNotes": "Added extra time for main rolling field. Fix locale en hours. Added VO2Max field. Added more measures (shifting, etc). Several and major changes to fix problems with  hammerhead extensions. More fields to select. "
 }

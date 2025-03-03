@@ -67,6 +67,7 @@ abstract class CustomRollingTypeBase(
     private val secondField = { settings: OneFieldSettings -> settings.secondfield }
     private val thirdField = { settings: OneFieldSettings -> settings.thirdfield }
     private val rollingtime = { settings: OneFieldSettings -> settings.rollingtime }
+    private val isextratime = { settings: OneFieldSettings -> settings.isextratime }
 
     private val refreshTime: Long
         get() = if (karooSystem.hardwareType == HardwareType.K2)
@@ -203,6 +204,10 @@ abstract class CustomRollingTypeBase(
                             val currentSetting = settings[globalIndex]
                             while (true) {
                                 emit(cyclicindex)
+                                val delayFactor =
+                                    if (isextratime(currentSetting) && cyclicindex == 0) 3
+                                    else 1
+
                                 cyclicindex = when (cyclicindex) {
                                     0 -> if (secondField(currentSetting).isactive) 1 else if (thirdField(
                                             currentSetting
@@ -212,7 +217,8 @@ abstract class CustomRollingTypeBase(
                                     1 -> if (thirdField(currentSetting).isactive) 2 else 0
                                     else -> 0
                                 }
-                                delay(rollingtime(currentSetting).time)
+
+                                delay(delayFactor* rollingtime(currentSetting).time)
                             }
                         }.flowOn(Dispatchers.IO).distinctUntilChanged().catch { e ->
                             Timber.e(e, "Error in cyclicIndexFlow")

@@ -9,14 +9,14 @@ import io.hammerhead.karooext.models.DataType.Field
 import io.hammerhead.karooext.models.UserProfile
 
 
-
+/*
 data class Quadruple<out A, out B, out C, out D>(
     val first: A,
     val second: B,
     val third: C,
     val fourth: D
 )
-
+*/
 data class Quintuple<out A, out B, out C, out D, out E>(
     val first: A,
     val second: B,
@@ -61,6 +61,8 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     ELEV_LOSS(DataType.Type.ELEVATION_LOSS, "Descent", R.drawable.ic_descent, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     DISTANCE(DataType.Type.DISTANCE, "Distance", R.drawable.ic_distance, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "distance"),
     DISTANCE_REMAIN(DataType.Type.DISTANCE_TO_DESTINATION, "Distance Remain", R.drawable.ic_distance_remain, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "distance"),
+    GEARS_FRONT(DataType.Type.SHIFTING_FRONT_GEAR, "Gears Front", R.drawable.ic_front_gear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    GEARS_REAR(DataType.Type.SHIFTING_REAR_GEAR, "Gears Rear", R.drawable.ic_rear_gear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     SLOPE(DataType.Type.ELEVATION_GRADE, "Grade", R.drawable.ic_slope, R.color.hh_success_green_700, R.color.hh_success_green_400, "slopeZones", "none"),
     HEADWIND(DataType.dataTypeId("karoo-headwind", "headwind"), "Headwind", R.drawable.ic_no, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     HR(DataType.Type.HEART_RATE, "Heart Rate", R.drawable.ic_hr, R.color.hh_success_green_700, R.color.hh_success_green_400, "heartRateZones", "none"),
@@ -80,6 +82,7 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     TORQUE(DataType.Type.TORQUE_EFFECTIVENESS, "Torque", R.drawable.ic_torque, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
     TSS(DataType.Type.TRAINING_STRESS_SCORE, "TSS", R.drawable.ic_tss, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     VAM(DataType.Type.VERTICAL_SPEED, "VAM3s", R.drawable.ic_vam, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    VO2MAX(DataType.dataTypeId("vo2", "VO2max"), "VO2max", R.drawable.ic_vo2max, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
 }
 
 enum class FieldSize {
@@ -106,6 +109,7 @@ data class OneFieldSettings(
     var secondfield: OneFieldType = OneFieldType(KarooAction.CADENCE, false,false),
     var thirdfield: OneFieldType = OneFieldType(KarooAction.POWER, false,false),
     var rollingtime: RollingTime = RollingTime("ZERO","0",0L),
+    var isextratime: Boolean = false,
 )
 
 @Serializable
