@@ -62,6 +62,8 @@ In this case, you have to select Timklge headwind field also in this profile.
 - Thanks to DC Rainmaker for the great guide to sideload apps.
 - Thanks to Boxicons for the great icons.
 - Thanks to iconduck.com for the great icons.
+- Credits and copyright. Please respect license and specific parts licencsers (icons, etc). If you use this app you're agree.
+- KDouble doesn't save or share any information for it's use, but it use firebase crashlytics service only for crashes in app (and firebase use this crash information). I only use this information to prevent new crashes in the app. Please if you isn't agree with Firebase use (this conditions are in firebase web and can change, please read it), please you cannot use app. If you use it you are agree with all conditions and copyrights.
 
 ## Links
 
