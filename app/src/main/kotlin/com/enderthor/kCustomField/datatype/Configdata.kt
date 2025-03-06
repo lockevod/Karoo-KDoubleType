@@ -142,7 +142,7 @@ data class GeneralSettings(
     val isheadwindenabled: Boolean = false,
     val refreshCustom: RefreshTime = RefreshTime.HALF,
     val refreshRolling: RefreshTime = RefreshTime.HALF,
-    val isdivider: Boolean = true,
+    val isdivider: Boolean = true
 )
 
 data class GlobalConfigState(
@@ -169,4 +169,3 @@ val fieldSizeRanges = listOf(
     FieldSizeRange(FieldSize.LARGE, 16, 18),
     FieldSizeRange(FieldSize.EXTRA_LARGE, 19, Int.MAX_VALUE)
 )
-
