@@ -41,7 +41,7 @@ enum class MultiFields(val action: String, val left: String, val right: String, 
 enum class KarooAction(val action: String, val label: String, val icon: Int, val colorday: Int, val colornight: Int, val zone: String, val convert: String, val powerField: Boolean = false) {
     AVERAGE_CADENCE(DataType.Type.AVERAGE_CADENCE, "Avg Cadence", R.drawable.ic_cadence_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     AVERAGE_HR(DataType.Type.AVERAGE_HR, "Avg HR", R.drawable.ic_hr_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "heartRateZones", "none"),
-    AVERAGE_PEDAL_BALANCE(DataType.Type.AVERAGE_PEDAL_POWER_BALANCE, "Avg Pedal Balance", R.drawable.ic_pedal_balance_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
+    AVERAGE_PEDAL_BALANCE(DataType.Type.AVERAGE_PEDAL_POWER_BALANCE, "Avg Pedal Balance", R.drawable.ic_pedal_balance_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "pedal", "none", true),
     AVERAGE_POWER(DataType.Type.AVERAGE_POWER, "Avg Power", R.drawable.ic_power_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
     AVERAGE_SPEED(DataType.Type.AVERAGE_SPEED, "Avg Speed", R.drawable.ic_speed_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "speed"),
     AVERAGE_VAM(DataType.Type.AVERAGE_VERTICAL_SPEED_30S, "Avg 30s VAM", R.drawable.ic_vam_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
@@ -63,7 +63,7 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     HR_ZONE(DataType.Type.HR_ZONE, "HR Zone", R.drawable.ic_hr_zone, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     IF(DataType.Type.INTENSITY_FACTOR, "IF", R.drawable.ic_if, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     PEDAL(DataType.Type.PEDAL_SMOOTHNESS, "Pedal Smooth", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
-    PEDAL_BALANCE(DataType.Type.PEDAL_POWER_BALANCE, "Pedal Balance", R.drawable.ic_pedal_balance, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
+    PEDAL_BALANCE(DataType.Type.PEDAL_POWER_BALANCE, "Pedal Balance", R.drawable.ic_pedal_balance, R.color.hh_success_green_700, R.color.hh_success_green_400, "pedal", "none", true),
     POWER(DataType.Type.POWER, "Power", R.drawable.ic_power, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
     POWER3s(DataType.Type.SMOOTHED_3S_AVERAGE_POWER, "Power 3s", R.drawable.ic_power_3, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
     POWER20m(DataType.Type.SMOOTHED_20M_AVERAGE_POWER, "Power 20m", R.drawable.ic_power_20, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
@@ -103,6 +103,18 @@ data class OneFieldSettings(
     var thirdfield: OneFieldType = OneFieldType(KarooAction.POWER, false,false),
     var rollingtime: RollingTime = RollingTime("ZERO","0",0L),
     var isextratime: Boolean = false,
+)
+
+
+@Serializable
+data class SmartFieldSettings(
+    var index: Int = 0,
+    var onefield: OneFieldType = OneFieldType(KarooAction.HR, true, true),
+    var secondfield: OneFieldType = OneFieldType(KarooAction.CADENCE, false,false),
+    var thirdfield: OneFieldType = OneFieldType(KarooAction.POWER, false,false),
+    var fourthfield: OneFieldType = OneFieldType(KarooAction.POWER, false,false),
+    var rollingfield: OneFieldSettings = OneFieldSettings(),
+    var indexRolling: Int = 0,
 )
 
 @Serializable

@@ -416,7 +416,33 @@ fun updateFieldState(
     val iconColor = getColorProvider(context, kaction, iszone)
     val colorZone = if ((kaction.zone in listOf("heartRateZones", "powerZones", "slopeZones")) && iszone) {
         getColorZone(context, kaction.zone, value, userProfile, isPaletteZwift)
-    } else {
+    } else if( (kaction.name =="AVERAGE_PEDAL_BALANCE" || kaction.name =="PEDAL_BALANCE") && iszone && kaction.powerField)
+    {
+        if (value > valueRight*1.15)
+            ColorProvider(
+                day = Color(ContextCompat.getColor(context,R.color.zone7)),
+                night = Color(ContextCompat.getColor(context, R.color.zone7))
+            )
+        else if (value > valueRight*1.07)
+            ColorProvider(
+                day = Color(ContextCompat.getColor(context,R.color.zone5)),
+                night = Color(ContextCompat.getColor(context, R.color.zone5))
+            )
+        else if (value < valueRight*0.85)
+            ColorProvider(
+                day = Color(ContextCompat.getColor(context,R.color.zone0)),
+                night = Color(ContextCompat.getColor(context, R.color.zone0))
+            )
+        else if (value < valueRight*0.93)
+            ColorProvider(
+                day = Color(ContextCompat.getColor(context,R.color.zone9)),
+                night = Color(ContextCompat.getColor(context, R.color.zone9))
+            )
+        else
+            ColorProvider(Color.White, Color.Black)
+
+
+    }  else {
         ColorProvider(Color.White, Color.Black)
     }
 

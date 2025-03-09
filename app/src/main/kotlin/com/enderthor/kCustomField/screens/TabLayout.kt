@@ -153,10 +153,6 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
                     // Timber.d("NEW ACTION SECONDFIELD $updatednewAction")
                     oneFieldSettingsList[index] =
                         oneFieldSettings.copy(secondfield = updatednewAction)
-                    /*if (newAction.kaction.zone == "none") oneFieldSettingsList[index] =
-                        oneFieldSettings.copy(secondfield = updatednewAction)
-                    else oneFieldSettingsList[index] =
-                        oneFieldSettings.copy(secondfield = updatednewAction)*/
                     if (!newAction.isactive) {
                         val noneThirdField = oneFieldSettings.thirdfield.copy(
                             isactive = false,
