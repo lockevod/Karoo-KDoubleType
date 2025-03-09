@@ -10,6 +10,8 @@ import com.enderthor.kCustomField.datatype.OneFieldSettings
 import com.enderthor.kCustomField.datatype.defaultDoubleFieldSettings
 import com.enderthor.kCustomField.datatype.defaultGeneralSettings
 import com.enderthor.kCustomField.datatype.defaultOneFieldSettings
+import com.enderthor.kCustomField.datatype.defaultPowerSettings
+import com.enderthor.kCustomField.datatype.powerSettings
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.KarooEvent
@@ -21,6 +23,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
@@ -32,7 +35,35 @@ val jsonWithUnknownKeys = Json { ignoreUnknownKeys = true }
 val generalsettingsKey = stringPreferencesKey("generalsettings")
 val doublefieldKey = stringPreferencesKey("doublefieldsettings")
 val onefieldKey = stringPreferencesKey("onefieldsettings")
+val powerKey = stringPreferencesKey("powersettings")
 
+
+suspend fun savePowerSettings(context: Context, settings: powerSettings) {
+
+    context.dataStore.edit { t ->
+        t[powerKey] = Json.encodeToString(settings)
+    }
+}
+fun Context.streamStoredPowerSettings(): Flow<powerSettings> {
+    return dataStore.data.map { settingsJson ->
+        try {
+            jsonWithUnknownKeys.decodeFromString<powerSettings>(
+                settingsJson[powerKey] ?: defaultPowerSettings)
+        } catch (e: Throwable) {
+            Timber.tag("KarooDualTypeExtension").e(e, "Failed to read power settings")
+            powerSettings()
+        }
+    }.distinctUntilChanged()
+}
+
+fun KarooSystemService.streamPowerSettings(context: Context): Flow<Pair<powerSettings, Double>> {
+    return combine(
+        context.streamStoredPowerSettings(),
+        streamUserProfile()
+    ) { powerSettings, userProfile ->
+        Pair(powerSettings, userProfile.weight.toDouble())
+    }
+}
 
 suspend fun saveGeneralSettings(context: Context, settings: GeneralSettings) {
 
@@ -42,7 +73,7 @@ suspend fun saveGeneralSettings(context: Context, settings: GeneralSettings) {
 }
 
 fun Context.streamGeneralSettings(): Flow<GeneralSettings> {
-    // Timber.d("streamSettings IN")
+
     return dataStore.data.map { settingsJson ->
         try {
             jsonWithUnknownKeys.decodeFromString<GeneralSettings>(

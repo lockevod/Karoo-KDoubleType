@@ -9,14 +9,6 @@ import io.hammerhead.karooext.models.DataType.Field
 import io.hammerhead.karooext.models.UserProfile
 
 
-/*
-data class Quadruple<out A, out B, out C, out D>(
-    val first: A,
-    val second: B,
-    val third: C,
-    val fourth: D
-)
-*/
 data class Quintuple<out A, out B, out C, out D, out E>(
     val first: A,
     val second: B,
@@ -53,6 +45,7 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     AVERAGE_POWER(DataType.Type.AVERAGE_POWER, "Avg Power", R.drawable.ic_power_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
     AVERAGE_SPEED(DataType.Type.AVERAGE_SPEED, "Avg Speed", R.drawable.ic_speed_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "speed"),
     AVERAGE_VAM(DataType.Type.AVERAGE_VERTICAL_SPEED_30S, "Avg 30s VAM", R.drawable.ic_vam_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    CDA(DataType.dataTypeId("CdA", "CdA"), "CdA", R.drawable.ic_cda, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     ELEV_GAIN(DataType.Type.ELEVATION_GAIN, "Ascent", R.drawable.ic_ascent, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     ELEV_REMAIN(DataType.Type.ELEVATION_REMAINING, "Ascent Remain", R.drawable.ic_elevation, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     CADENCE(DataType.Type.CADENCE, "Cadence",R.drawable.ic_cadence,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
@@ -122,8 +115,15 @@ data class DoubleFieldSettings(
     var secondfield: DoubleFieldType = DoubleFieldType(KarooAction.SLOPE, true),
     val ishorizontal: Boolean = true,
     val isenabled: Boolean = true,
-
     )
+
+@Serializable
+data class powerSettings(
+    val powerLoss: String = "2.2",
+    val rollingResistanceCoefficient: String = "0.0095",
+    val bikeMass: String = "14.0",
+    val surface: String = "1.05"
+)
 
 enum class RefreshTime( val time: Long) {
     HALF (400L),  MID(800L) , EXTRA_ROLLING(200L);
@@ -157,6 +157,8 @@ val previewDoubleFieldSettings = listOf(DoubleFieldSettings(index=0),DoubleField
 val defaultDoubleFieldSettings = Json.encodeToString(previewDoubleFieldSettings)
 val previewOneFieldSettings = listOf(OneFieldSettings(index=0),OneFieldSettings(1, OneFieldType(KarooAction.POWER_NORMALIZED, false, true),OneFieldType(KarooAction.POWER20m, false, true),OneFieldType(KarooAction.SPEED, false, false),RollingTime("MED", "20s", 20000L)),OneFieldSettings(2, OneFieldType(KarooAction.DISTANCE, false, true),OneFieldType(KarooAction.DISTANCE_REMAIN, false, true),OneFieldType(KarooAction.TIMETODEST, false, true),RollingTime("MED", "20s", 20000L)))
 val defaultOneFieldSettings = Json.encodeToString(previewOneFieldSettings)
+val defaultPowerSettings = Json.encodeToString(powerSettings())
+
 val defaultRollingTimes = listOf(
     RollingTime("LOW", "5s", 5000L),
     RollingTime("LOW2","10s", 10000L),

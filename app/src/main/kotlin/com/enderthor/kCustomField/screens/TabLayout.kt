@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
@@ -16,6 +17,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -404,6 +406,10 @@ fun ConfGeneral() {
     var isheadwindenabled by remember { mutableStateOf(false) }
     var isdivider by remember { mutableStateOf(true) }
 
+    var powerLoss by remember { mutableStateOf("2.2") }
+    var rollingResistanceCoefficient by remember { mutableStateOf("0.0095") }
+    var bikeMass: String by remember { mutableStateOf("14.0") }
+
     var savedDialogVisible by remember { mutableStateOf(false) }
 
 
@@ -416,6 +422,11 @@ fun ConfGeneral() {
             iscenterkaroo = settings.iscenterkaroo
             isheadwindenabled = settings.isheadwindenabled
             isdivider = settings.isdivider
+        }
+        ctx.streamStoredPowerSettings().collect { settings ->
+            powerLoss = settings.powerLoss
+            rollingResistanceCoefficient = settings.rollingResistanceCoefficient
+            bikeMass = settings.bikeMass
         }
     }
 
@@ -494,6 +505,45 @@ fun ConfGeneral() {
                 Text("Zwift Color palette?")
             }
 
+            Spacer(modifier = Modifier.height(2.dp))
+            TopAppBar(title = { Text("Color Palette") })
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = ispalettezwift, onCheckedChange = {
+                    ispalettezwift = it
+                })
+                Spacer(modifier = Modifier.width(10.dp))
+                Text("Zwift Color palette?")
+            }
+
+            Spacer(modifier = Modifier.height(2.dp))
+            TopAppBar(title = { Text("Power Settings") })
+
+
+            OutlinedTextField(value = bikeMass, modifier = Modifier.fillMaxWidth(),
+                onValueChange = { bikeMass = it },
+                label = { Text("Bike Mass") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true
+            )
+
+            OutlinedTextField(value = rollingResistanceCoefficient, modifier = Modifier.fillMaxWidth(),
+                onValueChange = { rollingResistanceCoefficient = it },
+                label = { Text("Crr") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true
+            )
+
+            OutlinedTextField(value = powerLoss, modifier = Modifier.fillMaxWidth(),
+                onValueChange = { powerLoss = it },
+                label = { Text("Power Loss") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true
+            )
+
+
+            Spacer(modifier = Modifier.height(16.dp))
+
 
             FilledTonalButton(modifier = Modifier
                 .fillMaxWidth()
@@ -507,9 +557,16 @@ fun ConfGeneral() {
                     isdivider = isdivider
 
                 )
+
+                val newPowerSettings = powerSettings(
+                    powerLoss = powerLoss,
+                    rollingResistanceCoefficient = rollingResistanceCoefficient,
+                    bikeMass = bikeMass
+                )
                 coroutineScope.launch {
                     savedDialogVisible = true
                     saveGeneralSettings(ctx, newGeneralSettings)
+                    savePowerSettings(ctx, newPowerSettings)
                 }
             }) {
                 Icon(Icons.Default.Done, contentDescription = "Save")

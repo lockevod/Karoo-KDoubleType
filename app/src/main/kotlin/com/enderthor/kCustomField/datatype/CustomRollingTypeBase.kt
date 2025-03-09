@@ -266,17 +266,20 @@ abstract class CustomRollingTypeBase(
                         val firstFieldFlow = if (!config.preview)  karooSystem.getFieldFlow(
                             primaryField,
                             headwindFlow,
-                            generalSetting
+                            generalSetting,
+                            context
                         ) else previewFlow()
                         val secondFieldFlow = if (!config.preview)  karooSystem.getFieldFlow(
                             secondaryField,
                             headwindFlow,
-                            generalSetting
+                            generalSetting,
+                            context
                         ) else previewFlow()
                         val thirdFieldFlow = if (!config.preview)  karooSystem.getFieldFlow(
                             thirdField,
                             headwindFlow,
-                            generalSetting
+                            generalSetting,
+                            context
                         ) else previewFlow()
 
                         combine(

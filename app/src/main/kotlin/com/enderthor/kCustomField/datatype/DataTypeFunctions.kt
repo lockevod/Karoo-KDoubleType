@@ -22,6 +22,7 @@ import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.getZone
 import com.enderthor.kCustomField.extensions.slopeZones
 import com.enderthor.kCustomField.extensions.streamDataFlow
+import com.enderthor.kCustomField.extensions.streamPowerSettings
 import com.enderthor.kCustomField.extensions.streamUserProfile
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
@@ -160,6 +161,7 @@ fun KarooSystemService.getFieldFlow(
     field: Any,
     headwindFlow: Flow<StreamHeadWindData>,
     generalSettings: GeneralSettings,
+    context: Context
 ): Flow<Any> = flow {
 
 
@@ -201,7 +203,6 @@ fun KarooSystemService.getFieldFlow(
                                     is CancellationException -> {
                                         if (ViewState.isCancelledByEmitter) throw e
                                         Timber.d("Cancelación ignorada en headwindFlow")
-                                        //emit(StreamHeadWindData(0.0, 0.0))
                                     }
 
                                     else -> {
@@ -214,7 +215,6 @@ fun KarooSystemService.getFieldFlow(
                     }
 
                     action.name == "VO2MAX" -> {
-                        // Obtenemos potencia normalizada y calculamos VO2max
                         streamDataFlow(DataType.Type.NORMALIZED_POWER)
                             .combine(streamUserProfile()) { powerState, profile ->
                                 if (powerState is StreamState.Streaming) {
@@ -230,6 +230,59 @@ fun KarooSystemService.getFieldFlow(
                                     StreamState.Searching
                                 }
                             }
+                            .timeout(STREAM_TIMEOUT.milliseconds)
+                    }
+                    action.name == "CDA" -> {
+                        combine(
+                            streamDataFlow(DataType.Type.SPEED),
+                            streamDataFlow(DataType.Type.ELEVATION_GRADE),
+                            streamDataFlow(DataType.Type.PRESSURE_ELEVATION_CORRECTION),
+                            streamDataFlow(DataType.Type.POWER),
+                            streamPowerSettings(context),
+                        ) { speedState, gradeState, elevationState, powerState, powerSettings->
+                            if (speedState is StreamState.Streaming &&
+                                gradeState is StreamState.Streaming &&
+                                elevationState is StreamState.Streaming &&
+                                powerState is StreamState.Streaming) {
+
+                                val speed = speedState.dataPoint.singleValue ?: 0.0
+                                val slope = gradeState.dataPoint.singleValue ?: 0.0
+                                val elevation = elevationState.dataPoint.singleValue ?: 0.0
+                                val power = powerState.dataPoint.singleValue ?: 0.0
+
+                                if (speed <= 0.1) {
+                                    StreamState.Streaming(
+                                        DataPoint(
+                                            dataTypeId = "CDA",
+                                            values = mapOf(DataType.Field.SINGLE to 0.0)
+                                        )
+                                    )
+                                } else {
+
+                                    val cdaEstimator = CyclingCdAEstimator(
+                                        slope = slope / 100.0,
+                                        totalMass = powerSettings.second + powerSettings.first.bikeMass.toDouble(),
+                                        rollingResistanceCoefficient = powerSettings.first.rollingResistanceCoefficient.toDouble(),
+                                        speed = speed,
+                                        powerLoss = powerSettings.first.powerLoss.toDouble(),
+                                        elevation = elevation,
+                                        surface = powerSettings.first.surface.toDouble(),
+                                        power = power
+                                    )
+
+                                    val cda = cdaEstimator.estimatedCdA()
+
+                                    StreamState.Streaming(
+                                        DataPoint(
+                                            dataTypeId = "CDA",
+                                            values = mapOf(DataType.Field.SINGLE to cda)
+                                        )
+                                    )
+                                }
+                            } else {
+                                StreamState.Searching
+                            }
+                        }
                             .timeout(STREAM_TIMEOUT.milliseconds)
                     }
 
