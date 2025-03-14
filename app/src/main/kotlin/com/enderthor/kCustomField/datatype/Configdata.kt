@@ -17,6 +17,15 @@ data class Quintuple<out A, out B, out C, out D, out E>(
     val fifth: E
 )
 
+data class ClimbResultData(
+    val firstFieldState: Any,
+    val secondFieldState: Any,
+    val thirdFieldState: Any,
+    val fourthFieldState: Any,
+    val climbFieldState: Any,
+    val globalConfig: ClimbGlobalConfigState
+)
+
 enum class Headwind (val type: String) {
     DIFF(DataType.dataTypeId("karoo-headwind", "headwind")),SPEED(DataType.dataTypeId("karoo-headwind", "headwindSpeed"))
 }
@@ -136,6 +145,21 @@ data class DoubleFieldSettings(
     )
 
 @Serializable
+data class ClimbFieldSettings(
+    var index: Int = 0,
+    var onefield: DoubleFieldType = DoubleFieldType(KarooAction.SPEED, false),
+    var secondfield: DoubleFieldType = DoubleFieldType(KarooAction.SLOPE, true),
+    var thirdfield: DoubleFieldType = DoubleFieldType(KarooAction.CADENCE, false),
+    var fourthfield: DoubleFieldType = DoubleFieldType(KarooAction.POWER3s, true),
+    var climbfield: DoubleFieldType = DoubleFieldType(KarooAction.HR, true),
+    var climbOnfield: DoubleFieldType = DoubleFieldType(KarooAction.DISTANCE_TO_TOP, false),
+    val isenabled: Boolean = true,
+    val isAlwaysClimbPos: Boolean = false,
+    val isfirsthorizontal: Boolean = true,
+    val issecondhorizontal: Boolean = true,
+)
+
+@Serializable
 data class powerSettings(
     val powerLoss: String = "2.2",
     val rollingResistanceCoefficient: String = "0.0095",
@@ -169,6 +193,12 @@ data class GlobalConfigState(
     val userProfile: UserProfile? = null
 )
 
+data class ClimbGlobalConfigState(
+    val settings: List<ClimbFieldSettings>,
+    val generalSettings: GeneralSettings,
+    val userProfile: UserProfile? = null
+)
+
 
 val defaultGeneralSettings = Json.encodeToString(GeneralSettings())
 val previewDoubleFieldSettings = listOf(DoubleFieldSettings(index=0),DoubleFieldSettings(1, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(2, DoubleFieldType(KarooAction.IF, false),DoubleFieldType(KarooAction.TSS, false),false,true),DoubleFieldSettings(3, DoubleFieldType(KarooAction.ELEV_GAIN, false),DoubleFieldType(KarooAction.ELEV_REMAIN,false),false,true),DoubleFieldSettings(4, DoubleFieldType(KarooAction.SPEED, false),DoubleFieldType(KarooAction.SLOPE, true),false,true),DoubleFieldSettings(5, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),false,true))
@@ -176,6 +206,10 @@ val defaultDoubleFieldSettings = Json.encodeToString(previewDoubleFieldSettings)
 val previewOneFieldSettings = listOf(OneFieldSettings(index=0),OneFieldSettings(1, OneFieldType(KarooAction.POWER_NORMALIZED, false, true),OneFieldType(KarooAction.POWER20m, false, true),OneFieldType(KarooAction.SPEED, false, false),RollingTime("MED", "20s", 20000L)),OneFieldSettings(2, OneFieldType(KarooAction.DISTANCE, false, true),OneFieldType(KarooAction.DISTANCE_REMAIN, false, true),OneFieldType(KarooAction.TIMETODEST, false, true),RollingTime("MED", "20s", 20000L)))
 val defaultOneFieldSettings = Json.encodeToString(previewOneFieldSettings)
 val defaultPowerSettings = Json.encodeToString(powerSettings())
+val previewSmartFieldSettings = listOf(SmartFieldSettings(index=0))
+val defaultSmartFieldSettings = Json.encodeToString(previewSmartFieldSettings)
+val previewClimbFieldSettings = listOf(ClimbFieldSettings(index=0))
+val defaultClimbFieldSettings = Json.encodeToString(previewClimbFieldSettings)
 
 val defaultRollingTimes = listOf(
     RollingTime("LOW", "5s", 5000L),

@@ -80,35 +80,6 @@ abstract class CustomDoubleTypeBase(
 
     
 
-/*
-    override fun startStream(emitter: Emitter<StreamState>) {
-        Timber.d("DOUBLE Starting stream: $extension $globalIndex")
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                while (true) {
-                    emitter.onNext(StreamState.Streaming(
-                        DataPoint(
-                            dataTypeId,
-                            mapOf(DataType.Field.SINGLE to 1.0),
-                            extension
-                        )
-                    ))
-                   delay(refreshTime)
-                }
-            } catch (e: CancellationException) {
-                Timber.d("DOUBLE Stream cancelled: $extension $globalIndex ")
-            } catch (e: Exception) {
-                Timber.e(e, "DOUBLE Stream error: $extension $globalIndex ")
-                emitter.onError(e)
-            }
-        }.also { job ->
-            emitter.setCancellable {
-                Timber.d("DOUBLE Stopping stream: $extension $globalIndex ")
-                job.cancel()
-            }
-        }
-    }
-*/
     private fun previewFlow(): Flow<StreamState> = flow {
         while (true) {
             emit(StreamState.Streaming(
@@ -218,8 +189,7 @@ abstract class CustomDoubleTypeBase(
                             combine(firstFieldFlow, secondFieldFlow) { firstState, secondState ->
                                 Triple(firstState, secondState, state)
                             }
-                        }
-                        .onEach { (firstFieldState, secondFieldState, globalConfig) ->
+                    }.onEach { (firstFieldState, secondFieldState, globalConfig) ->
 
                             val (setting, generalSettings, userProfile) = globalConfig
 
@@ -259,7 +229,6 @@ abstract class CustomDoubleTypeBase(
                             }
 
                             val clayout = when {
-                                //fieldNumber != 3 -> FieldPosition.CENTER
                                 generalSettings.iscenterkaroo -> when (config.alignment) {
                                     ViewConfig.Alignment.CENTER -> FieldPosition.CENTER
                                     ViewConfig.Alignment.LEFT -> FieldPosition.LEFT

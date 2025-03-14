@@ -60,8 +60,9 @@ fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivi
 
 
 @Composable
-private fun VerticalDivider(isTopField: Boolean, fieldSize: FieldSize, isdivider: Boolean) {
+private fun VerticalDivider(isTopField: Boolean, fieldSize: FieldSize, isdivider: Boolean,isClimbField: Boolean = false) {
     val height = when {
+        isClimbField -> 1.dp
         isTopField -> 10.dp
         fieldSize == FieldSize.LARGE -> 28.dp
         else -> 14.dp
@@ -157,7 +158,8 @@ private fun OneIconRow(
     iconColor: ColorProvider,
     text: String,
     iszone: Boolean,
-    fieldSize: FieldSize
+    fieldSize: FieldSize,
+    isClimb: Boolean = false
 ) {
     val isSmall = fieldSize == FieldSize.SMALL
     val rowHeight = if (isSmall) 31.dp else 37.dp
@@ -168,9 +170,10 @@ private fun OneIconRow(
     Row(
         modifier = GlanceModifier.fillMaxWidth().height(rowHeight),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalAlignment = if (isClimb) Alignment.CenterHorizontally else Alignment.Start
     ) {
         Column(
-            horizontalAlignment = Alignment.Start,
+            horizontalAlignment = if (isClimb) Alignment.CenterHorizontally else Alignment.Start,
             modifier = GlanceModifier
                 .height(if (isSmall) 20.dp else 24.dp)
                 .width(24.dp)
@@ -180,34 +183,37 @@ private fun OneIconRow(
                 contentDescription = null,
                 modifier = GlanceModifier.size(iconSize).padding(top = topPadding),
                 colorFilter = ColorFilter.tint(iconColor)
+
             )
         }
+        if (!isClimb) {
+            Column(
+                modifier = GlanceModifier
+                    .height(if (isSmall) 32.dp else 36.dp)
+                    .fillMaxWidth()
+                    .padding(end = 3.dp),
+                horizontalAlignment = Alignment.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
 
-        Column(
-            modifier = GlanceModifier
-                .height(if (isSmall) 32.dp else 36.dp)
-                .fillMaxWidth()
-                .padding(end = 3.dp),
-            horizontalAlignment = Alignment.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+                val displayText = text.takeIf { it.length <= 10 } ?: text.split(" ", limit = 2)
+                    .let { parts -> if (parts.size > 1) "${parts[0]}\n${parts[1]}" else text }
 
-            val displayText = text.takeIf { it.length <= 10 } ?: text.split(" ", limit = 2)
-                .let { parts -> if (parts.size > 1) "${parts[0]}\n${parts[1]}" else text }
+                val adjustedFontSize =
+                    if ((displayText.count { it == '\n' } + 1) == 2) (fontSize.value * 0.85).sp else fontSize
 
-            val adjustedFontSize = if ((displayText.count { it == '\n' } + 1) == 2) (fontSize.value * 0.85).sp else fontSize
-
-            Text(
-                text = displayText,
-                maxLines = 2,
-                style = TextStyle(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = adjustedFontSize,
-                    fontFamily = FontFamily.Monospace,
-                    color = if (iszone) iconColor else ColorProvider(Color.Black, Color.White),
-                    textAlign = TextAlign.End
+                Text(
+                    text = displayText,
+                    maxLines = 2,
+                    style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = adjustedFontSize,
+                        fontFamily = FontFamily.Monospace,
+                        color = if (iszone) iconColor else ColorProvider(Color.Black, Color.White),
+                        textAlign = TextAlign.End
+                    )
                 )
-            )
+            }
         }
     }
 }
@@ -221,7 +227,8 @@ private fun OneNumberRow(
     iszone: Boolean,
     textColor: ColorProvider,
     ispower: Boolean,
-    secondValue: String
+    secondValue: String,
+    isClimb: Boolean = false
 ) {
     val padding = if (fieldSize == FieldSize.LARGE) 7.dp else 2.dp
     val displayNumber = if (!ispower) {
@@ -236,7 +243,8 @@ private fun OneNumberRow(
             .fillMaxWidth()
             .padding(bottom = padding, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalAlignment = when (layout) {
+        horizontalAlignment = if (isClimb) Alignment.CenterHorizontally
+        else when (layout) {
             FieldPosition.CENTER -> Alignment.CenterHorizontally
             FieldPosition.RIGHT -> Alignment.End
             FieldPosition.LEFT -> Alignment.Start
@@ -354,7 +362,7 @@ fun NotSupported(overlayText: String, fontSize: Int)
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , iconColor: ColorProvider, zonecolor: ColorProvider, fieldsize: FieldSize, iskaroo3: Boolean, clayout: FieldPosition,windtext: String, winddiff: Int, baseBitmap: Bitmap,selector: Boolean,textSize:Int,iszone: Boolean,ispreview:Boolean, secondValue:Double) {
+fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , iconColor: ColorProvider, zonecolor: ColorProvider, fieldsize: FieldSize, iskaroo3: Boolean, clayout: FieldPosition,windtext: String, winddiff: Int, baseBitmap: Bitmap,selector: Boolean,textSize:Int,iszone: Boolean,ispreview:Boolean, secondValue:Double,isClimb:Boolean = false) {
 
     val icon = action.icon
     val label = action.label
@@ -365,7 +373,9 @@ fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , ic
 
 
     if (selector) {
-            val number = formatNumber(dNumber, isInt,isTime,isCivil)
+            val newInt= if (isClimb)  true else isInt
+
+            val number = formatNumber(dNumber, newInt,isTime,isCivil)
             val numberSecond = formatNumber(secondValue, isInt,isTime,isCivil)
 
             Box(modifier = GlanceModifier.fillMaxSize()) {
@@ -387,17 +397,18 @@ fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , ic
                             24
                         )
                         else {
-                            OneIconRow(icon, iconColor, label.uppercase(), iszone, fieldsize)
+                            OneIconRow(icon, iconColor, label.uppercase(), iszone, fieldsize, isClimb)
                             //Spacer(modifier = GlanceModifier.height(1.dp))
                             OneNumberRow(
-                                number.take(6),
+                                if(isClimb) number.take(4) else number.take(6),
                                 clayout,
                                 fieldsize,
-                                (textSize * (if (ispreview) 0.8 else 1.0)).roundToInt(),
+                                (textSize * (if (ispreview) 0.8 else if (isClimb) 1.1 else 1.0)).roundToInt(),
                                 iszone,
                                 iconColor,
                                 ispower,
-                                numberSecond.take(3)
+                                numberSecond.take(3),
+                                isClimb
                             )
                         }
                     }
@@ -413,11 +424,10 @@ fun DoubleScreenSelector(
     selector: Int, showH: Boolean, leftNumber: Double, rightNumber: Double,leftField: DoubleFieldType, rightField: DoubleFieldType,
     iconColorLeft: ColorProvider, iconColorRight: ColorProvider,
     zoneColorLeft: ColorProvider, zoneColorRight: ColorProvider, fieldSize: FieldSize,
-    isKaroo3: Boolean, layout: FieldPosition, text: String, windDirection: Int, baseBitmap: Bitmap, isdivider:Boolean,  leftNumberSecond:Double = 0.0, rightNumberSecond:Double = 0.0
-) {
+    isKaroo3: Boolean, layout: FieldPosition, text: String, windDirection: Int, baseBitmap: Bitmap, isdivider:Boolean,  leftNumberSecond:Double = 0.0, rightNumberSecond:Double = 0.0, isClimb: Boolean = false,isClimbField: Boolean = false){
 
 
-    // define values from primary and secondary fields
+
 
     val leftIcon= leftField.kaction.icon
     val rightIcon= rightField.kaction.icon
@@ -427,8 +437,8 @@ fun DoubleScreenSelector(
     val iszoneRight= rightField.iszone
     val ispowerLeft= leftField.kaction.powerField
     val ispowerRight= rightField.kaction.powerField
-    val isLeftInt= (!(leftField.kaction.convert == "speed" || leftField.kaction.zone == "slopeZones" || leftField.kaction.label == "IF")) || (ispowerLeft)
-    val isRightInt= !(rightField.kaction.convert == "speed" || rightField.kaction.zone == "slopeZones" || rightField.kaction.label == "IF")  || (ispowerRight)
+    val isLeftInt= (!(leftField.kaction.convert == "speed" || leftField.kaction.zone == "slopeZones" || leftField.kaction.label == "IF")) || (ispowerLeft) || (isClimb)
+    val isRightInt= !(rightField.kaction.convert == "speed" || rightField.kaction.zone == "slopeZones" || rightField.kaction.label == "IF")  || (ispowerRight) || (isClimb)
     val leftCivil=leftField.kaction.action==KarooAction.CIVIL_DUSK.action ||  leftField.kaction.action==KarooAction.CIVIL_DAWN.action
     val rightCivil=rightField.kaction.action==KarooAction.CIVIL_DUSK.action ||  rightField.kaction.action==KarooAction.CIVIL_DAWN.action
     val leftTime=leftField.kaction.action==KarooAction.TIMETODEST.action
@@ -536,9 +546,235 @@ fun DoubleScreenSelector(
                 baseBitmap,
                 iszoneLeft,
                 iszoneRight,
-                isdivider
+                isdivider,
+                isClimbField
             )
         }
+}
+
+
+fun getFieldTypeSelector(firstFieldState:String,secondFieldState:String) :Int
+{
+
+    return when {
+        firstFieldState == "HEADWIND"  && secondFieldState=="HEADWIND" -> 2
+        firstFieldState == "HEADWIND" -> 1
+        secondFieldState =="HEADWIND" -> 0
+        else -> 3
+    }
+
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Composable
+fun ClimbScreenSelector(
+    firstValue: Double,
+    secondValue: Double,
+    thirdValue: Double,
+    fourthValue: Double,
+    climbValue: Double,
+    firstField: DoubleFieldType,
+    secondField: DoubleFieldType,
+    thirdField: DoubleFieldType,
+    fourthField: DoubleFieldType,
+    climbField: DoubleFieldType,
+    firstIconColor: ColorProvider,
+    secondIconColor: ColorProvider,
+    thirdIconColor: ColorProvider,
+    fourthIconColor: ColorProvider,
+    climbIconColor: ColorProvider,
+    firstZoneColor: ColorProvider,
+    secondZoneColor: ColorProvider,
+    thirdZoneColor: ColorProvider,
+    fourthZoneColor: ColorProvider,
+    climbZoneColor: ColorProvider,
+    fieldSize: Int,
+    isKaroo3: Boolean,
+    layout: FieldPosition,
+    windText: String,
+    windDirection: Int,
+    baseBitmap: Bitmap,
+    isDivider: Boolean,
+    firstValueRight: Double,
+    secondValueRight: Double,
+    thirdValueRight: Double,
+    fourthValueRight: Double,
+    climbValueRight: Double,
+    isFirsthorizontal: Boolean,
+    isSecondhorizontal: Boolean,
+    isClimbEnabled: Boolean
+) {
+    if (fieldSize < 400) {
+        NotSupported("Size Not Supported", 24)
+        return
+    }
+
+    if (!isClimbEnabled)
+    {
+
+        Row(modifier = GlanceModifier.fillMaxSize()) {
+
+            Column(modifier = GlanceModifier.fillMaxHeight().defaultWeight()) {
+                DoubleScreenSelector(
+                    selector = getFieldTypeSelector(firstField.kaction.name, secondField.kaction.name),
+                    showH = isFirsthorizontal,
+                    leftNumber = firstValue,
+                    rightNumber = secondValue,
+                    leftField = firstField,
+                    rightField = secondField,
+                    iconColorLeft = firstIconColor,
+                    iconColorRight = secondIconColor,
+                    zoneColorLeft = firstZoneColor,
+                    zoneColorRight = secondZoneColor,
+                    fieldSize = FieldSize.MEDIUM,
+                    isKaroo3 = isKaroo3,
+                    layout = layout,
+                    text = windText,
+                    windDirection = windDirection,
+                    baseBitmap = baseBitmap,
+                    isdivider = isDivider,
+                    leftNumberSecond = firstValueRight,
+                    rightNumberSecond = secondValueRight,
+                    isClimb = false,
+                    isClimbField = true
+                )
+            }
+
+
+            if (isDivider) {
+                Spacer(
+                    modifier = GlanceModifier.fillMaxHeight()
+                        .width(1.dp)
+                        .background(ColorProvider(Color.Black, Color.White))
+                )
+            }
+
+
+            Column(modifier = GlanceModifier.fillMaxHeight().defaultWeight()) {
+                DoubleScreenSelector(
+                    selector = getFieldTypeSelector(thirdField.kaction.name, fourthField.kaction.name),
+                    showH = isSecondhorizontal,
+                    leftNumber = thirdValue,
+                    rightNumber = fourthValue,
+                    leftField = thirdField,
+                    rightField = fourthField,
+                    iconColorLeft = thirdIconColor,
+                    iconColorRight = fourthIconColor,
+                    zoneColorLeft = thirdZoneColor,
+                    zoneColorRight = fourthZoneColor,
+                    fieldSize = FieldSize.MEDIUM,
+                    isKaroo3 = isKaroo3,
+                    layout = layout,
+                    text = windText,
+                    windDirection = windDirection,
+                    baseBitmap = baseBitmap,
+                    isdivider = isDivider,
+                    leftNumberSecond = thirdValueRight,
+                    rightNumberSecond = fourthValueRight,
+                    isClimb = false,
+                    isClimbField = true
+                )
+            }
+        }
+    } else {
+
+        Row(modifier = GlanceModifier.fillMaxSize()) {
+
+            Column(modifier = GlanceModifier.fillMaxHeight().width(90.dp)) {
+                DoubleScreenSelector(
+                    selector = getFieldTypeSelector(firstField.kaction.name, secondField.kaction.name),
+                    showH = isFirsthorizontal,
+                    leftNumber = firstValue,
+                    rightNumber = secondValue,
+                    leftField = firstField,
+                    rightField = secondField,
+                    iconColorLeft = firstIconColor,
+                    iconColorRight = secondIconColor,
+                    zoneColorLeft = firstZoneColor,
+                    zoneColorRight = secondZoneColor,
+                    fieldSize = FieldSize.MEDIUM,
+                    isKaroo3 = isKaroo3,
+                    layout = layout,
+                    text = windText,
+                    windDirection = windDirection,
+                    baseBitmap = baseBitmap,
+                    isdivider = isDivider,
+                    leftNumberSecond = firstValueRight,
+                    rightNumberSecond = secondValueRight,
+                    isClimb = true,
+                    isClimbField = true
+                )
+            }
+
+
+            if (isDivider) {
+                Spacer(
+                    modifier = GlanceModifier.fillMaxHeight()
+                        .width(1.dp)
+                        .background(ColorProvider(Color.Black, Color.White))
+                )
+            }
+
+
+            Column(modifier = GlanceModifier.fillMaxHeight().defaultWeight()) {
+                RollingFieldScreen(
+                    dNumber = climbValue,
+                    isInt = !(climbField.kaction.convert == "speed" || climbField.kaction.zone == "slopeZones" || climbField.kaction.label == "IF") || climbField.kaction.powerField,
+                    action = climbField.kaction,
+                    iconColor = climbIconColor,
+                    zonecolor = climbZoneColor,
+                    fieldsize = FieldSize.MEDIUM,
+                    iskaroo3 = isKaroo3,
+                    clayout = layout,
+                    windtext = windText,
+                    winddiff = windDirection,
+                    baseBitmap = baseBitmap,
+                    selector = true,
+                    textSize = 40,
+                    iszone = climbField.iszone,
+                    ispreview = false,
+                    secondValue = climbValueRight,
+                    isClimb = true,
+                )
+            }
+
+
+            if (isDivider) {
+                Spacer(
+                    modifier = GlanceModifier.fillMaxHeight()
+                        .width(1.dp)
+                        .background(ColorProvider(Color.Black, Color.White))
+                )
+            }
+
+
+            Column(modifier = GlanceModifier.fillMaxHeight().width(90.dp)) {
+                DoubleScreenSelector(
+                    selector = getFieldTypeSelector(thirdField.kaction.name, fourthField.kaction.name),
+                    showH = isSecondhorizontal,
+                    leftNumber = thirdValue,
+                    rightNumber = fourthValue,
+                    leftField = thirdField,
+                    rightField = fourthField,
+                    iconColorLeft = thirdIconColor,
+                    iconColorRight = fourthIconColor,
+                    zoneColorLeft = thirdZoneColor,
+                    zoneColorRight = fourthZoneColor,
+                    fieldSize = FieldSize.MEDIUM,
+                    isKaroo3 = isKaroo3,
+                    layout = layout,
+                    text = windText,
+                    windDirection = windDirection,
+                    baseBitmap = baseBitmap,
+                    isdivider = isDivider,
+                    leftNumberSecond = thirdValueRight,
+                    rightNumberSecond = fourthValueRight,
+                    isClimb = true,
+                    isClimbField = true
+                )
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
@@ -548,10 +784,11 @@ private fun DoubleTypesScreenHorizontal(
     leftNumber: String, rightNumber: String, leftIcon: Int, rightIcon: Int,
     iconColorLeft: ColorProvider, iconColorRight: ColorProvider,
     zoneColor1: ColorProvider, zoneColor2: ColorProvider, fieldSize: FieldSize,
-    isKaroo3: Boolean, layout: FieldPosition, selector: Int, text: String, windDirection: Int, baseBitmap: Bitmap,iszoneLeft: Boolean,iszoneRight: Boolean,isdivider:Boolean
+    isKaroo3: Boolean, layout: FieldPosition, selector: Int, text: String, windDirection: Int, baseBitmap: Bitmap,iszoneLeft: Boolean,iszoneRight: Boolean,isdivider:Boolean,isClimbField: Boolean = false
 ) {
 
-    VerticalDivider(true, fieldSize,isdivider)
+
+    if (!isClimbField) VerticalDivider(true, fieldSize,isdivider)
     Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
 
         Row(modifier = GlanceModifier.fillMaxSize().let { if (isKaroo3) it.cornerRadius(8.dp) else it }) {

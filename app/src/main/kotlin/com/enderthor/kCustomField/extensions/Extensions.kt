@@ -3,13 +3,17 @@ package com.enderthor.kCustomField.extensions
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.enderthor.kCustomField.datatype.ClimbFieldSettings
 
 import com.enderthor.kCustomField.datatype.DoubleFieldSettings
 import com.enderthor.kCustomField.datatype.GeneralSettings
 import com.enderthor.kCustomField.datatype.OneFieldSettings
+import com.enderthor.kCustomField.datatype.SmartFieldSettings
+import com.enderthor.kCustomField.datatype.defaultClimbFieldSettings
 import com.enderthor.kCustomField.datatype.defaultDoubleFieldSettings
 import com.enderthor.kCustomField.datatype.defaultGeneralSettings
 import com.enderthor.kCustomField.datatype.defaultOneFieldSettings
+import com.enderthor.kCustomField.datatype.defaultSmartFieldSettings
 import com.enderthor.kCustomField.datatype.defaultPowerSettings
 import com.enderthor.kCustomField.datatype.powerSettings
 
@@ -35,6 +39,8 @@ val jsonWithUnknownKeys = Json { ignoreUnknownKeys = true }
 val generalsettingsKey = stringPreferencesKey("generalsettings")
 val doublefieldKey = stringPreferencesKey("doublefieldsettings")
 val onefieldKey = stringPreferencesKey("onefieldsettings")
+val smartfieldKey = stringPreferencesKey("smartfieldsettings")
+val climbfieldKey = stringPreferencesKey("climbfieldsettings")
 val powerKey = stringPreferencesKey("powersettings")
 
 
@@ -117,6 +123,30 @@ fun Context.streamDoubleFieldSettings(): Flow<List<DoubleFieldSettings>> {
     }.distinctUntilChanged()
 }
 
+
+suspend fun saveClimbFieldSettings(context: Context, settings: List<ClimbFieldSettings>) {
+    // Timber.d("saveSettings IN $settings")
+    context.dataStore.edit { t ->
+        t[climbfieldKey] = Json.encodeToString(settings)
+    }
+}
+fun Context.streamClimbFieldSettings(): Flow<List<ClimbFieldSettings>> {
+    return dataStore.data.map { settingsJson ->
+        try {
+            if (settingsJson.contains(climbfieldKey)) {
+                jsonWithUnknownKeys.decodeFromString<List<ClimbFieldSettings>>(
+                    settingsJson[climbfieldKey] ?: defaultClimbFieldSettings
+                )
+            } else {
+                jsonWithUnknownKeys.decodeFromString<List<ClimbFieldSettings>>(defaultClimbFieldSettings)
+            }
+
+        } catch (e: Throwable) {
+            Timber.tag("KarooDualTypeExtension").e(e, "Failed to read preferences Climb")
+            jsonWithUnknownKeys.decodeFromString<List<ClimbFieldSettings>>(defaultClimbFieldSettings)
+        }
+    }.distinctUntilChanged()
+}
 suspend fun saveOneFieldSettings(context: Context, settings: List<OneFieldSettings>) {
     // Timber.d("saveSettings IN $settings")
     context.dataStore.edit { t ->
@@ -146,6 +176,32 @@ fun Context.streamOneFieldSettings(): Flow<List<OneFieldSettings>> {
         } catch (e: Throwable) {
             Timber.tag("KarooDualTypeExtension").e(e, "Failed to read OneFieldpreferences")
             jsonWithUnknownKeys.decodeFromString<List<OneFieldSettings>>(defaultOneFieldSettings)
+        }
+    }.distinctUntilChanged()
+}
+
+suspend fun saveSmartFieldSettings(context: Context, settings: List<SmartFieldSettings>) {
+    // Timber.d("saveSettings IN $settings")
+    context.dataStore.edit { t ->
+        t[smartfieldKey] = Json.encodeToString(settings)
+    }
+}
+
+
+fun Context.streamSmartFieldSettings(): Flow<List<SmartFieldSettings>> {
+    return dataStore.data.map { settingsJson ->
+        try {
+            if (settingsJson.contains(smartfieldKey)) {
+                jsonWithUnknownKeys.decodeFromString<List<SmartFieldSettings>>(
+                    settingsJson[smartfieldKey] ?: defaultSmartFieldSettings
+                )
+            } else {
+                jsonWithUnknownKeys.decodeFromString<List<SmartFieldSettings>>(defaultSmartFieldSettings)
+            }
+
+        } catch (e: Throwable) {
+            Timber.tag("KarooDualTypeExtension").e(e, "Failed to read SmarteFieldpreferences")
+            jsonWithUnknownKeys.decodeFromString<List<SmartFieldSettings>>(defaultSmartFieldSettings)
         }
     }.distinctUntilChanged()
 }

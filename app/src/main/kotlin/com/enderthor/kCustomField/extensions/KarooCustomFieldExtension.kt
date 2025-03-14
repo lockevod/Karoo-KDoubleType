@@ -10,6 +10,7 @@ import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
 
 import com.enderthor.kCustomField.BuildConfig
+import com.enderthor.kCustomField.datatype.CustomClimbType
 import com.enderthor.kCustomField.datatype.CustomDoubleType
 import com.enderthor.kCustomField.datatype.CustomRollingType
 
@@ -35,6 +36,7 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", BuildConfig.VER
             CustomRollingType(karooSystem, "rolling-one", 0),
             CustomRollingType(karooSystem,  "rolling-two", 1),
             CustomRollingType(karooSystem,  "rolling-three", 2),
+            CustomClimbType(karooSystem,  "climb-one", 0),
         )
     }
 

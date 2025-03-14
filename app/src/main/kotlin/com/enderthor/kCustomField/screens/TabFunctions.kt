@@ -222,6 +222,7 @@ fun ZoneMultiSwitch(option: Int, checked: Boolean, enabled: Boolean, onCheckedCh
             0 -> Text("Coloured Zone?")
             1 -> Text("Horizontal Field?")
             2 -> Text("Enabled Field?")
+            3 -> Text("Climb Field Always Active (No Climber Measure when climber is out)?")
         }
     }
 }
