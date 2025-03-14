@@ -32,10 +32,10 @@ fun getMultiFieldsByAction(karooAction: KarooAction): Triple<String, String,Bool
 
 enum class MultiFields(val action: String, val left: String, val right: String, val onlyfirst: Boolean)
 {
-    PEDAL(DataType.Type.PEDAL_SMOOTHNESS, Field.PEDAL_SMOOTHNESS_LEFT, Field.PEDAL_SMOOTHNESS_RIGHT,false),
-    TORQUE(DataType.Type.TORQUE_EFFECTIVENESS, Field.TORQUE_EFFECTIVENESS_LEFT, Field.TORQUE_EFFECTIVENESS_RIGHT,false),
-    PEDAL_BALANCE(DataType.Type.PEDAL_POWER_BALANCE, Field.PEDAL_POWER_BALANCE_LEFT, Field.PEDAL_POWER_BALANCE_LEFT,true),
-    AVERAGE_PEDAL_BALANCE(DataType.Type.AVERAGE_PEDAL_POWER_BALANCE, Field.PEDAL_POWER_BALANCE_LEFT, Field.PEDAL_POWER_BALANCE_LEFT,true),
+    PEDAL(DataType.Type.PEDAL_SMOOTHNESS, Field.PEDAL_SMOOTHNESS_LEFT, Field.PEDAL_SMOOTHNESS_RIGHT, false),
+    TORQUE(DataType.Type.TORQUE_EFFECTIVENESS, Field.TORQUE_EFFECTIVENESS_LEFT, Field.TORQUE_EFFECTIVENESS_RIGHT, false),
+    PEDAL_BALANCE(DataType.Type.PEDAL_POWER_BALANCE, Field.PEDAL_POWER_BALANCE_LEFT, Field.PEDAL_POWER_BALANCE_LEFT, true),
+    AVERAGE_PEDAL_BALANCE(DataType.Type.AVERAGE_PEDAL_POWER_BALANCE, Field.PEDAL_POWER_BALANCE_LEFT, Field.PEDAL_POWER_BALANCE_LEFT, true),
 }
 
 enum class KarooAction(val action: String, val label: String, val icon: Int, val colorday: Int, val colornight: Int, val zone: String, val convert: String, val powerField: Boolean = false) {
@@ -54,6 +54,10 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     ELEV_LOSS(DataType.Type.ELEVATION_LOSS, "Descent", R.drawable.ic_descent, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     DISTANCE(DataType.Type.DISTANCE, "Distance", R.drawable.ic_distance, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "distance"),
     DISTANCE_REMAIN(DataType.Type.DISTANCE_TO_DESTINATION, "Distance Remain", R.drawable.ic_distance_remain, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "distance"),
+    DISTANCE_FROM_BOTTOM(DataType.Type.DISTANCE_FROM_BOTTOM, "Distance from Bottom", R.drawable.ic_distance_from_bottom, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    DISTANCE_TO_TOP(DataType.Type.DISTANCE_TO_TOP, "Distance to Top", R.drawable.ic_distance_to_top, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    ELEVATION_FROM_BOTTOM(DataType.Type.ELEVATION_FROM_BOTTOM, "Elevation to Bottom", R.drawable.ic_elevation_from_bottom, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    ELEVATION_TO_TOP(DataType.Type.ELEVATION_TO_TOP, "Elevation to Top", R.drawable.ic_elevation_to_top, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     GEARS_FRONT(DataType.Type.SHIFTING_FRONT_GEAR, "Gears Front", R.drawable.ic_front_gear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     GEARS_REAR(DataType.Type.SHIFTING_REAR_GEAR, "Gears Rear", R.drawable.ic_rear_gear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     SLOPE(DataType.Type.ELEVATION_GRADE, "Grade", R.drawable.ic_slope, R.color.hh_success_green_700, R.color.hh_success_green_400, "slopeZones", "none"),
@@ -72,6 +76,8 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     SPEED(DataType.Type.SPEED, "Speed", R.drawable.ic_speed, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "speed"),
     TEMPERATURE(DataType.Type.TEMPERATURE, "Temperature", R.drawable.ic_temperature, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     TIMETODEST(DataType.Type.TIME_TO_DESTINATION, "Time to Dest.", R.drawable.ic_time_to_dest, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    TIRE_PRESSURE_FRONT(DataType.Type.TIRE_PRESSURE_FRONT, "Tire Pressure Front", R.drawable.ic_tire_pressure_front, R.color.hh_success_green_700, R.color.hh_success_green_400, "pressure", "none"),
+    TIRE_PRESSURE_REAR(DataType.Type.TIRE_PRESSURE_REAR, "Tire Pressure Rear", R.drawable.ic_tire_pressure_rear, R.color.hh_success_green_700, R.color.hh_success_green_400, "pressure", "none"),
     TORQUE(DataType.Type.TORQUE_EFFECTIVENESS, "Torque", R.drawable.ic_torque, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
     TSS(DataType.Type.TRAINING_STRESS_SCORE, "TSS", R.drawable.ic_tss, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     VAM(DataType.Type.VERTICAL_SPEED, "VAM3s", R.drawable.ic_vam, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),

@@ -35,4 +35,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Karoo Double Type"
-include("app")
+include(":lib",":lib2", ":app")

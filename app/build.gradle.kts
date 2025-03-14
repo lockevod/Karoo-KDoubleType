@@ -41,6 +41,8 @@ android {
 
 dependencies {
     implementation(libs.hammerhead.karoo.ext)
+    implementation(project(":lib",configuration = "antlib"))
+    implementation(project(":lib2",configuration = "default"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.bundles.androidx.lifeycle)
     implementation(libs.androidx.activity.compose)

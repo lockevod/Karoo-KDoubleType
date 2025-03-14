@@ -91,7 +91,6 @@ fun convertValue(
     type: String
 ): Double {
 
-
     val value = when (type) {
         "TYPE_ELEVATION_REMAINING_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_REMAINING_ID")
         "TYPE_DISTANCE_TO_DESTINATION_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_DISTANCE_TO_DESTINATION_ID")
@@ -99,6 +98,7 @@ fun convertValue(
             (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_VERTICAL_SPEED_ID")
         "SHIFTING_FRONT_GEAR" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_SHIFTING_FRONT_GEAR_ID")
         "SHIFTING_REAR_GEAR" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_SHIFTING_FRONT_REAR_ID")
+        "TIRE_PRESSURE_FRONT","TIRE_PRESSURE_REAR" -> ((streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_TIRE_PRESSURE"))
         else -> (streamState as? StreamState.Streaming)?.dataPoint?.singleValue
     } ?: 0.0
 
@@ -108,6 +108,11 @@ fun convertValue(
                 if (convert == "distance") value / 1000 else value * 3.6
             UserProfile.PreferredUnit.UnitType.IMPERIAL ->
                 if (convert == "distance") value / 1609.345 else value * 0.0568182
+
+        }
+        "pressure" -> when (unitType) {
+            UserProfile.PreferredUnit.UnitType.METRIC -> value / 100.0
+            UserProfile.PreferredUnit.UnitType.IMPERIAL -> value * 0.145038
         }
         else -> value
     }
