@@ -266,20 +266,17 @@ abstract class CustomRollingTypeBase(
                         val firstFieldFlow = if (!config.preview)  karooSystem.getFieldFlow(
                             primaryField,
                             headwindFlow,
-                            generalSetting,
-                            context
+                            generalSetting
                         ) else previewFlow()
                         val secondFieldFlow = if (!config.preview)  karooSystem.getFieldFlow(
                             secondaryField,
                             headwindFlow,
-                            generalSetting,
-                            context
+                            generalSetting
                         ) else previewFlow()
                         val thirdFieldFlow = if (!config.preview)  karooSystem.getFieldFlow(
                             thirdField,
                             headwindFlow,
-                            generalSetting,
-                            context
+                            generalSetting
                         ) else previewFlow()
 
                         combine(
@@ -298,6 +295,10 @@ abstract class CustomRollingTypeBase(
                     }
                     .onEach { (fieldStates, settingsData) ->
 
+                        if ( ViewState.isCancelled()) {
+                            Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
+                            return@onEach
+                        }
 
                         if (globalIndex !in settingsData.first.indices) {
                             Timber.e("ROLLING Index out of bounds: $globalIndex, Size: ${settingsData.first.size}")
@@ -339,7 +340,14 @@ abstract class CustomRollingTypeBase(
                         val selector: Boolean = valuestream is StreamState
 
                         try {
+                            if (ViewState.isCancelled()) {
+                                Timber.d("CLIMB Skipping composition, job cancelled: $extension $globalIndex")
+                                return@onEach
+                            }
                             val newView = withContext(Dispatchers.Main) {
+                                if ( ViewState.isCancelled()) {
+                                    return@withContext null
+                                }
                                 glance.compose(context, DpSize.Unspecified) {
                                     RollingFieldScreen(
                                         value,
@@ -364,7 +372,10 @@ abstract class CustomRollingTypeBase(
                                 }.remoteViews
                             }
                             Timber.d("ROLLING Updating view: $extension $index cyclic: $cyclicIndex value: $value ")
+                            if (newView == null) return@onEach
                             withContext(Dispatchers.Main) {
+                                if (ViewState.isCancelled()) return@withContext
+
                                 emitter.updateView(newView)
                             }
                             delay(refreshTime)
@@ -374,25 +385,40 @@ abstract class CustomRollingTypeBase(
                         }
                     }
                     .catch { e ->
-                        Timber.e(e, "ROLLING Flow error: $extension $index")
-                    }
-                    .retryWhen { cause, attempt ->
-                        if (attempt > 3) {
-                            Timber.e(
-                                cause,
-                                "Error collecting Rolling flow, stopping.. (attempt $attempt) Cause: $cause "
-                            )
-                            // cleanupJobs()
-                            delay(Delay.RETRY_LONG.time)
-                            // startView(context, config, emitter)
-                            true
+                        if (e is CancellationException) {
+                            Timber.d("ROLLING View update cancelled normally: $extension $globalIndex")
                         } else {
-                            Timber.e(
-                                cause,
-                                "Error collecting Rolling flow, retrying... (attempt $attempt) Cause: $cause "
-                            )
-                            delay(Delay.RETRY_SHORT.time)
-                            true
+                            Timber.e(e, "ROLLING Error composing/updating view: $extension $globalIndex")
+                            if (coroutineContext.isActive && !ViewState.isCancelled()) {
+                                throw e
+                            }
+                        }    }
+                    .retryWhen { cause, attempt ->
+
+                        when {
+                            // No reintentar si es cancelación del emitter
+                            cause is CancellationException && ViewState.isCancelled() -> {
+                                Timber.d("ROLLING No se reintenta el flujo cancelado por el emitter: $extension $globalIndex")
+                                false
+                            }
+
+                            attempt > 3  ->{
+                                Timber.e(
+                                    cause,
+                                    "Error collecting Rolling flow, stopping.. (attempt $attempt) Cause: $cause "
+                                )
+                                // cleanupJobs()
+                                delay(Delay.RETRY_LONG.time)
+                                // startView(context, config, emitter)
+                                true
+                            } else ->{
+                                Timber.e(
+                                    cause,
+                                    "Error collecting Rolling flow, retrying... (attempt $attempt) Cause: $cause "
+                                )
+                                delay(Delay.RETRY_SHORT.time)
+                                true
+                            }
                         }
                     }
                     .launchIn(scope)
@@ -403,8 +429,7 @@ abstract class CustomRollingTypeBase(
             } catch (e: Exception) {
                 Timber.e(e, "ROLLING ViewJob error: $extension $index ")
 
-                //delay(1000)
-                //startView(context, config, emitter)
+
             }
         }
 
@@ -412,20 +437,24 @@ abstract class CustomRollingTypeBase(
             try {
                 Timber.d("Cancelando todos los jobs y flujos")
                 ViewState.setCancelled(true)
-                viewjob.cancel()
-                configjob.cancel()
-                scopeJob.cancel() // Esto cancelará todos los flujos hijos
 
-                // Esperar brevemente para asegurar la cancelación
+                configjob.cancel()
+                viewjob.cancel()
+
+
                 scope.launch {
                     delay(100)
                     if (scope.isActive) {
-                        Timber.w("Forzando cancelación del scope")
-                        scope.cancel()
+                        Timber.w("Forzando cancelación del scope de ROLLING")
                     }
                 }
+
+                scope.cancel()
+                scopeJob.cancel()
+
+
             } catch (e: CancellationException) {
-                // Cancelación normal, no necesita logging
+
             } catch (e: Exception) {
                 Timber.e(e, "Error during view cancellation ")
             }

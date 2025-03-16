@@ -31,8 +31,11 @@ import io.hammerhead.karooext.internal.ViewEmitter
 import com.enderthor.kCustomField.extensions.streamGeneralSettings
 import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.streamClimbFieldSettings
+import com.enderthor.kCustomField.extensions.streamDataFlow
+import com.enderthor.kCustomField.extensions.streamDataMonitorFlow
 
 import com.enderthor.kCustomField.extensions.streamUserProfile
+import com.enderthor.kCustomField.extensions.throttle
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
 import io.hammerhead.karooext.models.HardwareType
@@ -47,6 +50,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.catch
 
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.retryWhen
@@ -77,6 +81,7 @@ abstract class CustomClimbTypeBase(
     private val isAlwaysClimbPos = { settings: ClimbFieldSettings -> settings.isAlwaysClimbPos }
     private val isfirsthorizontal = { settings: ClimbFieldSettings -> settings.isfirsthorizontal }
     private val issecondhorizontal = { settings: ClimbFieldSettings -> settings.issecondhorizontal }
+    private var isOnClimb = false
 
     private val refreshTime: Long
         get() = when (karooSystem.hardwareType) {
@@ -99,6 +104,23 @@ abstract class CustomClimbTypeBase(
         }
     }.flowOn(Dispatchers.IO)
 
+    private fun checkClimbStatus(): Job {
+        return karooSystem.streamDataFlow(DataType.Type.ELEVATION_TO_TOP)
+            .map { elevationState ->
+                //Timber.w("CLIMB Elevation State: $elevationState")
+                val elevationValue = (elevationState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_TO_TOP_ID") ?: 0.0
+                //Timber.w("CLIMB Elevation Value: $elevationValue")
+
+
+                isOnClimb = elevationValue > 0.0
+                Timber.w("CLIMB before isOnClimb: $isOnClimb")
+            }
+            .throttle(1000L)
+            .flowOn(Dispatchers.IO)
+            .launchIn(CoroutineScope(Dispatchers.IO))
+    }
+
+
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         Timber.d("CLIMB StartView: field $extension index $globalIndex field $dataTypeId config: $config emitter: $emitter")
@@ -107,11 +129,16 @@ abstract class CustomClimbTypeBase(
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
 
         var isAlwaysclimbOnEnabled = true
-        var isfirsthorizontal = true
-        var issecondhorizontal = true
-        var isOnClimb = false
+        var isShowClimbField = true
+
 
         ViewState.setCancelled(false)
+
+        val climbMonitorJob = checkClimbStatus()
+        scopeJob.invokeOnCompletion {
+            climbMonitorJob.cancel()
+        }
+
 
         val dataflow = context.streamClimbFieldSettings()
             .onStart {
@@ -194,9 +221,10 @@ abstract class CustomClimbTypeBase(
                         val climbField = climbField(currentSettings)
                         val climbOnField = climbOnField(currentSettings)
 
+
                         isAlwaysclimbOnEnabled = isAlwaysClimbPos(currentSettings)
-                        isfirsthorizontal = isfirsthorizontal(currentSettings)
-                        issecondhorizontal = issecondhorizontal(currentSettings)
+                        val originalFirstHorizontal = isfirsthorizontal(currentSettings)
+                        val originalSecondHorizontal = issecondhorizontal(currentSettings)
 
 
                         val headwindFlow =
@@ -212,63 +240,35 @@ abstract class CustomClimbTypeBase(
                         val firstFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             primaryField,
                             headwindFlow,
-                            generalSettings,
-                            context
+                            generalSettings
                         ) else previewFlow()
                         val secondFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             secondaryField,
                             headwindFlow,
-                            generalSettings,
-                            context
+                            generalSettings
                         ) else previewFlow()
                         val thirdFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             thirdField,
                             headwindFlow,
-                            generalSettings,
-                            context
+                            generalSettings
                         ) else previewFlow()
                         val fourthFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             fourthField,
                             headwindFlow,
-                            generalSettings,
-                            context
+                            generalSettings
                         ) else previewFlow()
 
                         val climbStartFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             climbField,
                             headwindFlow,
-                            generalSettings,
-                            context
+                            generalSettings
                         ) else previewFlow()
                         val climbOnFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             climbOnField,
                             headwindFlow,
-                            generalSettings,
-                            context
+                            generalSettings
                         ) else previewFlow()
 
-
-                        val climbFieldFlow =
-                            (if (!config.preview)
-                                karooSystem.getFieldFlow(
-                                    DataType.Type.ELEVATION_TO_TOP,
-                                    headwindFlow,
-                                    generalSettings,
-                                    context
-                                )
-                            else previewFlow()
-                                    ).flatMapLatest { state ->
-                                    val elevationToTop = when (state) {
-                                        is StreamState.Streaming -> state.dataPoint.values[DataType.Field.SINGLE]
-                                            ?: 0.0
-
-                                        else -> 0.0
-                                    }
-
-                                    isOnClimb = elevationToTop > 0.0
-
-                                    if (elevationToTop > 0.0) climbOnFieldFlow else climbStartFieldFlow
-                                }
 
 
                         val combinedFlow1 = combine(
@@ -280,31 +280,43 @@ abstract class CustomClimbTypeBase(
                         }
                         val combinedFlow2 = combine(
                             fourthFieldFlow,
-                            climbFieldFlow,
-                        ) { fourth: Any, climb: Any -> fourth to climb }
+                            climbStartFieldFlow,
+                            climbOnFieldFlow
+                        ) { fourth: Any, climbStart: Any, climbOn -> Triple(fourth, climbStart, climbOn) }
 
                         combine(
                             combinedFlow1,
                             combinedFlow2
-                        ) { triple1, duple ->
+                        ) { triple1, triple2 ->
                             val (firstState, secondState, thirdState) = triple1
-                            val (fourthState, climbState) = duple
+                            val (fourthState, climbStartState,climbOnState) = triple2
 
                             ClimbResultData(
                                 firstState,
                                 secondState,
                                 thirdState,
                                 fourthState,
-                                climbState,
+                                climbStartState,
+                                climbOnState,
                                 state
                             )
                         }
 
                     }.onEach { result ->
+                        if ( ViewState.isCancelled()) {
+                            Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
+                            return@onEach
+                        }
+
+                        Timber.d("CLIMB Result: $result")
+
 
 
                         val (firstFieldState, secondFieldState, thirdFieldState,
-                            fourthFieldState, climbFieldState, globalConfig) = result as ClimbResultData
+                            fourthFieldState, climbStartFieldState, climbOnFieldState,globalConfig) = result as ClimbResultData
+
+                        val climbFieldState = if (isOnClimb) climbOnFieldState else climbStartFieldState
+
 
                         val setting = globalConfig.settings
                         val generalSettings = globalConfig.generalSettings
@@ -314,7 +326,11 @@ abstract class CustomClimbTypeBase(
                             Timber.d("UserProfile no disponible")
                             return@onEach
                         }
+
                         val settings = setting[globalIndex]
+
+
+
 
                         val (firstvalue, firstIconcolor, firstColorzone, isleftzone, firstvalueRight) = getFieldState(
                             firstFieldState,
@@ -345,6 +361,7 @@ abstract class CustomClimbTypeBase(
                             userProfile,
                             generalSettings.ispalettezwift
                         )
+
                         val (climbvalue, climbIconcolor, climbColorzone, isleftzone3, climbvalueRight) = getFieldState(
                             climbFieldState,
                             if(isOnClimb) climbOnField(settings) else climbField(settings),
@@ -372,14 +389,24 @@ abstract class CustomClimbTypeBase(
                             else -> generalSettings.iscenteralign
                         }
 
-                        if (isAlwaysclimbOnEnabled) {
-                            isfirsthorizontal = false
-                            issecondhorizontal = false
-                        }
+                        isShowClimbField  = (isOnClimb || isAlwaysclimbOnEnabled)
 
-                        Timber.d("size field config $config")
+                        val isfirsthorizontal = if (isShowClimbField) false else isfirsthorizontal(settings)
+                        val issecondhorizontal = if (isShowClimbField) false else issecondhorizontal(settings)
+
+
+                        Timber.d("isfirsthorizontal: $isfirsthorizontal, issecondhorizontal: $issecondhorizontal")
+
+                        Timber.w("CLIMB field climbField: ${climbField(settings)}  isOnClimb: $isOnClimb isAlwaysclimbOnEnabled: $isAlwaysclimbOnEnabled")
                         try {
+                            if ( ViewState.isCancelled()) {
+                                Timber.d("DOUBLE Skipping composition, job cancelled: $extension $globalIndex")
+                                return@onEach
+                            }
                             val newView = withContext(Dispatchers.Main) {
+                                if ( ViewState.isCancelled()) {
+                                    return@withContext null
+                                }
                                 glance.compose(context, DpSize.Unspecified) {
                                     ClimbScreenSelector(
                                         firstvalue,
@@ -391,7 +418,7 @@ abstract class CustomClimbTypeBase(
                                         secondField(settings),
                                         thirdField(settings),
                                         fourthField(settings),
-                                        climbField(settings),
+                                        if(isOnClimb) climbOnField(settings) else climbField(settings),
                                         firstIconcolor,
                                         secondIconcolor,
                                         thirdIconcolor,
@@ -416,13 +443,14 @@ abstract class CustomClimbTypeBase(
                                         climbvalueRight,
                                         isfirsthorizontal,
                                         issecondhorizontal,
-                                        isAlwaysclimbOnEnabled
+                                        isShowClimbField,
                                     )
                                 }.remoteViews
                             }
-
+                            if (newView == null) return@onEach
                             // Timber.d("CLIMB Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
                             withContext(Dispatchers.Main) {
+                                if ( ViewState.isCancelled()) return@withContext
                                 emitter.updateView(newView)
                             }
                             delay(refreshTime)
@@ -448,22 +476,30 @@ abstract class CustomClimbTypeBase(
                         }
                         .retryWhen { cause, attempt ->
 
-                            if (attempt > 4) {
-                                Timber.e(
-                                    cause,
-                                    "CLIMB Max retries reached: $extension $globalIndex (attempt $attempt) "
-                                )
+                            when {
 
-                                delay(Delay.RETRY_LONG.time)
-                                //startView(context, config, emitter)
-                                true
-                            } else {
-                                Timber.w(
-                                    cause,
-                                    "CLIMB Retrying flow: $extension $globalIndex (attempt $attempt) "
-                                )
-                                delay(Delay.RETRY_SHORT.time)
-                                true
+                                cause is CancellationException && ViewState.isCancelled() -> {
+                                    Timber.d("CLIMB  No se reintenta el flujo cancelado por el emitter: $extension $globalIndex")
+                                    false  // Importante: no reintentar
+                                }
+
+                                attempt > 4 -> {
+                                    Timber.e(
+                                        cause,
+                                        "CLIMB Max retries reached: $extension $globalIndex (attempt $attempt) "
+                                    )
+
+                                    delay(Delay.RETRY_LONG.time)
+                                    //startView(context, config, emitter)
+                                    true
+                                } else ->{
+                                    Timber.w(
+                                        cause,
+                                        "CLIMB Retrying flow: $extension $globalIndex (attempt $attempt) "
+                                    )
+                                    delay(Delay.RETRY_SHORT.time)
+                                    true
+                                }
                             }
 
                         }
@@ -489,18 +525,23 @@ abstract class CustomClimbTypeBase(
             try {
                 Timber.d("Cancelando todos los jobs y flujos de CLIMB")
                 ViewState.setCancelled(true)
-                viewjob.cancel()
+
                 configjob.cancel()
-                scopeJob.cancel()
+                viewjob.cancel()
 
 
                 scope.launch {
                     delay(100)
                     if (scope.isActive) {
                         Timber.w("Forzando cancelación del scope de CLIMB")
-                        scope.cancel()
                     }
                 }
+
+                scope.cancel()
+                scopeJob.cancel()
+
+                Timber.d("Cancelación de ClimbTypeBase completada")
+
             } catch (e: CancellationException) {
 
             } catch (e: Exception) {

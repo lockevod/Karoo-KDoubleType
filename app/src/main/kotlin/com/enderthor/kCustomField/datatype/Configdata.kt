@@ -9,6 +9,14 @@ import io.hammerhead.karooext.models.DataType.Field
 import io.hammerhead.karooext.models.UserProfile
 
 
+const val RETRY_CHECK_STREAMS = 4
+const val WAIT_STREAMS_SHORT = 3000L // 3 seconds
+const val WAIT_STREAMS_NORMAL = 60000L // 1 minute
+const val STREAM_TIMEOUT = 15000L // 15 seconds
+const val WAIT_STREAMS_LONG = 120000L // 120 seconds
+const val WAIT_STREAMS_MEDIUM = 10000L // 10 seconds
+
+
 data class Quintuple<out A, out B, out C, out D, out E>(
     val first: A,
     val second: B,
@@ -22,7 +30,8 @@ data class ClimbResultData(
     val secondFieldState: Any,
     val thirdFieldState: Any,
     val fourthFieldState: Any,
-    val climbFieldState: Any,
+    val climbStartFieldState: Any,
+    val climbOnFieldState: Any,
     val globalConfig: ClimbGlobalConfigState
 )
 
@@ -54,7 +63,6 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     AVERAGE_POWER(DataType.Type.AVERAGE_POWER, "Avg Power", R.drawable.ic_power_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
     AVERAGE_SPEED(DataType.Type.AVERAGE_SPEED, "Avg Speed", R.drawable.ic_speed_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "speed"),
     AVERAGE_VAM(DataType.Type.AVERAGE_VERTICAL_SPEED_30S, "Avg 30s VAM", R.drawable.ic_vam_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    CDA(DataType.dataTypeId("CdA", "CdA"), "CdA", R.drawable.ic_cda, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     ELEV_GAIN(DataType.Type.ELEVATION_GAIN, "Ascent", R.drawable.ic_ascent, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     ELEV_REMAIN(DataType.Type.ELEVATION_REMAINING, "Ascent Remain", R.drawable.ic_elevation, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     CADENCE(DataType.Type.CADENCE, "Cadence",R.drawable.ic_cadence,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),

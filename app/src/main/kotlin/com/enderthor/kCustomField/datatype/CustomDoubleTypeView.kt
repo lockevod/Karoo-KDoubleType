@@ -41,20 +41,46 @@ private fun epochToTimeOfDay(epochMillis: Double): String {
 }
 
 
-fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivil: Boolean = false): String = buildString {
+fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivil: Boolean = false, isClimb: Boolean = false): String = buildString {
 
-    if (isCivil) {
-        Timber.d("Civil: $number")
-        Timber.d("Civil Converted: ${epochToTimeOfDay(number)}")
-        append(epochToTimeOfDay(number))
-    }
-    else if (isTime) {
-        Timber.d("Time: $number")
-        Timber.d("Time Converted: ${formatTimeRemaining(number)}")
-        append(formatTimeRemaining(number))
+    if (isClimb) {
+        if (isCivil) {
+            val timeStr = epochToTimeOfDay(number)
+            append(timeStr.split(':').firstOrNull() ?: "")
+        } else if (isTime) {
+            val timeStr = formatTimeRemaining(number)
+            append(timeStr.split(':').firstOrNull() ?: "")
+        } else {
+
+            val numValue = number.roundToInt()
+            when {
+                numValue < 1000 -> {
+                    append(numValue.toString())
+                }
+
+                numValue < 10000 -> {
+                    val intPart = numValue / 1000
+                    val decPart = (numValue % 1000) / 10
+                    append(String.format("%d.%02d", intPart, decPart))
+                }
+
+                else -> {
+                    val intPart = numValue / 1000
+                    val decPart = (numValue % 1000) / 100
+                    append(String.format("%d.%d", intPart, decPart))
+                }
+            }
+        }
     } else {
-        if (isInt) append(number.roundToInt().toString().take(5))
-        else append(((number * 10.0).roundToInt() / 10.0).toString().take(5))
+        if (isCivil) {
+            append(epochToTimeOfDay(number))
+        } else if (isTime) {
+            append(formatTimeRemaining(number))
+        } else {
+            if (isInt) append(number.roundToInt().toString().take(5))
+            else append(((number * 10.0).roundToInt() / 10.0).toString().take(5))
+        }
+
     }
 }
 
@@ -231,7 +257,8 @@ private fun OneNumberRow(
     isClimb: Boolean = false
 ) {
     val padding = if (fieldSize == FieldSize.LARGE) 7.dp else 2.dp
-    val displayNumber = if (!ispower) {
+    val displayNumber =
+        if (!ispower) {
         number
     } else {
         "${number.take(3)}-${secondValue.take(3)}"
@@ -362,7 +389,25 @@ fun NotSupported(overlayText: String, fontSize: Int)
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
-fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , iconColor: ColorProvider, zonecolor: ColorProvider, fieldsize: FieldSize, iskaroo3: Boolean, clayout: FieldPosition,windtext: String, winddiff: Int, baseBitmap: Bitmap,selector: Boolean,textSize:Int,iszone: Boolean,ispreview:Boolean, secondValue:Double,isClimb:Boolean = false) {
+fun RollingFieldScreen(
+    dNumber: Double,
+    isInt: Boolean,
+    action: KarooAction,
+    iconColor: ColorProvider,
+    zonecolor: ColorProvider,
+    fieldsize: FieldSize,
+    iskaroo3: Boolean,
+    clayout: FieldPosition,
+    windtext: String,
+    winddiff: Int,
+    baseBitmap: Bitmap,
+    selector: Boolean,
+    textSize: Int,
+    iszone: Boolean,
+    ispreview: Boolean,
+    secondValue: Double,
+    isClimb: Boolean = false
+) {
 
     val icon = action.icon
     val label = action.label
@@ -371,50 +416,49 @@ fun RollingFieldScreen(dNumber: Double, isInt: Boolean, action: KarooAction , ic
     val isCivil =
         action.action == KarooAction.CIVIL_DUSK.action || action.action == KarooAction.CIVIL_DAWN.action
 
-
     if (selector) {
-            val newInt= if (isClimb)  true else isInt
+        val newInt = if (isClimb) true else isInt
 
-            val number = formatNumber(dNumber, newInt,isTime,isCivil)
-            val numberSecond = formatNumber(secondValue, isInt,isTime,isCivil)
+        val number = formatNumber(dNumber, newInt, isTime, isCivil, isClimb)
+        val numberSecond = formatNumber(secondValue, isInt, isTime, isCivil, isClimb)
 
-            Box(modifier = GlanceModifier.fillMaxSize()) {
-                Row(
-                    modifier = if (iskaroo3) GlanceModifier.fillMaxSize()
-                        .cornerRadius(6.dp) else GlanceModifier.fillMaxSize()
-                )
-                {
-                    Column(modifier = GlanceModifier.defaultWeight().background(zonecolor)) {
-                        when (fieldsize) {
 
-                            FieldSize.SMALL -> Spacer(modifier = GlanceModifier.height(2.dp))
-                            FieldSize.MEDIUM -> Spacer(modifier = GlanceModifier.height(4.dp))
-                            else -> Spacer(modifier = GlanceModifier.height(1.dp))
+        Box(modifier = GlanceModifier.fillMaxSize()) {
+            Row(
+                modifier = if (iskaroo3) GlanceModifier.fillMaxSize()
+                    .cornerRadius(6.dp) else GlanceModifier.fillMaxSize()
+            )
+            {
+                Column(modifier = GlanceModifier.defaultWeight().background(zonecolor)) {
+                    when (fieldsize) {
 
-                        }
-                        if (fieldsize == FieldSize.LARGE || fieldsize == FieldSize.EXTRA_LARGE) NotSupported(
-                            "Size Not Supported",
-                            24
+                        FieldSize.SMALL -> Spacer(modifier = GlanceModifier.height(2.dp))
+                        FieldSize.MEDIUM -> Spacer(modifier = GlanceModifier.height(4.dp))
+                        else -> Spacer(modifier = GlanceModifier.height(1.dp))
+
+                    }
+                    if (fieldsize == FieldSize.LARGE || fieldsize == FieldSize.EXTRA_LARGE) NotSupported(
+                        "Size Not Supported",
+                        24
+                    )
+                    else {
+                        OneIconRow(icon, iconColor, label.uppercase(), iszone, fieldsize, isClimb)
+                        OneNumberRow(
+                            if (isClimb) number.take(4) else number.take(6),
+                            clayout,
+                            fieldsize,
+                            (textSize * (if (ispreview) 0.8 else if (isClimb) 1.1 else 1.0)).roundToInt(),
+                            iszone,
+                            iconColor,
+                            ispower,
+                            numberSecond.take(3),
+                            isClimb
                         )
-                        else {
-                            OneIconRow(icon, iconColor, label.uppercase(), iszone, fieldsize, isClimb)
-                            //Spacer(modifier = GlanceModifier.height(1.dp))
-                            OneNumberRow(
-                                if(isClimb) number.take(4) else number.take(6),
-                                clayout,
-                                fieldsize,
-                                (textSize * (if (ispreview) 0.8 else if (isClimb) 1.1 else 1.0)).roundToInt(),
-                                iszone,
-                                iconColor,
-                                ispower,
-                                numberSecond.take(3),
-                                isClimb
-                            )
-                        }
                     }
                 }
             }
-        } else HeadwindDirection(baseBitmap, winddiff, textSize, windtext)
+        }
+    } else HeadwindDirection(baseBitmap, winddiff, textSize, windtext)
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
@@ -425,8 +469,6 @@ fun DoubleScreenSelector(
     iconColorLeft: ColorProvider, iconColorRight: ColorProvider,
     zoneColorLeft: ColorProvider, zoneColorRight: ColorProvider, fieldSize: FieldSize,
     isKaroo3: Boolean, layout: FieldPosition, text: String, windDirection: Int, baseBitmap: Bitmap, isdivider:Boolean,  leftNumberSecond:Double = 0.0, rightNumberSecond:Double = 0.0, isClimb: Boolean = false,isClimbField: Boolean = false){
-
-
 
 
     val leftIcon= leftField.kaction.icon

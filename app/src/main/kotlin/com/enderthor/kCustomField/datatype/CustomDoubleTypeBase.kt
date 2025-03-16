@@ -183,13 +183,18 @@ abstract class CustomDoubleTypeBase(
                                 if (listOf(primaryField, secondaryField).any { it.kaction.name == "HEADWIND" } && generalSettings.isheadwindenabled)
                                     createHeadwindFlow(karooSystem, refreshTime) else flowOf(StreamHeadWindData(0.0, 0.0))
 
-                            val firstFieldFlow = if (!config.preview) karooSystem.getFieldFlow(primaryField, headwindFlow, generalSettings,context) else previewFlow()
-                            val secondFieldFlow = if (!config.preview) karooSystem.getFieldFlow( secondaryField, headwindFlow, generalSettings,context) else previewFlow()
+                            val firstFieldFlow = if (!config.preview) karooSystem.getFieldFlow(primaryField, headwindFlow, generalSettings) else previewFlow()
+                            val secondFieldFlow = if (!config.preview) karooSystem.getFieldFlow( secondaryField, headwindFlow, generalSettings) else previewFlow()
 
                             combine(firstFieldFlow, secondFieldFlow) { firstState, secondState ->
                                 Triple(firstState, secondState, state)
                             }
                     }.onEach { (firstFieldState, secondFieldState, globalConfig) ->
+
+                        if ( ViewState.isCancelled()) {
+                            Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
+                            return@onEach  // No procesa esta iteración pero continúa el flujo
+                        }
 
                             val (setting, generalSettings, userProfile) = globalConfig
 
@@ -239,7 +244,14 @@ abstract class CustomDoubleTypeBase(
                             }
 
                             try {
+                                if ( ViewState.isCancelled()) {
+                                    Timber.d("DOUBLE Skipping composition, job cancelled: $extension $globalIndex")
+                                    return@onEach
+                                }
                                 val newView = withContext(Dispatchers.Main) {
+                                    if ( ViewState.isCancelled()) {
+                                        return@withContext null
+                                    }
                                     glance.compose(context, DpSize.Unspecified) {
                                         DoubleScreenSelector(
                                             fieldNumber,
@@ -264,14 +276,23 @@ abstract class CustomDoubleTypeBase(
                                         )
                                     }.remoteViews
                                 }
+                                if (newView == null) return@onEach
 
                                 Timber.d("DOUBLE Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
                                 withContext(Dispatchers.Main) {
+                                    if ( ViewState.isCancelled()) return@withContext
                                     emitter.updateView(newView)
                                 }
                                 delay(refreshTime)
                             } catch (e: Exception) {
-                                Timber.e(e, "DOUBLE Error composing/updating view: $extension $globalIndex")
+                                if (e is CancellationException) {
+                                    Timber.d("DOUBLE View update cancelled normally: $extension $globalIndex")
+                                } else {
+                                    Timber.e(e, "DOUBLE Error composing/updating view: $extension $globalIndex")
+                                    if (coroutineContext.isActive && !ViewState.isCancelled()) {
+                                        throw e
+                                    }
+                                }
                             }
                         }
                         .catch { e ->
@@ -288,17 +309,23 @@ abstract class CustomDoubleTypeBase(
                         }
                         .retryWhen { cause, attempt ->
 
-                                    if (attempt > 4) {
-                                        Timber.e(cause, "DOUBLE Max retries reached: $extension $globalIndex (attempt $attempt) ")
+                            when {
 
-                                        delay(Delay.RETRY_LONG.time)
-                                        //startView(context, config, emitter)
-                                        true
-                                    } else {
-                                        Timber.w(cause, "DOUBLE Retrying flow: $extension $globalIndex (attempt $attempt) ")
-                                        delay(Delay.RETRY_SHORT.time)
-                                        true
-                                    }
+                                cause is CancellationException && ViewState.isCancelled() -> {
+                                    Timber.d("DOUBLE No se reintenta el flujo cancelado por el emitter: $extension $globalIndex")
+                                    false  // Importante: no reintentar
+                                }
+                                attempt > 4 -> {
+                                    Timber.e(cause, "DOUBLE Max retries reached: $extension $globalIndex (attempt $attempt)")
+                                    delay(Delay.RETRY_LONG.time)
+                                    true
+                                }
+                                else -> {
+                                    Timber.w(cause, "DOUBLE Retrying flow: $extension $globalIndex (attempt $attempt)")
+                                    delay(Delay.RETRY_SHORT.time)
+                                    true
+                                }
+                            }
 
                         }
                         .launchIn(scope)
@@ -316,28 +343,35 @@ abstract class CustomDoubleTypeBase(
                 Timber.e(e, "DOUBLE ViewJob error: $extension $globalIndex ")
                 if (!scope.isActive) return@launch
                 delay(1000L)
-                //startView(context, config, emitter)
+
             }
         }
 
         emitter.setCancellable {
             try {
-                Timber.d("Cancelando todos los jobs y flujos")
-                ViewState.setCancelled(true)
-                viewjob.cancel()
-                configjob.cancel()
-                scopeJob.cancel() // Esto cancelará todos los flujos hijos
+                Timber.d("Iniciando cancelación de CustomDoubleTypeBase")
 
-                // Esperar brevemente para asegurar la cancelación
+
+                ViewState.setCancelled(true)
+
+                configjob.cancel()
+                viewjob.cancel()
+
+
                 scope.launch {
                     delay(100)
                     if (scope.isActive) {
-                        Timber.w("Forzando cancelación del scope")
-                        scope.cancel()
+                        Timber.w("Forzando cancelación del scope de double")
                     }
                 }
+
+                scope.cancel()
+                scopeJob.cancel()
+
+                Timber.d("Cancelación de CustomDoubleTypeBase completada")
+
             } catch (e: CancellationException) {
-                // Cancelación normal
+
             } catch (e: Exception) {
                 Timber.e(e, "Error durante la cancelación")
             }

@@ -22,7 +22,6 @@ import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.getZone
 import com.enderthor.kCustomField.extensions.slopeZones
 import com.enderthor.kCustomField.extensions.streamDataFlow
-import com.enderthor.kCustomField.extensions.streamPowerSettings
 import com.enderthor.kCustomField.extensions.streamUserProfile
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
@@ -41,11 +40,6 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.milliseconds
 
 
-private const val RETRY_CHECK_STREAMS = 4
-private const val WAIT_STREAMS_SHORT = 3000L // 3 seconds
-private const val WAIT_STREAMS_NORMAL = 60000L // 1 minute
-private const val STREAM_TIMEOUT = 15000L // 15 seconds
-
 internal object ViewState {
     @Volatile
     private var _isCancelled = false
@@ -53,8 +47,12 @@ internal object ViewState {
     val isCancelledByEmitter: Boolean
         get() = _isCancelled
 
+    fun isCancelled(): Boolean = _isCancelled
+
+    @Synchronized
     fun setCancelled(value: Boolean) {
         _isCancelled = value
+        Timber.d("ViewState.cancelled = $value")
     }
 }
 
@@ -98,7 +96,9 @@ fun convertValue(
             (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_VERTICAL_SPEED_ID")
         "SHIFTING_FRONT_GEAR" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_SHIFTING_FRONT_GEAR_ID")
         "SHIFTING_REAR_GEAR" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_SHIFTING_FRONT_REAR_ID")
-        "TIRE_PRESSURE_FRONT","TIRE_PRESSURE_REAR" -> ((streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_TIRE_PRESSURE"))
+        "TIRE_PRESSURE_FRONT","TIRE_PRESSURE_REAR" -> ((streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_TIRE_PRESSURE_ID"))
+        "TYPE_ELEVATION_TO_TOP" -> ((streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_TO_TOP_ID"))
+        "TYPE_ELEVATION_FROM_BOTTOM" -> ((streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_FROM_BOTTOM_ID"))
         else -> (streamState as? StreamState.Streaming)?.dataPoint?.singleValue
     } ?: 0.0
 
@@ -165,8 +165,7 @@ fun createHeadwindFlow(
 fun KarooSystemService.getFieldFlow(
     field: Any,
     headwindFlow: Flow<StreamHeadWindData>,
-    generalSettings: GeneralSettings,
-    context: Context
+    generalSettings: GeneralSettings
 ): Flow<Any> = flow {
 
 
@@ -237,59 +236,6 @@ fun KarooSystemService.getFieldFlow(
                             }
                             .timeout(STREAM_TIMEOUT.milliseconds)
                     }
-                    action.name == "CDA" -> {
-                        combine(
-                            streamDataFlow(DataType.Type.SPEED),
-                            streamDataFlow(DataType.Type.ELEVATION_GRADE),
-                            streamDataFlow(DataType.Type.PRESSURE_ELEVATION_CORRECTION),
-                            streamDataFlow(DataType.Type.POWER),
-                            streamPowerSettings(context),
-                        ) { speedState, gradeState, elevationState, powerState, powerSettings->
-                            if (speedState is StreamState.Streaming &&
-                                gradeState is StreamState.Streaming &&
-                                elevationState is StreamState.Streaming &&
-                                powerState is StreamState.Streaming) {
-
-                                val speed = speedState.dataPoint.singleValue ?: 0.0
-                                val slope = gradeState.dataPoint.singleValue ?: 0.0
-                                val elevation = elevationState.dataPoint.singleValue ?: 0.0
-                                val power = powerState.dataPoint.singleValue ?: 0.0
-
-                                if (speed <= 0.1) {
-                                    StreamState.Streaming(
-                                        DataPoint(
-                                            dataTypeId = "CDA",
-                                            values = mapOf(DataType.Field.SINGLE to 0.0)
-                                        )
-                                    )
-                                } else {
-
-                                    val cdaEstimator = CyclingCdAEstimator(
-                                        slope = slope / 100.0,
-                                        totalMass = powerSettings.second + powerSettings.first.bikeMass.toDouble(),
-                                        rollingResistanceCoefficient = powerSettings.first.rollingResistanceCoefficient.toDouble(),
-                                        speed = speed,
-                                        powerLoss = powerSettings.first.powerLoss.toDouble(),
-                                        elevation = elevation,
-                                        surface = powerSettings.first.surface.toDouble(),
-                                        power = power
-                                    )
-
-                                    val cda = cdaEstimator.estimatedCdA()
-
-                                    StreamState.Streaming(
-                                        DataPoint(
-                                            dataTypeId = "CDA",
-                                            values = mapOf(DataType.Field.SINGLE to cda)
-                                        )
-                                    )
-                                }
-                            } else {
-                                StreamState.Searching
-                            }
-                        }
-                            .timeout(STREAM_TIMEOUT.milliseconds)
-                    }
 
                     else -> streamDataFlow(action.action)
                         
@@ -311,7 +257,7 @@ fun KarooSystemService.getFieldFlow(
                 }
 
                 streamFlow.distinctUntilChanged().collect { state ->
-                        Timber.d("Emisión streamDataFlow en action.name: ${action.name} con valor $state")
+                        //Timber.d("Emisión streamDataFlow en action.name: ${action.name} con valor $state")
                         emit(state)
                     }
 
@@ -409,6 +355,7 @@ fun updateFieldState(
         else -> throw IllegalArgumentException("Unsupported field type")
     }
 
+    Timber.d("updateFieldState: fieldSettings: $fieldSettings, kaction: ${kaction.name}, iszone: $iszone")
     val (value, valueRight) = if (kaction.powerField) {
         multipleStreamValues(fieldState, kaction)
     } else {
