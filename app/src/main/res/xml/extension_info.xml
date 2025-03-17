@@ -58,4 +58,10 @@
         graphical="true"
         icon="@drawable/ic_field"
         typeId="rolling-three" />
+    <DataType
+        description="@string/custom_climb_description1"
+        displayName="@string/custom_climb1"
+        graphical="true"
+        icon="@drawable/ic_field"
+        typeId="climb-one" />
 </ExtensionInfo>

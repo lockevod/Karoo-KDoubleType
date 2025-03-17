@@ -33,7 +33,7 @@ val timeOptions = defaultRollingTimes
 @Composable
 fun TabLayout() {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Fields","Rolling","Conf.")
+    val tabs = listOf("Field","Roll.","Smart","Conf")
     val ctx = LocalContext.current
 
 
@@ -47,7 +47,7 @@ fun TabLayout() {
                 Tab(
                     selected = selectedTabIndex == index,
                     onClick = { selectedTabIndex = index },
-                    text = { Text(text = title, fontSize = 11.sp) },
+                    text = { Text(text = title, fontSize = 10.sp) },
 
                 )
             }
@@ -56,9 +56,10 @@ fun TabLayout() {
 
 
             when (selectedTabIndex) {
-                0 -> ConfFields(ctx, true)
-                1 -> ConfRolling(ctx, true)
-                2 -> ConfGeneral()
+                0 -> ConfFields(ctx)
+                1 -> ConfRolling(ctx)
+                2 -> ConfSmart(ctx)
+                3 -> ConfGeneral()
             }
 
     }
@@ -66,7 +67,7 @@ fun TabLayout() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
+fun ConfRolling(ctx: Context) {
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -153,10 +154,6 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
                     // Timber.d("NEW ACTION SECONDFIELD $updatednewAction")
                     oneFieldSettingsList[index] =
                         oneFieldSettings.copy(secondfield = updatednewAction)
-                    /*if (newAction.kaction.zone == "none") oneFieldSettingsList[index] =
-                        oneFieldSettings.copy(secondfield = updatednewAction)
-                    else oneFieldSettingsList[index] =
-                        oneFieldSettings.copy(secondfield = updatednewAction)*/
                     if (!newAction.isactive) {
                         val noneThirdField = oneFieldSettings.thirdfield.copy(
                             isactive = false,
@@ -262,7 +259,7 @@ fun ConfRolling(ctx: Context, iskaroo3: Boolean) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConfFields(ctx: Context,iskaroo3: Boolean) {
+fun ConfFields(ctx: Context) {
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -305,7 +302,7 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             doubleFieldSettingsDerived.value.forEachIndexed { index, doubleFieldSettings ->
-                if (index < 3 || (iskaroo3 && index in 3..5) ) {
+                if (index < 3 || (index in 3..5) ) {
                     if(index>4) {
                      Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -391,6 +388,213 @@ fun ConfFields(ctx: Context,iskaroo3: Boolean) {
         )
     }
 }
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConfSmart(ctx: Context) {
+    val coroutineScope = rememberCoroutineScope()
+    var savedDialogVisible by remember { mutableStateOf(false) }
+    var climbFieldSettingsList = remember { mutableStateListOf<ClimbFieldSettings>(ClimbFieldSettings()) }
+    var generalSettings by remember { mutableStateOf(GeneralSettings()) }
+
+    LaunchedEffect(Unit) {
+        ctx.streamGeneralSettings().collect { settings ->
+            generalSettings = settings
+        }
+    }
+
+
+    LaunchedEffect(Unit) {
+        ctx.streamClimbFieldSettings().collect { settings ->
+            if (settings.isNotEmpty()) {
+                climbFieldSettingsList.clear()
+                climbFieldSettingsList.addAll(settings)
+            }
+        }
+    }
+
+    val climbFieldSettingsDerived = remember {
+        derivedStateOf { climbFieldSettingsList.toList() }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(5.dp)
+                .verticalScroll(rememberScrollState())
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            climbFieldSettingsDerived.value.forEachIndexed { index, climbFieldSettings ->
+                TopAppBar(title = { Text("Climb Field") })
+
+                DropdownDoubleField(
+                    "First Field",
+                    climbFieldSettings.onefield,
+                    generalSettings.isheadwindenabled
+                ) { newAction ->
+                    val updatedZone = if (newAction.kaction.zone == "none") false else climbFieldSettings.onefield.iszone
+                    val updatedNewAction = newAction.copy(iszone = updatedZone)
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(onefield = updatedNewAction)
+                }
+                ZoneMultiSwitch(
+                    0,
+                    climbFieldSettings.onefield.iszone,
+                    climbFieldSettings.onefield.kaction.zone != "none"
+                ) { newZone ->
+                    val updatedZone = if (climbFieldSettings.onefield.kaction.zone == "none") false else newZone
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(
+                        onefield = climbFieldSettings.onefield.copy(iszone = updatedZone)
+                    )
+                }
+
+                DropdownDoubleField(
+                    "Second Field",
+                    climbFieldSettings.secondfield,
+                    generalSettings.isheadwindenabled
+                ) { newAction ->
+                    val updatedZone = if (newAction.kaction.zone == "none") false else climbFieldSettings.secondfield.iszone
+                    val updatedNewAction = newAction.copy(iszone = updatedZone)
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(secondfield = updatedNewAction)
+                }
+                ZoneMultiSwitch(
+                    0,
+                    climbFieldSettings.secondfield.iszone,
+                    climbFieldSettings.secondfield.kaction.zone != "none"
+                ) { newZone ->
+                    val updatedZone = if (climbFieldSettings.secondfield.kaction.zone == "none") false else newZone
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(
+                        secondfield = climbFieldSettings.secondfield.copy(iszone = updatedZone)
+                    )
+                }
+
+                ZoneMultiSwitch(1, climbFieldSettings.isfirsthorizontal, true) { newHorizontal ->
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(isfirsthorizontal = newHorizontal)
+                }
+
+                DropdownDoubleField(
+                    "Third Field",
+                    climbFieldSettings.thirdfield,
+                    generalSettings.isheadwindenabled
+                ) { newAction ->
+                    val updatedZone = if (newAction.kaction.zone == "none") false else climbFieldSettings.thirdfield.iszone
+                    val updatedNewAction = newAction.copy(iszone = updatedZone)
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(thirdfield = updatedNewAction)
+                }
+                ZoneMultiSwitch(
+                    0,
+                    climbFieldSettings.thirdfield.iszone,
+                    climbFieldSettings.thirdfield.kaction.zone != "none"
+                ) { newZone ->
+                    val updatedZone = if (climbFieldSettings.thirdfield.kaction.zone == "none") false else newZone
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(
+                        thirdfield = climbFieldSettings.thirdfield.copy(iszone = updatedZone)
+                    )
+                }
+
+                DropdownDoubleField(
+                    "Fourth Field",
+                    climbFieldSettings.fourthfield,
+                    generalSettings.isheadwindenabled
+                ) { newAction ->
+                    val updatedZone = if (newAction.kaction.zone == "none") false else climbFieldSettings.fourthfield.iszone
+                    val updatedNewAction = newAction.copy(iszone = updatedZone)
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(fourthfield = updatedNewAction)
+                }
+                ZoneMultiSwitch(
+                    0,
+                    climbFieldSettings.fourthfield.iszone,
+                    climbFieldSettings.fourthfield.kaction.zone != "none"
+                ) { newZone ->
+                    val updatedZone = if (climbFieldSettings.fourthfield.kaction.zone == "none") false else newZone
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(
+                        fourthfield = climbFieldSettings.fourthfield.copy(iszone = updatedZone)
+                    )
+                }
+
+                ZoneMultiSwitch(1, climbFieldSettings.issecondhorizontal, true) { newHorizontal ->
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(issecondhorizontal = newHorizontal)
+                }
+
+                TopAppBar(title = { Text("Climb Field Conf", fontSize = 12.sp) }, windowInsets = WindowInsets(0.dp) )
+
+                DropdownDoubleField(
+                    "On Climber Measure",
+                    climbFieldSettings.climbOnfield,
+                    generalSettings.isheadwindenabled
+                ) { newAction ->
+                    val updatedZone = if (newAction.kaction.zone == "none") false else climbFieldSettings.climbOnfield.iszone
+                    val updatedNewAction = newAction.copy(iszone = updatedZone)
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(climbOnfield = updatedNewAction)
+                }
+                ZoneMultiSwitch(
+                    0,
+                    climbFieldSettings.climbOnfield.iszone,
+                    climbFieldSettings.climbOnfield.kaction.zone != "none"
+                ) { newZone ->
+                    val updatedZone = if (climbFieldSettings.climbOnfield.kaction.zone == "none") false else newZone
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(
+                        climbOnfield = climbFieldSettings.climbOnfield.copy(iszone = updatedZone)
+                    )
+                }
+                DropdownDoubleField(
+                    "No Climber Measure",
+                    climbFieldSettings.climbfield,
+                    generalSettings.isheadwindenabled
+                ) { newAction ->
+                    val updatedZone = if (newAction.kaction.zone == "none") false else climbFieldSettings.climbfield.iszone
+                    val updatedNewAction = newAction.copy(iszone = updatedZone)
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(climbfield = updatedNewAction)
+                }
+                ZoneMultiSwitch(
+                    0,
+                    climbFieldSettings.climbfield.iszone,
+                    climbFieldSettings.climbfield.kaction.zone != "none"
+                ) { newZone ->
+                    val updatedZone = if (climbFieldSettings.climbfield.kaction.zone == "none") false else newZone
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(
+                        climbfield = climbFieldSettings.climbfield.copy(iszone = updatedZone)
+                    )
+                }
+                ZoneMultiSwitch(3, climbFieldSettings.isAlwaysClimbPos, true) { newValue ->
+                    climbFieldSettingsList[index] = climbFieldSettings.copy(isAlwaysClimbPos = newValue)
+                }
+            }
+
+            FilledTonalButton(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                onClick = {
+                    coroutineScope.launch {
+                        savedDialogVisible = true
+                        saveClimbFieldSettings(ctx, climbFieldSettingsList)
+                    }
+                }
+            ) {
+                Icon(Icons.Default.Done, contentDescription = "Save")
+                Spacer(modifier = Modifier.width(5.dp))
+                Text("Save Climb")
+                Spacer(modifier = Modifier.width(5.dp))
+            }
+        }
+    }
+
+    if (savedDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { savedDialogVisible = false },
+            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text("OK") } },
+            text = { Text("Settings saved successfully.") }
+        )
+    }
+}
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
