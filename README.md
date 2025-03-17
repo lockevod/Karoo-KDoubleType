@@ -32,7 +32,8 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 - You can add horizontal or vertical fields.
 - You can add rolling fields and select de rolling period (ie. change every 5-10-20-30 seconds between three fields...). You can chose one/two/three rolling mesures, if you chose only one.. then you only have one messure in this field.
 - You can configure the fields in the configuration tab and select if you want colored zones or not.
-
+- You can use Smart Climb Field. This field is for map page (1x2 so-so space) and will show 4-5 measures (it changes "smart")
+  
 ## Configuration
 - You can configure, for double custom fields, left/up and right/top sides in custom configuration tab.
 - Horizontal fields rounds to integer numbers ( ie for speed 12.6 you will see 13) except for IF field.
@@ -43,6 +44,10 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 - You can use Headwind Field, this is from Timklge app, and it's mandatory to install and configure the app. KDouble extension only takes the values from Timklge app and shows in the field (rolling/vertical/horizontal).
 In this case, you have to select Timklge headwind field also in this profile.
 - Rolling fields have Extra Time option. If you check this option first field has x3 time.
+Smart Climb Field. This field is for map page (1x2 so-so space) and will show 4-5 measures (it changes "smart")
+  - Four fields (you can select all available measures in the app) and horizontal/vertical/zones (it's a custom field = 2 x Double fields)
+  - One climber field (center position). You've two select two measures, one is active when you start a climb and the other is active (or not, you can select) when you finish the climb. You can select all available measures in the app but I use with the distance to top
+
 
 ## Know Bugs
 - The max number of every field horizontal is 3 digits, but it's better if you don't mix two types with 3 digits always.

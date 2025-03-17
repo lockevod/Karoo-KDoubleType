@@ -3,9 +3,9 @@
   "packageName": "com.enderthor.kCustomField",
   "latestApkUrl": "https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.apk",
   "iconUrl": "https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.png",
-  "latestVersion": "2.5.0",
+  "latestVersion": "3.0.0",
   "latestVersionCode": 202503061,
   "developer": "Enderthor",
   "description": "This extension for Karoo allows to use custom fields with double types (HR,Power,etc).",
-  "releaseNotes": "Added Cda estimation. Added VO2Max field. Colours for Pedals Balance. Added tyre pressure and elevation/distance from/to top"
+  "releaseNotes": "Added Climb Smart Filed. Added VO2Max field. Colours for Pedals Balance. Added tyre pressure and elevation/distance from/to top"
 }
