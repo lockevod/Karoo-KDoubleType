@@ -40,6 +40,38 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.milliseconds
 
 
+
+class StickyStreamState private constructor() {
+    companion object {
+        private val lastValidStates = mutableMapOf<String, Pair<Any, Long>>()
+        private const val STICKY_TIMEOUT_MS = 7000L // 7 segundos mantiene valores
+
+        fun process(state: Any, actionName: String): Any {
+            val currentTime = System.currentTimeMillis()
+
+
+            if (state is StreamState.Streaming) {
+                lastValidStates[actionName] = Pair(state, currentTime)
+                return state
+            }
+
+            val lastStatePair = lastValidStates[actionName] ?: return state
+            val (lastState, timestamp) = lastStatePair
+
+            if (currentTime - timestamp < STICKY_TIMEOUT_MS) {
+
+                if (state !is StreamState.Searching || Random.nextInt(20) == 0) {
+                    Timber.d("Usando valor almacenado para $actionName, edad: ${currentTime - timestamp}ms")
+                }
+                return lastState
+            }
+
+            return state
+        }
+    }
+}
+
+
 internal object ViewState {
     @Volatile
     private var _isCancelled = false
@@ -258,7 +290,9 @@ fun KarooSystemService.getFieldFlow(
 
                 streamFlow.distinctUntilChanged().collect { state ->
                         //Timber.d("Emisión streamDataFlow en action.name: ${action.name} con valor $state")
-                        emit(state)
+
+                    val processedState = StickyStreamState.process(state, action.name)
+                    emit(processedState)
                     }
 
             } catch (e: Exception) {
@@ -269,7 +303,6 @@ fun KarooSystemService.getFieldFlow(
                             throw e
                         }
                         Timber.d("Cancelación ignorada en getFieldFlow para ${action.name}")
-                        //emit(StreamState.NotAvailable)
                         delay(WAIT_STREAMS_SHORT)
                     }
 
@@ -372,8 +405,8 @@ fun updateFieldState(
     {
         if (value > valueRight*1.15)
             ColorProvider(
-                day = Color(ContextCompat.getColor(context,R.color.zone7)),
-                night = Color(ContextCompat.getColor(context, R.color.zone7))
+                day = Color(ContextCompat.getColor(context,R.color.zone7switft)),
+                night = Color(ContextCompat.getColor(context, R.color.zone7switft))
             )
         else if (value > valueRight*1.07)
             ColorProvider(
