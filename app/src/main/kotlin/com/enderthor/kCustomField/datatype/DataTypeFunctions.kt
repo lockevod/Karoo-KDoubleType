@@ -327,14 +327,14 @@ fun KarooSystemService.getFieldFlow(
             cause is CancellationException && !ViewState.isCancelledByEmitter -> true
             attempt > RETRY_CHECK_STREAMS -> {
                 Timber.e("Máximo de reintentos alcanzado")
-                emit(StreamState.NotAvailable)
+                emit(StreamState.Idle)
                 delay(WAIT_STREAMS_NORMAL)
                 true
             }
 
             else -> {
                 Timber.w("Reintentando stream, intento $attempt")
-                emit(StreamState.Idle)
+                //emit(StreamState.Idle)
                 delay(WAIT_STREAMS_SHORT)
                 true
             }
