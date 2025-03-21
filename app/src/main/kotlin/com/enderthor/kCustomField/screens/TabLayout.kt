@@ -710,14 +710,14 @@ fun ConfGeneral() {
             }
 
             Spacer(modifier = Modifier.height(2.dp))
-            TopAppBar(title = { Text("Color Palette") })
+            TopAppBar(title = { Text("Divider Enabled") })
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(checked = ispalettezwift, onCheckedChange = {
-                    ispalettezwift = it
+                Switch(checked = isdivider, onCheckedChange = {
+                    isdivider= it
                 })
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Zwift Color palette?")
+                Text("Divider Enabled?")
             }
 
            /* Spacer(modifier = Modifier.height(2.dp))
