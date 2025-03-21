@@ -313,7 +313,7 @@ abstract class CustomDoubleTypeBase(
 
                                 cause is CancellationException && ViewState.isCancelled() -> {
                                     Timber.d("DOUBLE No se reintenta el flujo cancelado por el emitter: $extension $globalIndex")
-                                    false  // Importante: no reintentar
+                                    false
                                 }
                                 attempt > 4 -> {
                                     Timber.e(cause, "DOUBLE Max retries reached: $extension $globalIndex (attempt $attempt)")

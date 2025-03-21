@@ -67,7 +67,7 @@ inline fun <reified T> getZone(userZones: List<T>, value: Double): Zone? {
         }
     }
 
-    // Si el valor es mayor o igual al máximo de la última zona
+
     val lastZone = userZones.lastOrNull() ?: return null
     val lastMax = when (lastZone) {
         is UserProfile.Zone -> lastZone.max.toDouble()

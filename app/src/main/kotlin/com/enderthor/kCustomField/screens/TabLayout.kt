@@ -720,7 +720,9 @@ fun ConfGeneral() {
                 Text("Zwift Color palette?")
             }
 
-            Spacer(modifier = Modifier.height(2.dp))
+           /* Spacer(modifier = Modifier.height(2.dp))
+
+
             TopAppBar(title = { Text("Power Settings") })
 
 
@@ -745,7 +747,7 @@ fun ConfGeneral() {
                 singleLine = true
             )
 
-
+*/
             Spacer(modifier = Modifier.height(16.dp))
 
 
