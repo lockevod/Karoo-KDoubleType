@@ -44,7 +44,7 @@ import kotlin.time.Duration.Companion.milliseconds
 class StickyStreamState private constructor() {
     companion object {
         private val lastValidStates = mutableMapOf<String, Pair<Any, Long>>()
-        private const val STICKY_TIMEOUT_MS = 7000L // 7 segundos mantiene valores
+        private const val STICKY_TIMEOUT_MS = 7000L
 
         fun process(state: Any, actionName: String): Any {
             val currentTime = System.currentTimeMillis()
@@ -139,7 +139,7 @@ fun convertValue(
             UserProfile.PreferredUnit.UnitType.METRIC ->
                 if (convert == "distance") value / 1000 else value * 3.6
             UserProfile.PreferredUnit.UnitType.IMPERIAL ->
-                if (convert == "distance") value / 1609.345 else value * 0.0568182
+                if (convert == "distance") value / 1609.345 else value * 2.237
 
         }
         "pressure" -> when (unitType) {
