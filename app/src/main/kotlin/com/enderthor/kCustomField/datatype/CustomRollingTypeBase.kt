@@ -75,32 +75,7 @@ abstract class CustomRollingTypeBase(
 
 
 
-   /* override fun startStream(emitter: Emitter<StreamState>) {
-        Timber.d("Starting Rolling type stream")
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                while (true) {
-                    emitter.onNext(StreamState.Streaming(
-                        DataPoint(
-                            dataTypeId,
-                            mapOf(DataType.Field.SINGLE to 1.0),
-                            extension
-                        )
-                    ))
-                    delay(refreshTime)
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Stream Rolling error occurred")
-                emitter.onError(e)
-            }
-        }.also { job ->
-            emitter.setCancellable {
-                Timber.d("Stopping Rolling stream")
-                job.cancel()
-            }
-        }
-    }
-*/
+
     private fun previewFlow(): Flow<StreamState> = flow {
         while (true) {
             emit(StreamState.Streaming(
@@ -118,13 +93,12 @@ abstract class CustomRollingTypeBase(
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         Timber.d("ROLLING StartView: field $extension index $index field $dataTypeId config: $config")
 
-       // emitterId = emitter.toString().substringAfter("@")
+
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
         ViewState.setCancelled(false)
 
 
-        //cleanupJobs()
 
         val globalIndex = index
 

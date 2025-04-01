@@ -76,7 +76,7 @@ abstract class CustomDoubleTypeBase(
         get() = when (karooSystem.hardwareType) {
             HardwareType.K2 -> RefreshTime.MID.time
             else -> RefreshTime.HALF.time
-        }.coerceAtLeast(100L) // Aseguramos un mínim
+        }.coerceAtLeast(100L)
 
     
 
@@ -133,11 +133,8 @@ abstract class CustomDoubleTypeBase(
         val viewjob = scope.launch {
             try {
                 Timber.d("DOUBLE Starting view: $extension $globalIndex ")
-               // val (userProfile, settingsFlow, generalSettingsFlow) = initializeView(scope, context)
-                //Esperar entre 10 ms y 200 ms antes de empezar
-                //delay(15L + (Random.nextInt(3) * 15L))
+
                 try {
-                    // Carga inicial rápida
                     if (!config.preview) {
                             try {
                                 val initialRemoteViews = withContext(Dispatchers.Main) {
@@ -149,13 +146,11 @@ abstract class CustomDoubleTypeBase(
                                     emitter.updateView(initialRemoteViews)
                                 }
 
-                                // Esperar 100, 200 o 300 ms antes de continuar con el resto
-
                             } catch (e: Exception) {
                                 Timber.e(e, "DOUBLE Error en vista inicial: $extension $globalIndex ")
                             }
                         delay(400L + (Random.nextInt(10) * 150L))
-                       // Esperar a que termine la vista inicial
+
                     }
 
                     Timber.d("DOUBLE Starting view flow: $extension $globalIndex  karooSystem@$karooSystem ")
@@ -193,7 +188,7 @@ abstract class CustomDoubleTypeBase(
 
                         if ( ViewState.isCancelled()) {
                             Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
-                            return@onEach  // No procesa esta iteración pero continúa el flujo
+                            return@onEach
                         }
 
                             val (setting, generalSettings, userProfile) = globalConfig

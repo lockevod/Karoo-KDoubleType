@@ -218,17 +218,16 @@ fun KarooSystemService.getFieldFlow(
                 emit(StreamHeadWindData(0.0, 0.0))
             } else {
                 Timber.d("Emisión inicial streamDataFlow en action.name: ${action.name}")
-                emit(
+                // No emitimos nada inicialmente.
+                /*emit(
                     StreamState.Streaming(
                         DataPoint(
                             dataTypeId = actionId,
                             values = mapOf(DataType.Field.SINGLE to 0.0)
                         )
                     )
-                )
+                )*/
             }
-
-
 
         while (currentCoroutineContext().isActive) {
             try {
@@ -484,7 +483,9 @@ fun updateFieldState(
         )
     }
 
-    val iconColor = getColorProvider(context, kaction, iszone)
+    val isRealZone = if(checkRealZone(kaction,iszone,value,valueRight)) iszone else false
+
+    val iconColor = getColorProvider(context, kaction, isRealZone)
     val colorZone = if ((kaction.zone in listOf("heartRateZones", "powerZones", "slopeZones")) && iszone) {
         getColorZone(context, kaction.zone, value, userProfile, isPaletteZwift)
     } else if( (kaction.name =="AVERAGE_PEDAL_BALANCE" || kaction.name =="PEDAL_BALANCE") && iszone && kaction.powerField)
