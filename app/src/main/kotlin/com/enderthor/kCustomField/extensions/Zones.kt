@@ -44,7 +44,7 @@ val zones = mapOf(
     8 to listOf(Zone.Zone1, Zone.Zone1, Zone.Zone2, Zone.Zone3, Zone.Zone5, Zone.Zone6, Zone.Zone7, Zone.Zone8),
     9 to listOf(Zone.Zone1, Zone.Zone1, Zone.Zone2, Zone.Zone3, Zone.Zone4, Zone.Zone5, Zone.Zone6, Zone.Zone7, Zone.Zone8)
 )
-
+/*
 inline fun <reified T> getZone(userZones: List<T>, value: Double): Zone? {
     val zoneList = zones[userZones.size] ?: return null
     val valueabs = floor(value.absoluteValue)
@@ -80,4 +80,45 @@ inline fun <reified T> getZone(userZones: List<T>, value: Double): Zone? {
     }
 
     return null
+}
+*/
+// Improvement from jpweytjens
+inline fun <reified T> getZone(userZones: List<T>, value: Double): Zone? {
+    val zoneList = zones[userZones.size] ?: return null
+    val valueabs = value.absoluteValue  // Remove flooring to preserve precision
+
+    // Check if value is in any defined zone
+    for (i in userZones.indices) {
+        val zone = userZones[i]
+        val min = when (zone) {
+            is UserProfile.Zone -> zone.min.toDouble()
+            is zoneslope -> zone.min
+            else -> return null
+        }
+        val max = when (zone) {
+            is UserProfile.Zone -> zone.max.toDouble()
+            is zoneslope -> zone.max
+            else -> return null
+        }
+
+        // Simplified boundary condition - include the max value in the current zone
+        if (valueabs >= min && valueabs <= max) {
+            return zoneList.getOrNull(i) ?: Zone.Zone1  // Default to Zone1 (less intense) instead of Zone7
+        }
+    }
+
+    // Handle values beyond the defined zones
+    val lastZone = userZones.lastOrNull() ?: return null
+    val lastMax = when (lastZone) {
+        is UserProfile.Zone -> lastZone.max.toDouble()
+        is zoneslope -> 99.0
+        else -> return null
+    }
+
+    if (valueabs >= lastMax) {
+        return zoneList.lastOrNull() ?: Zone.Zone8
+    }
+
+    // If no zone matched, return a moderate zone rather than highest intensity
+    return Zone.Zone3
 }

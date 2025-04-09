@@ -28,6 +28,7 @@ import io.hammerhead.karooext.models.DataType
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.map
 import kotlin.random.Random
 import timber.log.Timber
 
@@ -37,6 +38,7 @@ import kotlinx.coroutines.flow.timeout
 import kotlinx.coroutines.isActive
 
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 
@@ -216,17 +218,16 @@ fun KarooSystemService.getFieldFlow(
                 emit(StreamHeadWindData(0.0, 0.0))
             } else {
                 Timber.d("Emisión inicial streamDataFlow en action.name: ${action.name}")
-                emit(
+                // No emitimos nada inicialmente.
+                /*emit(
                     StreamState.Streaming(
                         DataPoint(
                             dataTypeId = actionId,
                             values = mapOf(DataType.Field.SINGLE to 0.0)
                         )
                     )
-                )
+                )*/
             }
-
-
 
         while (currentCoroutineContext().isActive) {
             try {
@@ -260,6 +261,44 @@ fun KarooSystemService.getFieldFlow(
                                         DataPoint(
                                             dataTypeId = "VO2MAX",
                                             values = mapOf(DataType.Field.SINGLE to vo2max)
+                                        )
+                                    )
+                                } else {
+                                    StreamState.Searching
+                                }
+                            }
+                            .timeout(STREAM_TIMEOUT.milliseconds)
+                    }
+
+                    action.name == "FTP" -> {
+                        streamDataFlow(DataType.Type.NORMALIZED_POWER)
+                            .map { powerState ->
+                                if (powerState is StreamState.Streaming) {
+                                    val powerValue = powerState.dataPoint.singleValue ?: 0.0
+                                    val FTP = calculateFTP(powerValue)
+                                    StreamState.Streaming(
+                                        DataPoint(
+                                            dataTypeId = "FTP",
+                                            values = mapOf(DataType.Field.SINGLE to FTP)
+                                        )
+                                    )
+                                } else {
+                                    StreamState.Searching
+                                }
+                            }
+                            .timeout(STREAM_TIMEOUT.milliseconds)
+                    }
+
+                    action.name == "FTPG" -> {
+                        streamDataFlow(DataType.Type.NORMALIZED_POWER)
+                            .combine(streamUserProfile()) { powerState, profile ->
+                                if (powerState is StreamState.Streaming) {
+                                    val powerValue = powerState.dataPoint.singleValue ?: 0.0
+                                    val FTPG = calculateFTPG(powerValue, profile)
+                                    StreamState.Streaming(
+                                        DataPoint(
+                                            dataTypeId = "FTPG",
+                                            values = mapOf(DataType.Field.SINGLE to FTPG)
                                         )
                                     )
                                 } else {
@@ -358,6 +397,52 @@ fun calculateVO2max(powerValue: Double, userProfile: UserProfile): Double {
     return 10.8 * wattsPerKg + 7.0
 }
 
+fun calculateFTP(powerValue: Double): Double {
+    return powerValue * 0.95
+}
+
+fun calculateFTPG(powerValue: Double, userProfile: UserProfile): Double {
+    if (powerValue <= 0) return 0.0
+
+    val weight = userProfile.weight
+    if (weight <= 0) return powerValue * 0.95
+
+    // Allen & Coggan
+    val ftpStandard = powerValue * 0.95
+
+    //  Coogan & Allen Improve
+    val wattsPerKg = powerValue / weight
+    val ftpAdjusted = when {
+        wattsPerKg > 4.0 -> powerValue * 0.97
+        wattsPerKg > 3.0 -> powerValue * 0.95
+        wattsPerKg > 2.0 -> powerValue * 0.93
+        else -> powerValue * 0.90
+    }
+
+    // Historical FTP
+
+    val ftpHistorical = userProfile.powerZones.let { zones ->
+        if (zones.isNotEmpty()) {
+
+            val currentFTP = zones[3].max
+            if (currentFTP > 0) {
+                val changeLimit = 0.05
+                val minFTP = currentFTP * (1 - changeLimit)
+                val maxFTP = currentFTP * (1 + changeLimit)
+                ftpStandard.coerceIn(minFTP, maxFTP)
+            } else {
+                ftpStandard
+            }
+        } else {
+            ftpStandard
+        }
+    }
+
+
+    return ((ftpStandard * 0.4) + (ftpAdjusted * 0.3) + (ftpHistorical * 0.3)).roundToInt().toDouble()
+}
+
+
 fun multipleStreamValues(state: StreamState, kaction: KarooAction): Pair<Double, Double> {
     if (state !is StreamState.Streaming) return Pair(0.0, 0.0)
 
@@ -398,7 +483,9 @@ fun updateFieldState(
         )
     }
 
-    val iconColor = getColorProvider(context, kaction, iszone)
+    val isRealZone = if(checkRealZone(kaction,iszone,value,valueRight)) iszone else false
+
+    val iconColor = getColorProvider(context, kaction, isRealZone)
     val colorZone = if ((kaction.zone in listOf("heartRateZones", "powerZones", "slopeZones")) && iszone) {
         getColorZone(context, kaction.zone, value, userProfile, isPaletteZwift)
     } else if( (kaction.name =="AVERAGE_PEDAL_BALANCE" || kaction.name =="PEDAL_BALANCE") && iszone && kaction.powerField)

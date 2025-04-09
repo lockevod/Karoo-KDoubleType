@@ -416,6 +416,17 @@ fun RollingFieldScreen(
     val isCivil =
         action.action == KarooAction.CIVIL_DUSK.action || action.action == KarooAction.CIVIL_DAWN.action
 
+    val isRealZone =
+        if( (action.name =="AVERAGE_PEDAL_BALANCE" || action.name =="PEDAL_BALANCE") && iszone && action.powerField) {
+            if (dNumber > secondValue * 0.85 && dNumber < secondValue * 1.07) {
+                Timber.d("isRealZone: $dNumber")
+                false
+            } else true
+        }
+        else iszone
+
+
+
     if (selector) {
         val newInt = if (isClimb) true else isInt
 
@@ -442,13 +453,13 @@ fun RollingFieldScreen(
                         24
                     )
                     else {
-                        OneIconRow(icon, iconColor, label.uppercase(), iszone, fieldsize, isClimb)
+                        OneIconRow(icon, iconColor, label.uppercase(), isRealZone, fieldsize, isClimb)
                         OneNumberRow(
                             if (isClimb) number.take(4) else number.take(6),
                             clayout,
                             fieldsize,
                             (textSize * (if (ispreview) 0.8 else if (isClimb) 1.1 else 1.0)).roundToInt(),
-                            iszone,
+                            isRealZone,
                             iconColor,
                             ispower,
                             numberSecond.take(3),
@@ -459,6 +470,13 @@ fun RollingFieldScreen(
             }
         }
     } else HeadwindDirection(baseBitmap, winddiff, textSize, windtext)
+}
+
+fun checkRealZone(action: KarooAction, iszone: Boolean, dNumber: Double, secondValue: Double): Boolean {
+
+    return if( (action.name =="AVERAGE_PEDAL_BALANCE" || action.name =="PEDAL_BALANCE") && iszone && action.powerField)
+            !((dNumber > secondValue * 0.85 && dNumber < secondValue * 1.07) || (dNumber == 0.0))
+        else true
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
@@ -475,8 +493,7 @@ fun DoubleScreenSelector(
     val rightIcon= rightField.kaction.icon
     val leftLabel= leftField.kaction.label
     val rightLabel= rightField.kaction.label
-    val iszoneLeft= leftField.iszone
-    val iszoneRight= rightField.iszone
+
     val ispowerLeft= leftField.kaction.powerField
     val ispowerRight= rightField.kaction.powerField
     val isLeftInt= (!(leftField.kaction.convert == "speed" || leftField.kaction.zone == "slopeZones" || leftField.kaction.label == "IF")) || (ispowerLeft) || (isClimb)
@@ -487,111 +504,115 @@ fun DoubleScreenSelector(
     val rightTime=rightField.kaction.action==KarooAction.TIMETODEST.action
 
 
+    val iszoneLeft= if (checkRealZone(leftField.kaction,leftField.iszone,leftNumber,leftNumberSecond)) leftField.iszone else false
+    val iszoneRight= if (checkRealZone(rightField.kaction,rightField.iszone,rightNumber,rightNumberSecond)) rightField.iszone else false
 
-        val newLeft = if (ispowerLeft) (formatNumber(leftNumber, true) + "-" + formatNumber(
-            leftNumberSecond,
-            true
-        ))
-        else if (!showH) formatNumber(leftNumber, isLeftInt,leftTime,leftCivil)
-        else when (selector) {
-            0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString()
-                .take(3) else formatNumber(leftNumber, true,leftTime,leftCivil)
+    val newLeft = if (ispowerLeft) (formatNumber(leftNumber, true) + "-" + formatNumber(
+        leftNumberSecond,
+        true
+    ))
+    else if (!showH) formatNumber(leftNumber, isLeftInt, leftTime, leftCivil)
+    else when (selector) {
+        0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString()
+            .take(3) else formatNumber(leftNumber, true, leftTime, leftCivil)
 
-            else -> "0.0"
-        }
-
-
-        val newRight = if (ispowerRight) (formatNumber(rightNumber, true) + "-" + formatNumber(
-            rightNumberSecond,
-            true
-        ))
-        else if (!showH) formatNumber(rightNumber, isRightInt,rightTime,rightCivil)
-        else when (selector) {
-            1, 3 -> if (rightLabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString()
-                .take(3) else formatNumber(rightNumber, true,rightTime,rightCivil)
-
-            else -> "0.0"
-        }
+        else -> "0.0"
+    }
 
 
-        val icon1 = if (selector == 0 || selector == 3) leftIcon else 1
-        val icon2 = if (selector == 1 || selector == 3) rightIcon else 1
-        val iconColor1 = if (selector == 0 || selector == 3) iconColorLeft else ColorProvider(
-            Color.Black,
-            Color.Black
-        )
-        val iconColor2 = if (selector == 1 || selector == 3) iconColorRight else ColorProvider(
-            Color.Black,
-            Color.Black
-        )
-        val zoneColor1 = if (selector == 0 || selector == 3) zoneColorLeft else ColorProvider(
-            Color.Black,
-            Color.Black
-        )
-        val zoneColor2 = if (selector == 1 || selector == 3) zoneColorRight else ColorProvider(
-            Color.Black,
-            Color.Black
-        )
+    val newRight = if (ispowerRight) (formatNumber(rightNumber, true) + "-" + formatNumber(
+        rightNumberSecond,
+        true
+    ))
+    else if (!showH) formatNumber(rightNumber, isRightInt, rightTime, rightCivil)
+    else when (selector) {
+        1, 3 -> if (rightLabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString()
+            .take(3) else formatNumber(rightNumber, true, rightTime, rightCivil)
 
-        if (!showH || ispowerLeft || ispowerRight) {
-            when (fieldSize) {
-                FieldSize.SMALL -> DoubleTypesVerticalScreenSmall(
-                    newLeft,
-                    newRight,
-                    leftIcon,
-                    rightIcon,
-                    iconColorLeft,
-                    iconColorRight,
-                    zoneColorLeft,
-                    zoneColorRight,
-                    isKaroo3,
-                    layout,
-                    iszoneLeft,
-                    iszoneRight,
-                    isdivider
-                )
+        else -> "0.0"
+    }
 
-                FieldSize.MEDIUM, FieldSize.LARGE -> DoubleTypesVerticalScreenBig(
-                    newLeft,
-                    newRight,
-                    leftIcon,
-                    rightIcon,
-                    iconColorLeft,
-                    iconColorRight,
-                    zoneColorLeft,
-                    zoneColorRight,
-                    isKaroo3,
-                    layout,
-                    iszoneLeft,
-                    iszoneRight,
-                    isdivider
-                )
 
-                FieldSize.EXTRA_LARGE -> NotSupported("Size Not Supported", 24)
-            }
-        } else {
-            DoubleTypesScreenHorizontal(
+    val icon1 = if (selector == 0 || selector == 3) leftIcon else 1
+    val icon2 = if (selector == 1 || selector == 3) rightIcon else 1
+    val iconColor1 = if (selector == 0 || selector == 3) iconColorLeft else ColorProvider(
+        Color.Black,
+        Color.Black
+    )
+    val iconColor2 = if (selector == 1 || selector == 3) iconColorRight else ColorProvider(
+        Color.Black,
+        Color.Black
+    )
+    val zoneColor1 = if (selector == 0 || selector == 3) zoneColorLeft else ColorProvider(
+        Color.Black,
+        Color.Black
+    )
+    val zoneColor2 = if (selector == 1 || selector == 3) zoneColorRight else ColorProvider(
+        Color.Black,
+        Color.Black
+    )
+
+
+  // Timber.w("newLeft: $newLeft  iconColorLeft: $iconColorLeft  zoneColorLeft: $zoneColorLeft  iszoneLeft: $iszoneLeft")
+    if (!showH || ispowerLeft || ispowerRight) {
+        when (fieldSize) {
+            FieldSize.SMALL -> DoubleTypesVerticalScreenSmall(
                 newLeft,
                 newRight,
-                icon1,
-                icon2,
-                iconColor1,
-                iconColor2,
-                zoneColor1,
-                zoneColor2,
-                fieldSize,
+                leftIcon,
+                rightIcon,
+                iconColorLeft,
+                iconColorRight,
+                zoneColorLeft,
+                zoneColorRight,
                 isKaroo3,
                 layout,
-                selector,
-                text,
-                windDirection,
-                baseBitmap,
                 iszoneLeft,
                 iszoneRight,
-                isdivider,
-                isClimbField
+                isdivider
             )
+
+            FieldSize.MEDIUM, FieldSize.LARGE -> DoubleTypesVerticalScreenBig(
+                newLeft,
+                newRight,
+                leftIcon,
+                rightIcon,
+                iconColorLeft,
+                iconColorRight,
+                zoneColorLeft,
+                zoneColorRight,
+                isKaroo3,
+                layout,
+                iszoneLeft,
+                iszoneRight,
+                isdivider
+            )
+
+            FieldSize.EXTRA_LARGE -> NotSupported("Size Not Supported", 24)
         }
+    } else {
+        DoubleTypesScreenHorizontal(
+            newLeft,
+            newRight,
+            icon1,
+            icon2,
+            iconColor1,
+            iconColor2,
+            zoneColor1,
+            zoneColor2,
+            fieldSize,
+            isKaroo3,
+            layout,
+            selector,
+            text,
+            windDirection,
+            baseBitmap,
+            iszoneLeft,
+            iszoneRight,
+            isdivider,
+            isClimbField
+        )
+    }
 }
 
 
@@ -767,7 +788,7 @@ fun ClimbScreenSelector(
                     zonecolor = climbZoneColor,
                     fieldsize = FieldSize.MEDIUM,
                     iskaroo3 = isKaroo3,
-                    clayout = layout,
+                    clayout = FieldPosition.CENTER,
                     windtext = windText,
                     winddiff = windDirection,
                     baseBitmap = baseBitmap,
