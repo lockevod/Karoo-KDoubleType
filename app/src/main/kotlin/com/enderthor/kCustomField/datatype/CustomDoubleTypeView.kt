@@ -788,7 +788,7 @@ fun ClimbScreenSelector(
                     zonecolor = climbZoneColor,
                     fieldsize = FieldSize.MEDIUM,
                     iskaroo3 = isKaroo3,
-                    clayout = layout,
+                    clayout = FieldPosition.CENTER,
                     windtext = windText,
                     winddiff = windDirection,
                     baseBitmap = baseBitmap,
