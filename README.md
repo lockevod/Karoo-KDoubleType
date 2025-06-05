@@ -47,7 +47,7 @@ In this case, you have to select Timklge headwind field also in this profile.
 Smart Climb Field. This field is for map page (1x2 so-so space) and will show 4-5 measures (it changes "smart")
   - Four fields (you can select all available measures in the app) and horizontal/vertical/zones (it's a custom field = 2 x Double fields)
   - One climber field (center position). You've two select two measures, one is active when you start a climb and the other is active (or not, you can select) when you finish the climb. You can select all available measures in the app but I use with the distance to top
-
+- Bell Field. You can add a Bell Fiel to emulate Bell sound (sound has to be enabled). Karoo hasn't a speaker (has a buzzer) and it isn't possible to emulate a bell completely, but you can use this field to emulate a bell sound. You can select the sound in the configuration tab.
 
 ## Know Bugs
 - The max number of every field horizontal is 3 digits, but it's better if you don't mix two types with 3 digits always.
