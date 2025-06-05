@@ -3,8 +3,9 @@ package com.enderthor.kCustomField.extensions
 import io.hammerhead.karooext.models.UserProfile
 import com.enderthor.kCustomField.R
 import kotlinx.serialization.Serializable
+import kotlin.math.abs
 import kotlin.math.absoluteValue
-import kotlin.math.floor
+
 
 @Serializable
 data class zoneslope(val min: Double, val max: Double)
@@ -82,12 +83,12 @@ inline fun <reified T> getZone(userZones: List<T>, value: Double): Zone? {
     return null
 }
 */
-// Improvement from jpweytjens
+// Improvement from jpweytjens. Modified by Enderthor
 inline fun <reified T> getZone(userZones: List<T>, value: Double): Zone? {
     val zoneList = zones[userZones.size] ?: return null
-    val valueabs = value.absoluteValue  // Remove flooring to preserve precision
+    val valueabs = value.absoluteValue
 
-    // Check if value is in any defined zone
+    // Verificar si el valor está en alguna zona definida
     for (i in userZones.indices) {
         val zone = userZones[i]
         val min = when (zone) {
@@ -101,13 +102,13 @@ inline fun <reified T> getZone(userZones: List<T>, value: Double): Zone? {
             else -> return null
         }
 
-        // Simplified boundary condition - include the max value in the current zone
+        // Condición de límite simplificada
         if (valueabs >= min && valueabs <= max) {
-            return zoneList.getOrNull(i) ?: Zone.Zone1  // Default to Zone1 (less intense) instead of Zone7
+            return zoneList.getOrNull(i) ?: Zone.Zone1
         }
     }
 
-    // Handle values beyond the defined zones
+    // Manejar valores más allá de las zonas definidas
     val lastZone = userZones.lastOrNull() ?: return null
     val lastMax = when (lastZone) {
         is UserProfile.Zone -> lastZone.max.toDouble()
@@ -119,6 +120,32 @@ inline fun <reified T> getZone(userZones: List<T>, value: Double): Zone? {
         return zoneList.lastOrNull() ?: Zone.Zone8
     }
 
-    // If no zone matched, return a moderate zone rather than highest intensity
-    return Zone.Zone3
+    // Si no hay coincidencia exacta, encontrar la zona más cercana
+    var closestZone: Zone? = null
+    var minDistance = Double.MAX_VALUE
+
+    for (i in userZones.indices) {
+        val zone = userZones[i]
+        val min = when (zone) {
+            is UserProfile.Zone -> zone.min.toDouble()
+            is zoneslope -> zone.min
+            else -> return null
+        }
+        val max = when (zone) {
+            is UserProfile.Zone -> zone.max.toDouble()
+            is zoneslope -> zone.max
+            else -> return null
+        }
+
+        // Calcular distancia al centro de la zona
+        val zoneCenter = (min + max) / 2
+        val distance = abs(valueabs - zoneCenter)
+
+        if (distance < minDistance) {
+            minDistance = distance
+            closestZone = zoneList.getOrNull(i) ?: Zone.Zone1
+        }
+    }
+
+    return closestZone ?: Zone.Zone3
 }

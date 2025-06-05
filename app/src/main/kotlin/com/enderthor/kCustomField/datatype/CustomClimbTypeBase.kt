@@ -32,7 +32,6 @@ import com.enderthor.kCustomField.extensions.streamGeneralSettings
 import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.streamClimbFieldSettings
 import com.enderthor.kCustomField.extensions.streamDataFlow
-import com.enderthor.kCustomField.extensions.streamDataMonitorFlow
 
 import com.enderthor.kCustomField.extensions.streamUserProfile
 import com.enderthor.kCustomField.extensions.throttle

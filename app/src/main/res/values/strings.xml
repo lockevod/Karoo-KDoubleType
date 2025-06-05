@@ -21,4 +21,6 @@
     <string name="custom_rolling_description3">Karoo Rolling Type Three</string>
     <string name="custom_climb1">KClimb One</string>
     <string name="custom_climb_description1">Karoo Climb One</string>
+    <string name="custom_bell">Bell</string>
+    <string name="custom_bell_description1">Bell Sound</string>
 </resources>
