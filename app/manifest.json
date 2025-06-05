@@ -3,9 +3,9 @@
   "packageName": "com.enderthor.kCustomField",
   "latestApkUrl": "https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.apk",
   "iconUrl": "https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.png",
-  "latestVersion": "3.2.0",
-  "latestVersionCode": 2025004011,
+  "latestVersion": "3.3.0",
+  "latestVersionCode": 202505201,
   "developer": "Enderthor",
-  "description": "This extension for Karoo allows to use custom fields with double types (HR,Power,etc).",
-  "releaseNotes": "Zone behaviour fix. Minor fixes.Added FTP. Fix imperial speed units. Fix divider. "
+  "description": "This extension for Karoo allows to use custom fields with double types (HR,Power,etc). Includes vertical and horizontal layout, smart fields, rolling fiels and bell option",
+  "releaseNotes": "Bell option."
 }

@@ -1,12 +1,18 @@
 package com.enderthor.kCustomField.datatype
 
+
 import io.hammerhead.karooext.models.DataType
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import com.enderthor.kCustomField.R
 import io.hammerhead.karooext.models.DataType.Field
+import io.hammerhead.karooext.models.KarooEffect
+
+import io.hammerhead.karooext.models.PlayBeepPattern
+
 import io.hammerhead.karooext.models.UserProfile
+
 
 
 const val RETRY_CHECK_STREAMS = 4
@@ -75,7 +81,7 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     DISTANCE_TO_TOP(DataType.Type.DISTANCE_TO_TOP, "Distance to Top", R.drawable.ic_distance_to_top, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     ELEVATION_FROM_BOTTOM(DataType.Type.ELEVATION_FROM_BOTTOM, "Elevation to Bottom", R.drawable.ic_elevation_from_bottom, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     ELEVATION_TO_TOP(DataType.Type.ELEVATION_TO_TOP, "Elevation to Top", R.drawable.ic_elevation_to_top, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    //FTP(DataType.dataTypeId("FTP", "FTP"), "FTP", R.drawable.ic_ftp, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    FTP(DataType.dataTypeId("FTP", "FTP"), "FTP", R.drawable.ic_ftp, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     FTPG(DataType.dataTypeId("FTPG", "FTPG"), "FTP", R.drawable.ic_ftp, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     GEARS_FRONT(DataType.Type.SHIFTING_FRONT_GEAR, "Gears Front", R.drawable.ic_front_gear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     GEARS_REAR(DataType.Type.SHIFTING_REAR_GEAR, "Gears Rear", R.drawable.ic_rear_gear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
@@ -102,6 +108,30 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     VAM(DataType.Type.VERTICAL_SPEED, "VAM3s", R.drawable.ic_vam, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     VO2MAX(DataType.dataTypeId("vo2", "VO2max"), "VO2max", R.drawable.ic_vo2max, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
 }
+
+@Serializable
+enum class BellBeepPattern(val displayName: String, val tones: List<PlayBeepPattern.Tone>) {
+
+    BELL4("Medium", listOf(
+        PlayBeepPattern.Tone(3_800, 900),
+        PlayBeepPattern.Tone(0, 300),
+        PlayBeepPattern.Tone(3_800, 1000),
+    )),
+    BELL5(
+        "High", listOf(
+            PlayBeepPattern.Tone(3_550, 900),
+            PlayBeepPattern.Tone(0, 300),
+            PlayBeepPattern.Tone(3_550, 1000),
+        )),
+}
+
+
+@Serializable
+enum class KarooKey(val action: KarooEffect, val label: String) {
+    BELL4(PlayBeepPattern(BellBeepPattern.BELL4.tones), "Medium"),
+    BELL5(PlayBeepPattern(BellBeepPattern.BELL5.tones), "High"),
+}
+
 
 enum class FieldSize {
     SMALL, MEDIUM, LARGE, EXTRA_LARGE;
@@ -194,7 +224,8 @@ data class GeneralSettings(
     val isheadwindenabled: Boolean = false,
     val refreshCustom: RefreshTime = RefreshTime.HALF,
     val refreshRolling: RefreshTime = RefreshTime.HALF,
-    val isdivider: Boolean = true
+    val isdivider: Boolean = true,
+    val bellBeepKey: KarooKey = KarooKey.BELL4,
 )
 
 data class GlobalConfigState(

@@ -64,4 +64,10 @@
         graphical="true"
         icon="@drawable/ic_field"
         typeId="climb-one" />
+    <DataType
+        description="@string/custom_bell_description1"
+        displayName="@string/custom_bell"
+        graphical="true"
+        icon="@drawable/ic_field"
+        typeId="custom-bell" />
 </ExtensionInfo>

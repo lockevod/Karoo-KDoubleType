@@ -10,6 +10,7 @@ import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
 
 import com.enderthor.kCustomField.BuildConfig
+import com.enderthor.kCustomField.datatype.BellActionDataType
 import com.enderthor.kCustomField.datatype.CustomClimbType
 import com.enderthor.kCustomField.datatype.CustomDoubleType
 import com.enderthor.kCustomField.datatype.CustomRollingType
@@ -24,6 +25,11 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", BuildConfig.VER
 
     lateinit var karooSystem: KarooSystemService
 
+    companion object {
+        lateinit var instance: KarooCustomFieldExtension
+            private set
+    }
+
 
     override val types by lazy {
         listOf(
@@ -37,12 +43,14 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", BuildConfig.VER
             CustomRollingType(karooSystem,  "rolling-two", 1),
             CustomRollingType(karooSystem,  "rolling-three", 2),
             CustomClimbType(karooSystem,  "climb-one", 0),
+            BellActionDataType( "custom-bell")
         )
     }
 
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         karooSystem = KarooSystemService(applicationContext)
 
         Timber.d("Service KDouble created")

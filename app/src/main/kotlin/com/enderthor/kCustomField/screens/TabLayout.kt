@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
@@ -17,7 +16,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -28,6 +26,7 @@ import com.enderthor.kCustomField.extensions.*
 
 
 val alignmentOptions = listOf(FieldPosition.LEFT, FieldPosition.CENTER, FieldPosition.RIGHT)
+val bellOptions = listOf(KarooKey.BELL4, KarooKey.BELL5)
 val timeOptions = defaultRollingTimes
 
 @Composable
@@ -609,6 +608,7 @@ fun ConfGeneral() {
     var iscenterkaroo by remember { mutableStateOf(false) }
     var isheadwindenabled by remember { mutableStateOf(false) }
     var isdivider by remember { mutableStateOf(true) }
+    var bellsong by remember {mutableStateOf(KarooKey.BELL4) }
 
     var powerLoss by remember { mutableStateOf("2.2") }
     var rollingResistanceCoefficient by remember { mutableStateOf("0.0095") }
@@ -626,6 +626,7 @@ fun ConfGeneral() {
             iscenterkaroo = settings.iscenterkaroo
             isheadwindenabled = settings.isheadwindenabled
             isdivider = settings.isdivider
+            bellsong = settings.bellBeepKey
         }
         ctx.streamStoredPowerSettings().collect { settings ->
             powerLoss = settings.powerLoss
@@ -720,6 +721,23 @@ fun ConfGeneral() {
                 Text("Divider Enabled?")
             }
 
+            Spacer(modifier = Modifier.height(2.dp))
+            TopAppBar(title = { Text("Bell Sound") })
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .alpha(1f)
+                        .clickable(enabled=true) {}
+                ) {
+                    MultiToggleButton(
+                        enabled=true,
+                        currentSelection=bellOptions.indexOf(bellsong),
+                        toggleStates=bellOptions.map { it.label },
+                        onToggleChange = { bellsong = bellOptions[it] }
+                    )
+                }
+            }
+
            /* Spacer(modifier = Modifier.height(2.dp))
 
 
@@ -760,7 +778,8 @@ fun ConfGeneral() {
                     iscentervertical = iscentervertical,
                     iscenterkaroo = iscenterkaroo,
                     isheadwindenabled = isheadwindenabled,
-                    isdivider = isdivider
+                    isdivider = isdivider,
+                    bellBeepKey = bellsong
 
                 )
 
