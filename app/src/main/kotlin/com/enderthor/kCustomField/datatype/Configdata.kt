@@ -95,6 +95,8 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     PEDAL_BALANCE(DataType.Type.PEDAL_POWER_BALANCE, "Pedal Balance", R.drawable.ic_pedal_balance, R.color.hh_success_green_700, R.color.hh_success_green_400, "pedal", "none", true),
     POWER(DataType.Type.POWER, "Power", R.drawable.ic_power, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
     POWER3s(DataType.Type.SMOOTHED_3S_AVERAGE_POWER, "Power 3s", R.drawable.ic_power_3, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    POWER5s(DataType.Type.SMOOTHED_5S_AVERAGE_POWER, "Power 5s", R.drawable.ic_power_3, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    POWER30s(DataType.Type.SMOOTHED_30S_AVERAGE_POWER, "Power 30s", R.drawable.ic_power_3, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
     POWER20m(DataType.Type.SMOOTHED_20M_AVERAGE_POWER, "Power 20m", R.drawable.ic_power_20, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
     POWER_NORMALIZED(DataType.Type.NORMALIZED_POWER, "Power Normalized", R.drawable.ic_power_norm, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
     POWER_ZONE(DataType.Type.POWER_ZONE, "Power Zone", R.drawable.ic_power_zone, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
