@@ -9,14 +9,14 @@ plugins {
 
 android {
     namespace = "com.enderthor.kCustomField"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.enderthor.kCustomField"
         minSdk = 23
         targetSdk = 34
-        versionCode = 202506052
-        versionName = "3.3.1"
+        versionCode = 202506271
+        versionName = "3.3.2"
     }
 
     buildTypes {
@@ -58,7 +58,7 @@ dependencies {
     implementation(libs.timber)
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.foundation.layout.android)
-    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
+    implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-crashlytics")
 }
