@@ -39,6 +39,7 @@ android {
     }
 }
 
+
 dependencies {
     implementation(libs.hammerhead.karoo.ext)
     implementation(libs.androidx.core.ktx)
@@ -61,4 +62,15 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-crashlytics")
+
+    //implementation(project(":lib",configuration = "default"))
+    implementation(files("lib/android_antlib_4-16-0.aar"))
+    implementation(files("lib/antpluginlib_3-9-0.aar"))
+    // Coroutines for async ANT+ operations
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+}
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
 }

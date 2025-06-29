@@ -40,6 +40,7 @@ import kotlinx.coroutines.isActive
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.CoroutineScope
 
 
 
@@ -308,6 +309,13 @@ fun KarooSystemService.getFieldFlow(
                             .timeout(STREAM_TIMEOUT.milliseconds)
                     }
 
+                    // ANT+ Advanced Power Meter Metrics
+                    action.name in listOf("PCO_LEFT", "PCO_RIGHT", "RIDER_POSITION", "POWER_PHASE_LEFT",
+                                         "POWER_PHASE_RIGHT", "PEAK_POWER_PHASE_LEFT", "PEAK_POWER_PHASE_RIGHT") -> {
+                        getAntAdvancedPowerStream(action.action)
+                            .timeout(STREAM_TIMEOUT.milliseconds)
+                    }
+
                     else -> streamDataFlow(action.action)
                         
                         .catch { e ->
@@ -568,5 +576,43 @@ fun <T> retryFlow(
                 else -> throw e
             }
         }
+    }
+}
+
+// Instancia global del proveedor ANT+
+private var antAdvancedPowerDataProvider: AntAdvancedPowerDataProvider? = null
+
+/**
+ * Función para obtener streams de métricas ANT+ avanzadas
+ */
+fun getAntAdvancedPowerStream(dataTypeId: String): Flow<StreamState> {
+    return antAdvancedPowerDataProvider?.getStreamForDataType(dataTypeId)
+        ?: flow { emit(StreamState.NotAvailable) }
+}
+
+/**
+ * Inicializa el proveedor de datos ANT+ avanzado
+ */
+fun initializeAntAdvancedPowerProvider(context: Context, karooSystem: KarooSystemService, scope: CoroutineScope) {
+    if (antAdvancedPowerDataProvider == null) {
+        antAdvancedPowerDataProvider = AntAdvancedPowerDataProvider(context, karooSystem, scope)
+    }
+}
+
+/**
+ * Función para validar si una zona es real para las métricas avanzadas
+ */
+fun checkRealZone(kaction: KarooAction, iszone: Boolean, value: Double, valueRight: Double): Boolean {
+    return when {
+        // Para métricas ANT+ avanzadas, solo mostrar zona si hay datos válidos
+        kaction.name in listOf("PCO_LEFT", "PCO_RIGHT", "POWER_PHASE_LEFT",
+                              "POWER_PHASE_RIGHT", "PEAK_POWER_PHASE_LEFT", "PEAK_POWER_PHASE_RIGHT") -> {
+            iszone && value > 0.0
+        }
+        // Para rider position, no aplicar zonas
+        kaction.name == "RIDER_POSITION" -> false
+        // Para otras métricas, usar lógica existente
+        kaction.powerField -> iszone && (value > 0.0 || valueRight > 0.0)
+        else -> iszone && value > 0.0
     }
 }

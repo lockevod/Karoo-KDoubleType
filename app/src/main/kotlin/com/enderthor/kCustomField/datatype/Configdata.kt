@@ -109,6 +109,15 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     TSS(DataType.Type.TRAINING_STRESS_SCORE, "TSS", R.drawable.ic_tss, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     VAM(DataType.Type.VERTICAL_SPEED, "VAM3s", R.drawable.ic_vam, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     VO2MAX(DataType.dataTypeId("vo2", "VO2max"), "VO2max", R.drawable.ic_vo2max, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+
+    // Advanced ANT+ Power Meter Metrics
+    PCO_LEFT(DataType.dataTypeId("ant-pco-left", "PCO Left"), "PCO Left", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
+    PCO_RIGHT(DataType.dataTypeId("ant-pco-right", "PCO Right"), "PCO Right", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
+    RIDER_POSITION(DataType.dataTypeId("ant-rider-position", "Rider Position"), "Rider Position", R.drawable.ic_power, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
+    POWER_PHASE_LEFT(DataType.dataTypeId("ant-power-phase-left", "Power Phase Left"), "Power Phase L", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
+    POWER_PHASE_RIGHT(DataType.dataTypeId("ant-power-phase-right", "Power Phase Right"), "Power Phase R", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
+    PEAK_POWER_PHASE_LEFT(DataType.dataTypeId("ant-peak-power-phase-left", "Peak Power Phase Left"), "Peak PP L", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
+    PEAK_POWER_PHASE_RIGHT(DataType.dataTypeId("ant-peak-power-phase-right", "Peak Power Phase Right"), "Peak PP R", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
 }
 
 @Serializable

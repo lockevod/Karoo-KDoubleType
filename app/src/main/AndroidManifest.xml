@@ -2,6 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Permisos necesarios para ANT+ -->
+    <uses-permission android:name="com.dsi.ant.permission.ANT" />
+    <uses-permission android:name="com.dsi.ant.permission.ANT_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+
+    <!-- Para Android 6.0+ se requiere para ANT+ -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <application
         android:name=".KCustomApplication"
         android:allowBackup="true"

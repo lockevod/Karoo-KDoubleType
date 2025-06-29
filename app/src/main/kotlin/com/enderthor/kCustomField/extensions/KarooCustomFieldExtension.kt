@@ -15,6 +15,10 @@ import com.enderthor.kCustomField.datatype.CustomClimbType
 import com.enderthor.kCustomField.datatype.CustomDoubleType
 import com.enderthor.kCustomField.datatype.CustomRollingType
 
+// Importar las funciones ANT+
+import com.enderthor.kCustomField.datatype.initializeAntAdvancedPowerProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 
 import timber.log.Timber
 
@@ -24,6 +28,9 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "se
 class KarooCustomFieldExtension : KarooExtension("kcustomfield", BuildConfig.VERSION_NAME) {
 
     lateinit var karooSystem: KarooSystemService
+
+    // Scope de corrutinas para la extensión
+    private val extensionScope = CoroutineScope(SupervisorJob())
 
     companion object {
         lateinit var instance: KarooCustomFieldExtension
@@ -53,10 +60,13 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", BuildConfig.VER
         instance = this
         karooSystem = KarooSystemService(applicationContext)
 
-        Timber.d("Service KDouble created")
+        Timber.d("Service KDouble created with ANT+ Advanced Power Meter support")
         karooSystem.connect { connected ->
             if (connected) {
                 Timber.d("Connected to Karoo system")
+                // Inicializar el proveedor ANT+ después de conectar al sistema Karoo
+                initializeAntAdvancedPowerProvider(applicationContext, karooSystem, extensionScope)
+                Timber.d("ANT+ Advanced Power Meter provider initialized")
             }
         }
     }
