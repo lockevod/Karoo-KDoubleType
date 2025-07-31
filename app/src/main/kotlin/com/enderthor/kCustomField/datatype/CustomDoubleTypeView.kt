@@ -65,6 +65,7 @@ fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivi
                 }
 
                 else -> {
+                    // Para distancias >= 10 km, usar formato más compacto: "10.5" en lugar de "10.50"
                     val intPart = numValue / 1000
                     val decPart = (numValue % 1000) / 100
                     append(String.format("%d.%d", intPart, decPart))
@@ -264,6 +265,14 @@ private fun OneNumberRow(
         "${number.take(3)}-${secondValue.take(3)}"
     }
 
+    // Ajustar el tamaño de fuente para el campo de subida cuando tiene 4 caracteres
+    val adjustedTextSize = if (isClimb && displayNumber.length == 4) {
+        // Reducir el tamaño de fuente 25% para que 4 caracteres ocupen el mismo ancho que 3
+        (textSize * 0.75).roundToInt()
+    } else {
+        textSize
+    }
+
     Row(
         modifier = GlanceModifier
             .fillMaxHeight()
@@ -281,7 +290,7 @@ private fun OneNumberRow(
             text = displayNumber,
             style = TextStyle(
                 fontWeight = FontWeight.Bold,
-                fontSize = textSize.sp,
+                fontSize = adjustedTextSize.sp,
                 fontFamily = FontFamily.Monospace,
                 color = if (iszone) textColor else ColorProvider(Color.Black, Color.White)
             ),
