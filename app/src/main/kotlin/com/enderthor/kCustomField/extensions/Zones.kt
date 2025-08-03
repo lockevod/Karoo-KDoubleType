@@ -34,6 +34,14 @@ val slopeZones = listOf(
     zoneslope(min = 23.501, max = 99.5)
 )
 
+// Zonas para W' Balance Prime (porcentaje de batería anaeróbica)
+val wprimeZones = listOf(
+    zoneslope(min = 0.0, max = 29.9),    // 0-30%: Zona Roja (Crítica)
+    zoneslope(min = 30.0, max = 54.9),   // 30-55%: Zona Naranja (Media-Baja)
+    zoneslope(min = 55.0, max = 79.9),   // 55-80%: Zona Amarilla (Media-Alta)
+    zoneslope(min = 80.0, max = 100.0)   // 80-100%: Zona Verde (Alta)
+)
+
 val zones = mapOf(
     1 to listOf(Zone.Zone7),
     2 to listOf(Zone.Zone1, Zone.Zone7),

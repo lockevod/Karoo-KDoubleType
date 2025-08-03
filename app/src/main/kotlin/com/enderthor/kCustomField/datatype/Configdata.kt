@@ -109,6 +109,7 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     TSS(DataType.Type.TRAINING_STRESS_SCORE, "TSS", R.drawable.ic_tss, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     VAM(DataType.Type.VERTICAL_SPEED, "VAM3s", R.drawable.ic_vam, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     VO2MAX(DataType.dataTypeId("vo2", "VO2max"), "VO2max", R.drawable.ic_vo2max, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    WPRIME_BALANCE(DataType.dataTypeId("WPRIME_BALANCE", "WPRIME_BALANCE"), "W Bal %", R.drawable.ic_power, R.color.hh_success_green_700, R.color.hh_success_green_400, "wprimeZones", "none"),
 }
 
 @Serializable
@@ -209,6 +210,16 @@ data class powerSettings(
     val surface: String = "1.05"
 )
 
+@Serializable
+data class WPrimeBalanceSettings(
+    val criticalPower: String = "250.0",        // CP por defecto
+    val wPrime: String = "20000.0",             // W' por defecto
+    val tauWPlus: String = "546.0",             // Constante de tiempo para recuperación
+    val tauWMinus: String = "316.0",            // Constante de tiempo para depleción
+    val useUserFTPAsCP: Boolean = true,         // Usar FTP del perfil como CP
+    val useVisualZones: Boolean = true          // Usar zonas visuales de colores
+)
+
 enum class RefreshTime( val time: Long) {
     HALF (400L),  MID(800L) , EXTRA_ROLLING(200L);
 }
@@ -249,6 +260,7 @@ val defaultDoubleFieldSettings = Json.encodeToString(previewDoubleFieldSettings)
 val previewOneFieldSettings = listOf(OneFieldSettings(index=0),OneFieldSettings(1, OneFieldType(KarooAction.POWER_NORMALIZED, false, true),OneFieldType(KarooAction.POWER20m, false, true),OneFieldType(KarooAction.SPEED, false, false),RollingTime("MED", "20s", 20000L)),OneFieldSettings(2, OneFieldType(KarooAction.DISTANCE, false, true),OneFieldType(KarooAction.DISTANCE_REMAIN, false, true),OneFieldType(KarooAction.TIMETODEST, false, true),RollingTime("MED", "20s", 20000L)))
 val defaultOneFieldSettings = Json.encodeToString(previewOneFieldSettings)
 val defaultPowerSettings = Json.encodeToString(powerSettings())
+val defaultWPrimeBalanceSettings = Json.encodeToString(WPrimeBalanceSettings())
 val previewSmartFieldSettings = listOf(SmartFieldSettings(index=0))
 val defaultSmartFieldSettings = Json.encodeToString(previewSmartFieldSettings)
 val previewClimbFieldSettings = listOf(ClimbFieldSettings(index=0))

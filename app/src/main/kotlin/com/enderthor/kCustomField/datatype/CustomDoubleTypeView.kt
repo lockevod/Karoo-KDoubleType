@@ -268,7 +268,7 @@ private fun OneNumberRow(
     // Ajustar el tamaño de fuente para el campo de subida cuando tiene 4 caracteres
     val adjustedTextSize = if (isClimb && displayNumber.length == 4) {
         // Reducir el tamaño de fuente 25% para que 4 caracteres ocupen el mismo ancho que 3
-        (textSize * 0.75).roundToInt()
+        (textSize * 0.8).roundToInt()
     } else {
         textSize
     }

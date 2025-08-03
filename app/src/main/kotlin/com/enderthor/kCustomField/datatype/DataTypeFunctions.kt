@@ -21,13 +21,16 @@ import kotlinx.coroutines.FlowPreview
 import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.getZone
 import com.enderthor.kCustomField.extensions.slopeZones
+import com.enderthor.kCustomField.extensions.wprimeZones
 import com.enderthor.kCustomField.extensions.streamDataFlow
 import com.enderthor.kCustomField.extensions.streamUserProfile
+import com.enderthor.kCustomField.extensions.streamWPrimeBalanceSettings
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlin.random.Random
 import timber.log.Timber
@@ -102,6 +105,7 @@ fun getColorZone(
     val zoneData = when (zone) {
         "heartRateZones" -> userProfile.heartRateZones
         "powerZones" -> userProfile.powerZones
+        "wprimeZones" -> wprimeZones
         else -> slopeZones
     }
 
@@ -199,7 +203,8 @@ fun createHeadwindFlow(
 fun KarooSystemService.getFieldFlow(
     field: Any,
     headwindFlow: Flow<StreamHeadWindData>,
-    generalSettings: GeneralSettings
+    generalSettings: GeneralSettings,
+    context: Context? = null
 ): Flow<Any> = flow {
 
 
@@ -234,14 +239,12 @@ fun KarooSystemService.getFieldFlow(
                 val streamFlow = when {
                     action.name == "HEADWIND" && generalSettings.isheadwindenabled -> {
                         headwindFlow
-
                             .catch { e ->
                                 when (e) {
                                     is CancellationException -> {
                                         if (ViewState.isCancelledByEmitter) throw e
                                         Timber.d("Cancelación ignorada en headwindFlow")
                                     }
-
                                     else -> {
                                         Timber.e(e, "Error en headwindFlow")
                                         emit(StreamHeadWindData(0.0, 0.0))
@@ -308,16 +311,36 @@ fun KarooSystemService.getFieldFlow(
                             .timeout(STREAM_TIMEOUT.milliseconds)
                     }
 
+                    action.name == "WPRIME_BALANCE" -> {
+                        // Combinar los streams de power, user profile y configuraciones de W' Balance
+                        combine(
+                            streamDataFlow(DataType.Type.POWER),
+                            streamUserProfile(),
+                            context?.streamWPrimeBalanceSettings() ?: flowOf(WPrimeBalanceSettings())
+                        ) { powerState, profile, wPrimeSettings ->
+                            if (powerState is StreamState.Streaming) {
+                                val powerValue = powerState.dataPoint.singleValue ?: 0.0
+                                val wPrimeBalance = calculateWPrimeBalance(powerValue, profile, wPrimeSettings)
+                                StreamState.Streaming(
+                                    DataPoint(
+                                        dataTypeId = "WPRIME_BALANCE",
+                                        values = mapOf(DataType.Field.SINGLE to wPrimeBalance)
+                                    )
+                                )
+                            } else {
+                                StreamState.Searching
+                            }
+                        }
+                        .timeout(STREAM_TIMEOUT.milliseconds)
+                    }
+
                     else -> streamDataFlow(action.action)
-                        
                         .catch { e ->
                             when (e) {
                                 is CancellationException -> {
                                     if (ViewState.isCancelledByEmitter) throw e
                                     Timber.d("Cancelación ignorada en streamDataFlow")
-                                    //emit(StreamState.NotAvailable)
                                 }
-
                                 else -> {
                                     Timber.e(e, "Error en streamDataFlow")
                                     emit(StreamState.NotAvailable)
@@ -328,11 +351,9 @@ fun KarooSystemService.getFieldFlow(
                 }
 
                 streamFlow.distinctUntilChanged().collect { state ->
-                        //Timber.d("Emisión streamDataFlow en action.name: ${action.name} con valor $state")
-
                     val processedState = StickyStreamState.process(state, action.name)
                     emit(processedState)
-                    }
+                }
 
             } catch (e: Exception) {
                 when (e) {
@@ -344,7 +365,6 @@ fun KarooSystemService.getFieldFlow(
                         Timber.d("Cancelación ignorada en getFieldFlow para ${action.name}")
                         delay(WAIT_STREAMS_SHORT)
                     }
-
                     else -> {
                         Timber.e(e, "Error en getFieldFlow para ${action.name}")
                         emit(StreamState.NotAvailable)
@@ -359,7 +379,6 @@ fun KarooSystemService.getFieldFlow(
             throw e
         }
         Timber.d("Cancelación ignorada en getFieldFlow")
-        //emit(StreamState.NotAvailable)
     }
 }.retryWhen { cause, attempt ->
         when {
@@ -465,7 +484,8 @@ fun updateFieldState(
     fieldSettings: Any,
     context: Context,
     userProfile: UserProfile,
-    isPaletteZwift: Boolean
+    isPaletteZwift: Boolean,
+    wPrimeSettings: WPrimeBalanceSettings? = null
 ): Quintuple<Double, ColorProvider, ColorProvider, Boolean, Double> {
     val (kaction, iszone) = when (fieldSettings) {
         is DoubleFieldType -> fieldSettings.kaction to fieldSettings.iszone
@@ -486,7 +506,15 @@ fun updateFieldState(
     val isRealZone = if(checkRealZone(kaction,iszone,value,valueRight)) iszone else false
 
     val iconColor = getColorProvider(context, kaction, isRealZone)
+
+    // Verificar si es W' Balance y si las zonas visuales están habilitadas
+    val shouldUseWPrimeZones = kaction.name == "WPRIME_BALANCE" &&
+                              wPrimeSettings?.useVisualZones == true &&
+                              iszone
+
     val colorZone = if ((kaction.zone in listOf("heartRateZones", "powerZones", "slopeZones")) && iszone) {
+        getColorZone(context, kaction.zone, value, userProfile, isPaletteZwift)
+    } else if (shouldUseWPrimeZones) {
         getColorZone(context, kaction.zone, value, userProfile, isPaletteZwift)
     } else if( (kaction.name =="AVERAGE_PEDAL_BALANCE" || kaction.name =="PEDAL_BALANCE") && iszone && kaction.powerField)
     {
@@ -512,8 +540,6 @@ fun updateFieldState(
             )
         else
             ColorProvider(Color.White, Color.Black)
-
-
     }  else {
         ColorProvider(Color.White, Color.Black)
     }
@@ -569,4 +595,98 @@ fun <T> retryFlow(
             }
         }
     }
+}
+//ADD
+
+// Estado del modelo diferencial W' Balance Prime - Variables estáticas para mantener estado
+private object WPrimeBalanceState {
+    var currentWPrimeBalance = 0.0
+    var lastUpdateTime = 0L
+    var isInitialized = false
+
+    // Constantes del modelo Diferencial de Froncioni/Clarke
+    const val TAU_W_PLUS = 546.0  // Constante de tiempo para recuperación (segundos)
+    const val TAU_W_MINUS = 316.0 // Constante de tiempo para depleción (segundos)
+    const val DEFAULT_CP = 250.0  // Critical Power por defecto (W)
+    const val DEFAULT_WPRIME = 20000.0 // W' por defecto (J)
+}
+
+/**
+ * Calcula el W' Balance usando el modelo diferencial de Froncioni/Clarke
+ * Variante optimizada para tiempo real, no requiere histórico completo
+ * Devuelve el porcentaje de W' Balance restante como número entero (0-100%)
+ */
+fun calculateWPrimeBalance(currentPower: Double, userProfile: UserProfile, wPrimeSettings: WPrimeBalanceSettings): Double {
+    val currentTime = System.currentTimeMillis()
+
+    // Obtener CP y W' desde la configuración del usuario
+    val cp = getCriticalPower(userProfile, wPrimeSettings)
+    val wPrime = getWPrime(wPrimeSettings)
+    val tauWPlus = wPrimeSettings.tauWPlus.toDoubleOrNull() ?: WPrimeBalanceState.TAU_W_PLUS
+    val tauWMinus = wPrimeSettings.tauWMinus.toDoubleOrNull() ?: WPrimeBalanceState.TAU_W_MINUS
+
+    if (!WPrimeBalanceState.isInitialized) {
+        // Inicializar con W' completo
+        WPrimeBalanceState.currentWPrimeBalance = wPrime
+        WPrimeBalanceState.lastUpdateTime = currentTime
+        WPrimeBalanceState.isInitialized = true
+        return 100.0 // 100% de batería al inicio
+    }
+
+    val deltaTime = (currentTime - WPrimeBalanceState.lastUpdateTime) / 1000.0 // Convertir a segundos
+
+    if (deltaTime <= 0) {
+        // Devolver como porcentaje entero
+        return (WPrimeBalanceState.currentWPrimeBalance / wPrime * 100.0).roundToInt().toDouble().coerceIn(0.0, 100.0)
+    }
+
+    // Modelo diferencial de Froncioni/Clarke
+    when {
+        currentPower > cp -> {
+            // Potencia por encima de CP - depleción
+            val powerAboveCP = currentPower - cp
+
+            // dW'/dt = -(P - CP) - W'/τ_w-
+            val dWPrimeDt = -powerAboveCP - (WPrimeBalanceState.currentWPrimeBalance / tauWMinus)
+            WPrimeBalanceState.currentWPrimeBalance += dWPrimeDt * deltaTime
+
+            // W' no puede ser negativo
+            WPrimeBalanceState.currentWPrimeBalance = kotlin.math.max(0.0, WPrimeBalanceState.currentWPrimeBalance)
+        }
+        else -> {
+            // Potencia por debajo o igual a CP - recuperación
+
+            // dW'/dt = (W'_max - W') / τ_w+
+            val dWPrimeDt = (wPrime - WPrimeBalanceState.currentWPrimeBalance) / tauWPlus
+            WPrimeBalanceState.currentWPrimeBalance += dWPrimeDt * deltaTime
+
+            // W' no puede exceder W'_max
+            if (WPrimeBalanceState.currentWPrimeBalance > wPrime) {
+                WPrimeBalanceState.currentWPrimeBalance = wPrime
+            }
+        }
+    }
+
+    WPrimeBalanceState.lastUpdateTime = currentTime
+
+    // Devolver como porcentaje entero (0-100%)
+    return (WPrimeBalanceState.currentWPrimeBalance / wPrime * 100.0).roundToInt().toDouble().coerceIn(0.0, 100.0)
+}
+
+/**
+ * Obtiene el Critical Power del perfil del usuario o de la configuración
+ */
+private fun getCriticalPower(userProfile: UserProfile, wPrimeSettings: WPrimeBalanceSettings): Double {
+    return if (wPrimeSettings.useUserFTPAsCP && userProfile.powerZones.size > 3) {
+        userProfile.powerZones[3].max.toDouble() // FTP como aproximación de CP
+    } else {
+        wPrimeSettings.criticalPower.toDoubleOrNull() ?: WPrimeBalanceState.DEFAULT_CP
+    }
+}
+
+/**
+ * Obtiene el W' de la configuración del usuario
+ */
+private fun getWPrime(wPrimeSettings: WPrimeBalanceSettings): Double {
+    return wPrimeSettings.wPrime.toDoubleOrNull() ?: WPrimeBalanceState.DEFAULT_WPRIME
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
@@ -14,8 +15,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -23,6 +26,7 @@ import kotlinx.coroutines.launch
 
 import com.enderthor.kCustomField.datatype.*
 import com.enderthor.kCustomField.extensions.*
+import com.enderthor.kCustomField.R
 
 
 val alignmentOptions = listOf(FieldPosition.LEFT, FieldPosition.CENTER, FieldPosition.RIGHT)
@@ -32,7 +36,13 @@ val timeOptions = defaultRollingTimes
 @Composable
 fun TabLayout() {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Field","Roll.","Smart","Conf")
+    val tabs = listOf(
+        stringResource(R.string.tab_field),
+        stringResource(R.string.tab_rolling),
+        stringResource(R.string.tab_smart),
+        stringResource(R.string.tab_wbal),
+        stringResource(R.string.tab_config)
+    )
     val ctx = LocalContext.current
 
 
@@ -58,7 +68,9 @@ fun TabLayout() {
                 0 -> ConfFields(ctx)
                 1 -> ConfRolling(ctx)
                 2 -> ConfSmart(ctx)
-                3 -> ConfGeneral()
+                3 -> ConfWBal(ctx)
+                4 -> ConfGeneral()
+
             }
 
     }
@@ -110,18 +122,18 @@ fun ConfRolling(ctx: Context) {
                 if (index >= 1) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "Be careful to use several custom fields simultaneously (custom and rolling) in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues",
+                        stringResource(R.string.rolling_warning),
                         fontSize = 14.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                 }
-                TopAppBar(title = { Text("Rolling Field ${index + 1}") })
+                TopAppBar(title = { Text(stringResource(R.string.rolling_field_title, index + 1)) })
                 DropdownOneField(
                     enabled = true,
                     firstpos = true,
-                    label = "First Field",
+                    label = stringResource(R.string.first_field),
                     action = oneFieldSettings.onefield,
                     isheadwindenabled = generalSettings.isheadwindenabled
                 ) { newAction ->
@@ -142,7 +154,7 @@ fun ConfRolling(ctx: Context) {
                 DropdownOneField(
                     enabled = true,
                     firstpos = false,
-                    label = "Second Field",
+                    label = stringResource(R.string.second_field),
                     action = oneFieldSettings.secondfield,
                     isheadwindenabled = generalSettings.isheadwindenabled
                 ) { newAction ->
@@ -176,7 +188,7 @@ fun ConfRolling(ctx: Context) {
                 }
                 DropdownOneField(
                     firstpos = false,
-                    label = "Third Field",
+                    label = stringResource(R.string.third_field),
                     action = oneFieldSettings.thirdfield,
                     enabled = oneFieldSettings.secondfield.isactive,
                     isheadwindenabled = generalSettings.isheadwindenabled
@@ -199,7 +211,7 @@ fun ConfRolling(ctx: Context) {
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Rolling Time?")
+                    Text(stringResource(R.string.rolling_time_question))
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     MultiToggleButton(
@@ -218,7 +230,7 @@ fun ConfRolling(ctx: Context) {
                         oneFieldSettingsList[index] = oneFieldSettingsList[index].copy(isextratime = it)
                     })
                     Spacer(modifier = Modifier.width(10.dp))
-                    Text("Enable Extra Time for First Field (x3 time)?")
+                    Text(stringResource(R.string.enable_extra_time))
                 }
 
 
@@ -238,9 +250,9 @@ fun ConfRolling(ctx: Context) {
                     saveOneFieldSettings(ctx, oneFieldSettingsList)
                 }
             }) {
-                Icon(Icons.Default.Done, contentDescription = "Save Rolling")
+                Icon(Icons.Default.Done, contentDescription = stringResource(R.string.save_rolling_desc))
                 Spacer(modifier = Modifier.width(5.dp))
-                Text("Save Rolling")
+                Text(stringResource(R.string.save_rolling))
                 Spacer(modifier = Modifier.width(5.dp))
             }
         }
@@ -248,8 +260,8 @@ fun ConfRolling(ctx: Context) {
 
     if (savedDialogVisible) {
         AlertDialog(onDismissRequest = { savedDialogVisible = false },
-            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text("OK") } },
-            text = { Text("Settings saved successfully.") }
+            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text(stringResource(R.string.ok)) } },
+            text = { Text(stringResource(R.string.settings_saved)) }
         )
     }
 }
@@ -288,7 +300,7 @@ fun ConfFields(ctx: Context) {
             derivedStateOf { doubleFieldSettingsList.toList() }
     }
 
-    //imber.d("List size ${doubleFieldSettingsDerived.value.size} and iskaroo3 $iskaroo3")
+    //imber.d("List size ${doubleFieldSettingsDerived.value.size} and iskaroo3 $iskaroo")
 
     Column(modifier = Modifier
         .fillMaxSize()
@@ -305,15 +317,15 @@ fun ConfFields(ctx: Context) {
                     if(index>4) {
                      Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            "Be careful to use more than 4 custom fields simultaneously in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues",
+                            stringResource(R.string.custom_warning),
                             fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                     }
-                    TopAppBar(title = { Text("Field ${index + 1}") })
+                    TopAppBar(title = { Text(stringResource(R.string.custom_field_title, index + 1)) })
 
                     DropdownDoubleField(
-                        "First Field",
+                        stringResource(R.string.first_field),
                         doubleFieldSettings.onefield,
                         generalSettings.isheadwindenabled
                     ) { newAction ->
@@ -336,7 +348,7 @@ fun ConfFields(ctx: Context) {
                     }
 
                     DropdownDoubleField(
-                        "Second Field",
+                        stringResource(R.string.second_field),
                         doubleFieldSettings.secondfield,
                         generalSettings.isheadwindenabled
                     ) { newAction ->
@@ -372,9 +384,9 @@ fun ConfFields(ctx: Context) {
                     saveDoubleFieldSettings(ctx, doubleFieldSettingsList)
                 }
             }) {
-                Icon(Icons.Default.Done, contentDescription = "Save")
+                Icon(Icons.Default.Done, contentDescription = stringResource(R.string.save_custom_desc))
                 Spacer(modifier = Modifier.width(5.dp))
-                Text("Save Custom")
+                Text(stringResource(R.string.save_custom))
                 Spacer(modifier = Modifier.width(5.dp))
             }
         }
@@ -382,8 +394,8 @@ fun ConfFields(ctx: Context) {
 
     if (savedDialogVisible) {
         AlertDialog(onDismissRequest = { savedDialogVisible = false },
-            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text("OK") } },
-            text = { Text("Settings saved successfully.") }
+            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text(stringResource(R.string.ok)) } },
+            text = { Text(stringResource(R.string.settings_saved)) }
         )
     }
 }
@@ -430,10 +442,10 @@ fun ConfSmart(ctx: Context) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             climbFieldSettingsDerived.value.forEachIndexed { index, climbFieldSettings ->
-                TopAppBar(title = { Text("Climb Field") })
+                TopAppBar(title = { Text(stringResource(R.string.climb_field_title)) })
 
                 DropdownDoubleField(
-                    "First Field",
+                    stringResource(R.string.first_field),
                     climbFieldSettings.onefield,
                     generalSettings.isheadwindenabled
                 ) { newAction ->
@@ -453,7 +465,7 @@ fun ConfSmart(ctx: Context) {
                 }
 
                 DropdownDoubleField(
-                    "Second Field",
+                    stringResource(R.string.second_field),
                     climbFieldSettings.secondfield,
                     generalSettings.isheadwindenabled
                 ) { newAction ->
@@ -477,7 +489,7 @@ fun ConfSmart(ctx: Context) {
                 }
 
                 DropdownDoubleField(
-                    "Third Field",
+                    stringResource(R.string.third_field),
                     climbFieldSettings.thirdfield,
                     generalSettings.isheadwindenabled
                 ) { newAction ->
@@ -497,7 +509,7 @@ fun ConfSmart(ctx: Context) {
                 }
 
                 DropdownDoubleField(
-                    "Fourth Field",
+                    stringResource(R.string.fourth_field),
                     climbFieldSettings.fourthfield,
                     generalSettings.isheadwindenabled
                 ) { newAction ->
@@ -520,10 +532,10 @@ fun ConfSmart(ctx: Context) {
                     climbFieldSettingsList[index] = climbFieldSettings.copy(issecondhorizontal = newHorizontal)
                 }
 
-                TopAppBar(title = { Text("Climb Field Conf", fontSize = 12.sp) }, windowInsets = WindowInsets(0.dp) )
+                TopAppBar(title = { Text(stringResource(R.string.climb_field_conf), fontSize = 12.sp) }, windowInsets = WindowInsets(0.dp) )
 
                 DropdownDoubleField(
-                    "On Climber Measure",
+                    stringResource(R.string.on_climber_measure),
                     climbFieldSettings.climbOnfield,
                     generalSettings.isheadwindenabled
                 ) { newAction ->
@@ -542,7 +554,7 @@ fun ConfSmart(ctx: Context) {
                     )
                 }
                 DropdownDoubleField(
-                    "No Climber Measure",
+                    stringResource(R.string.no_climber_measure),
                     climbFieldSettings.climbfield,
                     generalSettings.isheadwindenabled
                 ) { newAction ->
@@ -576,9 +588,9 @@ fun ConfSmart(ctx: Context) {
                     }
                 }
             ) {
-                Icon(Icons.Default.Done, contentDescription = "Save")
+                Icon(Icons.Default.Done, contentDescription = stringResource(R.string.save_smart_desc))
                 Spacer(modifier = Modifier.width(5.dp))
-                Text("Save Climb")
+                Text(stringResource(R.string.save_smart))
                 Spacer(modifier = Modifier.width(5.dp))
             }
         }
@@ -587,8 +599,8 @@ fun ConfSmart(ctx: Context) {
     if (savedDialogVisible) {
         AlertDialog(
             onDismissRequest = { savedDialogVisible = false },
-            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text("OK") } },
-            text = { Text("Settings saved successfully.") }
+            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text(stringResource(R.string.ok)) } },
+            text = { Text(stringResource(R.string.settings_saved)) }
         )
     }
 }
@@ -644,18 +656,18 @@ fun ConfGeneral() {
             .verticalScroll(rememberScrollState())
             .fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
-            TopAppBar(title = { Text("Fields Alignment") })
+            TopAppBar(title = { Text(stringResource(R.string.fields_alignment_title)) })
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = iscenterkaroo, onCheckedChange = {
                     iscenterkaroo = it
                 })
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Use default Karoo Alignment ?")
+                Text(stringResource(R.string.use_default_karoo_alignment))
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Horizontal/Rolling Fields alignment (icon/text) ?")
+                Text(stringResource(R.string.horizontal_alignment_question))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -672,7 +684,7 @@ fun ConfGeneral() {
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Vertical Fields alignment (icon/text) ?")
+                Text(stringResource(R.string.vertical_alignment_question))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -689,40 +701,40 @@ fun ConfGeneral() {
                 }
             }
             Spacer(modifier = Modifier.height(2.dp))
-            TopAppBar(title = { Text("Use Headwind DataField") })
+            TopAppBar(title = { Text(stringResource(R.string.use_headwind_datafield_title)) })
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = isheadwindenabled, onCheckedChange = {
                     isheadwindenabled = it
                 })
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Enable Headwind Datafield (you need to have Headwind extension installed)?")
+                Text(stringResource(R.string.enable_headwind_question))
             }
 
             Spacer(modifier = Modifier.height(2.dp))
-            TopAppBar(title = { Text("Color Palette") })
+            TopAppBar(title = { Text(stringResource(R.string.color_palette_title)) })
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = ispalettezwift, onCheckedChange = {
                     ispalettezwift = it
                 })
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Zwift Color palette?")
+                Text(stringResource(R.string.zwift_color_palette_question))
             }
 
             Spacer(modifier = Modifier.height(2.dp))
-            TopAppBar(title = { Text("Divider Enabled") })
+            TopAppBar(title = { Text(stringResource(R.string.divider_enabled_title)) })
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = isdivider, onCheckedChange = {
                     isdivider= it
                 })
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Divider Enabled?")
+                Text(stringResource(R.string.divider_enabled_question))
             }
 
             Spacer(modifier = Modifier.height(2.dp))
-            TopAppBar(title = { Text("Bell Sound") })
+            TopAppBar(title = { Text(stringResource(R.string.bell_sound_title)) })
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
@@ -794,9 +806,9 @@ fun ConfGeneral() {
                     savePowerSettings(ctx, newPowerSettings)
                 }
             }) {
-                Icon(Icons.Default.Done, contentDescription = "Save")
+                Icon(Icons.Default.Done, contentDescription = stringResource(R.string.save_general_desc))
                 Spacer(modifier = Modifier.width(5.dp))
-                Text("Save General")
+                Text(stringResource(R.string.save_general))
                 Spacer(modifier = Modifier.width(5.dp))
             }
         }
@@ -804,8 +816,152 @@ fun ConfGeneral() {
 
     if (savedDialogVisible) {
         AlertDialog(onDismissRequest = { savedDialogVisible = false },
-            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text("OK") } },
-            text = { Text("Settings saved successfully.") }
+            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text(stringResource(R.string.ok)) } },
+            text = { Text(stringResource(R.string.settings_saved)) }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConfWBal(ctx: Context) {
+    val coroutineScope = rememberCoroutineScope()
+    var savedDialogVisible by remember { mutableStateOf(false) }
+
+    // Variables para los parámetros de W' Balance Prime
+    var criticalPower by remember { mutableStateOf("250.0") }
+    var wPrime by remember { mutableStateOf("20000.0") }
+    // tauWPlus y tauWMinus ahora usan valores predeterminados de WPrimeBalanceSettings
+    var useUserFTPAsCP by remember { mutableStateOf(true) }
+    var useVisualZones by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        ctx.streamWPrimeBalanceSettings().collect { settings ->
+            criticalPower = settings.criticalPower
+            wPrime = settings.wPrime
+            // tauWPlus y tauWMinus se omiten ya que usamos valores predeterminados
+            useUserFTPAsCP = settings.useUserFTPAsCP
+            useVisualZones = settings.useVisualZones
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(5.dp)
+                .verticalScroll(rememberScrollState())
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            TopAppBar(title = { Text(stringResource(R.string.wbal_settings_title)) })
+
+            Text(
+                stringResource(R.string.wbal_description),
+                fontSize = 14.sp,
+                fontFamily = FontFamily.Monospace
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Switch para usar FTP del usuario como CP
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = useUserFTPAsCP, onCheckedChange = {
+                    useUserFTPAsCP = it
+                })
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(stringResource(R.string.use_user_ftp_as_cp))
+            }
+
+            // Campo para Critical Power (solo habilitado si no usa FTP del usuario)
+            OutlinedTextField(
+                value = criticalPower,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !useUserFTPAsCP,
+                onValueChange = { criticalPower = it },
+                label = { Text(stringResource(R.string.critical_power_label)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                supportingText = { Text(stringResource(R.string.critical_power_hint)) }
+            )
+
+            // Campo para W'
+            OutlinedTextField(
+                value = wPrime,
+                modifier = Modifier.fillMaxWidth(),
+                onValueChange = { wPrime = it },
+                label = { Text(stringResource(R.string.wprime_label)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                supportingText = { Text(stringResource(R.string.wprime_hint)) }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            TopAppBar(title = { Text(stringResource(R.string.visual_zones_title)) })
+
+            // Switch para usar zonas visuales de colores
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = useVisualZones, onCheckedChange = {
+                    useVisualZones = it
+                })
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(stringResource(R.string.use_visual_zones))
+            }
+
+            Text(
+                stringResource(R.string.visual_zones_description),
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            TopAppBar(title = { Text(stringResource(R.string.temporal_constants_title)) })
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                stringResource(R.string.wbal_note),
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            FilledTonalButton(modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+                onClick = {
+                    val newWPrimeBalanceSettings = WPrimeBalanceSettings(
+                        criticalPower = criticalPower,
+                        wPrime = wPrime,
+                        useUserFTPAsCP = useUserFTPAsCP,
+                        useVisualZones = useVisualZones
+                    )
+                    coroutineScope.launch {
+                        savedDialogVisible = true
+                        saveWPrimeBalanceSettings(ctx, newWPrimeBalanceSettings)
+                    }
+                }) {
+                Icon(Icons.Default.Done, contentDescription = stringResource(R.string.save_wbal_desc))
+                Spacer(modifier = Modifier.width(5.dp))
+                Text(stringResource(R.string.save_wbal))
+                Spacer(modifier = Modifier.width(5.dp))
+            }
+        }
+    }
+
+    if (savedDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { savedDialogVisible = false },
+            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text(stringResource(R.string.ok)) } },
+            text = { Text(stringResource(R.string.wbal_settings_saved)) }
         )
     }
 }

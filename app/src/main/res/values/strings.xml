@@ -1,5 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KDouble</string>
+    <!-- Tab names -->
+    <string name="tab_field">Field</string>
+    <string name="tab_rolling" translatable="false">Roll.</string>
+    <string name="tab_smart" translatable="false">Smart</string>
+    <string name="tab_wbal">W\' Bal</string>
+    <string name="tab_config">Conf</string>
+
+    <!-- Rolling fields -->
+    <string name="rolling_field_title" translatable="false">Rolling Field %1$d</string>
+    <string name="first_field">First Field</string>
+    <string name="second_field">Second Field</string>
+    <string name="third_field">Third Field</string>
+    <string name="fourth_field">Fourth Field</string>
+    <string name="rolling_time_question" translatable="false">Rolling Time?</string>
+    <string name="enable_extra_time">Enable Extra Time for First Field (x3 time)?</string>
+    <string name="save_rolling" translatable="false">Save Rolling</string>
+    <string name="rolling_warning">Be careful to use several custom fields simultaneously (custom and rolling) in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues</string>
+
+    <!-- Custom fields -->
+    <string name="custom_field_title">Field %1$d</string>
+    <string name="save_custom" translatable="false">Save Custom</string>
+    <string name="custom_warning">Be careful to use more than 4 custom fields simultaneously in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues</string>
+
+    <!-- Smart climb -->
+    <string name="climb_field_title">Climb Field</string>
+    <string name="climb_field_conf">Climb Field Conf</string>
+    <string name="on_climber_measure">On Climber Measure</string>
+    <string name="no_climber_measure">No Climber Measure</string>
+    <string name="save_smart" translatable="false">Save Smart</string>
+
+    <!-- W'bal -->
+    <string name="save_wbal" translatable="false">Save W\'bal</string>
+    <string name="wbal_settings_title">W\' Balance Prime Settings</string>
+    <string name="wbal_description">Configure the differential model parameters of Froncioni/Clarke for real-time W\' Balance Prime calculation</string>
+    <string name="use_user_ftp_as_cp">Use user profile FTP as Critical Power (CP)?</string>
+    <string name="critical_power_label">Critical Power (CP) - Watts</string>
+    <string name="critical_power_hint">Critical power in watts. If the switch above is enabled, the profile FTP is used.</string>
+    <string name="wprime_label">W\' (W Prime) - Joules</string>
+    <string name="wprime_hint">Anaerobic work capacity in joules (J). Typical: 15000-25000J</string>
+    <string name="visual_zones_title">Visual Zones</string>
+    <string name="use_visual_zones">Use visual color zones for W\' Balance?</string>
+    <string name="visual_zones_description">When enabled, the field background will change color according to percentage:\n🟢 80-100%: Green (Optimal)\n🟡 55-79%: Yellow (Good)\n🟠 30-54%: Orange (Caution)\n🔴 0-29%: Red (Critical)</string>
+    <string name="temporal_constants_title">Model Temporal Constants</string>
+    <string name="tau_wplus_label">τ W+ (Tau W Plus) - Seconds</string>
+    <string name="tau_wplus_hint">Time constant for recovery. Standard value: 546s</string>
+    <string name="tau_wminus_label">τ W- (Tau W Minus) - Seconds</string>
+    <string name="tau_wminus_hint">Time constant for depletion. Standard value: 316s</string>
+    <string name="wbal_note">Note: These values are based on the scientific model of Froncioni/Clarke. The default values are appropriate for most cyclists, but can be adjusted according to individual response.</string>
+    <string name="wbal_settings_saved">W\' Balance Prime settings saved successfully.</string>
+
+    <!-- General configuration -->
+    <string name="fields_alignment_title">Fields Alignment</string>
+    <string name="use_default_karoo_alignment">Use default Karoo Alignment?</string>
+    <string name="horizontal_alignment_question">Horizontal/Rolling Fields alignment (icon/text)?</string>
+    <string name="vertical_alignment_question">Vertical Fields alignment (icon/text)?</string>
+    <string name="use_headwind_datafield_title">Use Headwind DataField</string>
+    <string name="enable_headwind_question">Enable Headwind Datafield (you need to have Headwind extension installed)?</string>
+    <string name="color_palette_title">Color Palette</string>
+    <string name="zwift_color_palette_question">Zwift Color palette?</string>
+    <string name="divider_enabled_title">Divider Enabled</string>
+    <string name="divider_enabled_question">Divider Enabled?</string>
+    <string name="bell_sound_title">Bell Sound</string>
+    <string name="save_general">Save General</string>
+
+    <!-- Common -->
+    <string name="ok">OK</string>
+    <string name="settings_saved">Settings saved successfully.</string>
+    <string name="save" translatable="false">Save</string>
+
+    <!-- Content descriptions -->
+    <string name="save_rolling_desc" translatable="false">Save Rolling</string>
+    <string name="save_custom_desc" translatable="false">Save Custom</string>
+    <string name="save_smart_desc" translatable="false">Save Smart</string>
+    <string name="save_wbal_desc" translatable="false">Save W\'bal</string>
+    <string name="save_general_desc" translatable="false">Save General</string>
+
+
+    <string name="app_name" translatable="false">KDouble</string>
     <string name="extension_name">Karoo Double Field</string>
     <string name="custom_double1">KDouble One</string>
     <string name="custom_double_description1">Karoo DualType One</string>
@@ -23,4 +101,5 @@
     <string name="custom_climb_description1">Karoo Climb One</string>
     <string name="custom_bell">Bell</string>
     <string name="custom_bell_description1">Bell Sound</string>
+
 </resources>

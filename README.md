@@ -33,6 +33,7 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 - You can add rolling fields and select de rolling period (ie. change every 5-10-20-30 seconds between three fields...). You can chose one/two/three rolling mesures, if you chose only one.. then you only have one messure in this field.
 - You can configure the fields in the configuration tab and select if you want colored zones or not.
 - You can use Smart Climb Field. This field is for map page (1x2 so-so space) and will show 4-5 measures (it changes "smart")
+- **W' Balance Field**: You can add W' Balance (W Prime Balance) field to track your anaerobic capacity in real-time. This field shows how much of your anaerobic energy reserve (W') remains available based on your power output above Critical Power (CP).
   
 ## Configuration
 - You can configure, for double custom fields, left/up and right/top sides in custom configuration tab.
@@ -44,6 +45,26 @@ If you've Karoo 3 and v > 1.527 you can sideload the app using the following ste
 - You can use Headwind Field, this is from Timklge app, and it's mandatory to install and configure the app. KDouble extension only takes the values from Timklge app and shows in the field (rolling/vertical/horizontal).
 In this case, you have to select Timklge headwind field also in this profile.
 - Rolling fields have Extra Time option. If you check this option first field has x3 time.
+- **W' Balance Configuration**: Configure your W' Balance parameters in the W'BAL tab:
+  - **Critical Power (CP)**: You can use your Karoo FTP as CP or set a custom value. CP represents the highest power output you can sustain indefinitely.
+  - **W' (W Prime)**: Your anaerobic capacity in joules (typically 15,000-25,000J for trained cyclists). This represents the finite amount of work you can do above CP.
+  - **Visual Zones**: Enable color-coded zones to visually represent your W' Balance status (green = high reserve, yellow = moderate, red = low/depleted).
+  - **Temporal Constants**: The app uses optimized default values (τ+ = 546s for recovery, τ- = 316s for depletion) based on scientific research.
+
+### Calculating Your W' and Critical Power Values
+
+To get accurate W' Balance readings, you need to determine your Critical Power and W' values:
+
+**Online Calculators:**
+- [High North Critical Power Calculator](https://www.highnorth.co.uk/articles/critical-power-calculator) - Upload your power files to calculate CP and W'
+- [Intervals.icu](https://intervals.icu/) - Provides direct CP and W' calculations from your training data
+- https://powerlab.icu/ 
+
+**Manual Testing:**
+- Perform 3-minute and 12-minute all-out efforts on separate days
+- Use the power values in the calculators above
+- Alternatively, use a 20-minute FTP test result as an approximation for CP
+
 Smart Climb Field. This field is for map page (1x2 so-so space) and will show 4-5 measures (it changes "smart")
   - Four fields (you can select all available measures in the app) and horizontal/vertical/zones (it's a custom field = 2 x Double fields)
   - One climber field (center position). You've two select two measures, one is active when you start a climb and the other is active (or not, you can select) when you finish the climb. You can select all available measures in the app but I use with the distance to top

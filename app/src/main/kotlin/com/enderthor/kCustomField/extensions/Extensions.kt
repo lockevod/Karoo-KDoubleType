@@ -21,6 +21,8 @@ import com.enderthor.kCustomField.datatype.defaultOneFieldSettings
 import com.enderthor.kCustomField.datatype.defaultSmartFieldSettings
 import com.enderthor.kCustomField.datatype.defaultPowerSettings
 import com.enderthor.kCustomField.datatype.powerSettings
+import com.enderthor.kCustomField.datatype.WPrimeBalanceSettings
+import com.enderthor.kCustomField.datatype.defaultWPrimeBalanceSettings
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.DataPoint
@@ -58,6 +60,7 @@ val onefieldKey = stringPreferencesKey("onefieldsettings")
 val smartfieldKey = stringPreferencesKey("smartfieldsettings")
 val climbfieldKey = stringPreferencesKey("climbfieldsettings")
 val powerKey = stringPreferencesKey("powersettings")
+val wprimeBalanceKey = stringPreferencesKey("wprimebalancesettings")
 
 
 suspend fun savePowerSettings(context: Context, settings: powerSettings) {
@@ -163,6 +166,24 @@ fun Context.streamClimbFieldSettings(): Flow<List<ClimbFieldSettings>> {
         }
     }.distinctUntilChanged()
 }
+suspend fun saveWPrimeBalanceSettings(context: Context, settings: WPrimeBalanceSettings) {
+    context.dataStore.edit { t ->
+        t[wprimeBalanceKey] = Json.encodeToString(settings)
+    }
+}
+
+fun Context.streamWPrimeBalanceSettings(): Flow<WPrimeBalanceSettings> {
+    return dataStore.data.map { settingsJson ->
+        try {
+            jsonWithUnknownKeys.decodeFromString<WPrimeBalanceSettings>(
+                settingsJson[wprimeBalanceKey] ?: defaultWPrimeBalanceSettings)
+        } catch (e: Throwable) {
+            Timber.tag("KarooDualTypeExtension").e(e, "Failed to read W' Balance settings")
+            WPrimeBalanceSettings()
+        }
+    }.distinctUntilChanged()
+}
+
 suspend fun saveOneFieldSettings(context: Context, settings: List<OneFieldSettings>) {
     // Timber.d("saveSettings IN $settings")
     context.dataStore.edit { t ->
