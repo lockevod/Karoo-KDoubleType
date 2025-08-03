@@ -109,7 +109,7 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     TSS(DataType.Type.TRAINING_STRESS_SCORE, "TSS", R.drawable.ic_tss, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     VAM(DataType.Type.VERTICAL_SPEED, "VAM3s", R.drawable.ic_vam, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     VO2MAX(DataType.dataTypeId("vo2", "VO2max"), "VO2max", R.drawable.ic_vo2max, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    WPRIME_BALANCE(DataType.dataTypeId("WPRIME_BALANCE", "WPRIME_BALANCE"), "W Bal %", R.drawable.ic_power, R.color.hh_success_green_700, R.color.hh_success_green_400, "wprimeZones", "none"),
+    WPRIME_BALANCE(DataType.dataTypeId("WPRIME_BALANCE", "WPRIME_BALANCE"), "W Bal %", R.drawable.ic_battery_charging_60, R.color.hh_success_green_700, R.color.hh_success_green_400, "wprimeZones", "none"),
 }
 
 @Serializable
