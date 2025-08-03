@@ -212,10 +212,10 @@ data class powerSettings(
 
 @Serializable
 data class WPrimeBalanceSettings(
-    val criticalPower: String = "250.0",        // CP por defecto
-    val wPrime: String = "20000.0",             // W' por defecto
-    val tauWPlus: String = "546.0",             // Constante de tiempo para recuperación
-    val tauWMinus: String = "316.0",            // Constante de tiempo para depleción
+    val criticalPower: String = "250",        // CP por defecto
+    val wPrime: String = "20000",             // W' por defecto
+    val tauWPlus: String = "546",             // Constante de tiempo para recuperación
+    val tauWMinus: String = "316",            // Constante de tiempo para depleción
     val useUserFTPAsCP: Boolean = true,         // Usar FTP del perfil como CP
     val useVisualZones: Boolean = true          // Usar zonas visuales de colores
 )

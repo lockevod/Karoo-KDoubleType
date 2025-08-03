@@ -21,6 +21,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import kotlin.math.abs
 
 import kotlinx.coroutines.launch
 
@@ -48,20 +56,48 @@ fun TabLayout() {
 
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TabRow(
+
+        ScrollableTabRowWithIndicators(
+            selectedTabIndex = selectedTabIndex,
+            tabs = tabs,
+            onTabSelected = { selectedTabIndex = it }
+        )
+
+       /* TabRow(
             selectedTabIndex = selectedTabIndex,
             modifier = Modifier.fillMaxWidth(),
         ) {
             tabs.forEachIndexed { index, title ->
                 Tab(
                     selected = selectedTabIndex == index,
+                    modifier = Modifier.fillMaxWidth().padding(0.dp),
                     onClick = { selectedTabIndex = index },
-                    text = { Text(text = title, fontSize = 10.sp) },
-
+                    text = { Text(text = title, fontSize = 10.sp, maxLines=1 ) },
                 )
             }
         }
 
+        TabRow(
+            selectedTabIndex = selectedTabIndex,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTabIndex == index,
+                    onClick = { selectedTabIndex = index },
+                    modifier = Modifier.weight(1f),
+                    text = {
+                        Text(
+                            text = title,
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                )
+            }
+        }
+        */
 
 
             when (selectedTabIndex) {
@@ -75,7 +111,107 @@ fun TabLayout() {
 
     }
 }
+@Composable
+fun ScrollableTabRowWithIndicators(
+    selectedTabIndex: Int,
+    tabs: List<String>,
+    onTabSelected: (Int) -> Unit
+) {
+    Box {
+        ScrollableTabRow(
+            selectedTabIndex = selectedTabIndex,
+            modifier = Modifier.fillMaxWidth(),
+            edgePadding = 8.dp,
+            indicator = { tabPositions ->
+                if (tabPositions.isNotEmpty()) {
+                    TabRowDefaults.PrimaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
+                        width = tabPositions[selectedTabIndex].width,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
+            divider = {
+                HorizontalDivider(
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                )
+            }
+        ) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTabIndex == index,
+                    onClick = { onTabSelected(index) },
+                    text = {
+                        Text(
+                            text = title,
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            color = if (selectedTabIndex == index)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                )
+            }
+        }
 
+        // Indicador izquierdo - limitado a la altura de la tab
+        Box(
+            modifier = Modifier
+                .height(48.dp) // Altura fija para tabs
+                .width(24.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surface,
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        // Indicador derecho - limitado a la altura de la tab
+        Box(
+            modifier = Modifier
+                .height(48.dp) // Altura fija para tabs
+                .width(24.dp)
+                .align(Alignment.TopEnd)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            MaterialTheme.colorScheme.surface
+                        )
+                    )
+                )
+        )
+
+        // Íconos posicionados correctamente dentro de la altura de la tab
+        Icon(
+            imageVector = Icons.Default.ArrowBack,
+            contentDescription = null,
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 4.dp)
+                .size(16.dp), // Tamaño más pequeño
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+
+        Icon(
+            imageVector = Icons.Default.ArrowForward,
+            contentDescription = null,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 4.dp)
+                .size(16.dp), // Tamaño más pequeño
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+    }
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfRolling(ctx: Context) {
@@ -828,10 +964,10 @@ fun ConfWBal(ctx: Context) {
     val coroutineScope = rememberCoroutineScope()
     var savedDialogVisible by remember { mutableStateOf(false) }
 
-    // Variables para los parámetros de W' Balance Prime
-    var criticalPower by remember { mutableStateOf("250.0") }
-    var wPrime by remember { mutableStateOf("20000.0") }
-    // tauWPlus y tauWMinus ahora usan valores predeterminados de WPrimeBalanceSettings
+
+    var criticalPower by remember { mutableStateOf("250") }
+    var wPrime by remember { mutableStateOf("20000") }
+
     var useUserFTPAsCP by remember { mutableStateOf(true) }
     var useVisualZones by remember { mutableStateOf(true) }
 
@@ -878,10 +1014,10 @@ fun ConfWBal(ctx: Context) {
 
             // Campo para Critical Power (solo habilitado si no usa FTP del usuario)
             OutlinedTextField(
-                value = criticalPower,
+                value = criticalPower.toDoubleOrNull()?.toInt()?.toString() ?: "0",
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !useUserFTPAsCP,
-                onValueChange = { criticalPower = it },
+                onValueChange = { criticalPower = abs(it.toIntOrNull() ?: 0).toString() },
                 label = { Text(stringResource(R.string.critical_power_label)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
@@ -890,9 +1026,9 @@ fun ConfWBal(ctx: Context) {
 
             // Campo para W'
             OutlinedTextField(
-                value = wPrime,
+                value = wPrime.toDoubleOrNull()?.toInt()?.toString() ?: "0",
                 modifier = Modifier.fillMaxWidth(),
-                onValueChange = { wPrime = it },
+                onValueChange = { wPrime = abs(it.toIntOrNull() ?: 0).toString() },
                 label = { Text(stringResource(R.string.wprime_label)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
@@ -921,18 +1057,6 @@ fun ConfWBal(ctx: Context) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            TopAppBar(title = { Text(stringResource(R.string.temporal_constants_title)) })
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                stringResource(R.string.wbal_note),
-                fontSize = 12.sp,
-                fontFamily = FontFamily.Monospace,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             FilledTonalButton(modifier = Modifier
                 .fillMaxWidth()
