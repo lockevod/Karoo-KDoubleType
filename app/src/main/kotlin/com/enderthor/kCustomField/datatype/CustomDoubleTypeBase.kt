@@ -78,7 +78,7 @@ abstract class CustomDoubleTypeBase(
             else -> RefreshTime.HALF.time
         }.coerceAtLeast(100L)
 
-    
+
 
     private fun previewFlow(): Flow<StreamState> = flow {
         while (true) {
@@ -273,7 +273,7 @@ abstract class CustomDoubleTypeBase(
                                 }
                                 if (newView == null) return@onEach
 
-                                Timber.d("DOUBLE Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
+                               // Timber.d("DOUBLE Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
                                 withContext(Dispatchers.Main) {
                                     if ( ViewState.isCancelled()) return@withContext
                                     emitter.updateView(newView)
@@ -344,6 +344,18 @@ abstract class CustomDoubleTypeBase(
 
         emitter.setCancellable {
             try {
+                // Ignorar cancelación inmediata si estamos en modo preview (Profile)
+                Timber.d("CANCEL DOUBLEand config.preview is = "+config.preview)
+                if (config.preview) {
+                    Timber.w("Emitter.setCancellable ignored because config.preview=true (profile/preview). extension=$extension index=$globalIndex")
+                    return@setCancellable
+                }
+
+                // Nuevo logging diagnóstico para entender por qué se solicita la cancelación
+                Timber.w("Emitter.setCancellable invoked for CustomDoubleTypeBase: extension=$extension index=$globalIndex time=${System.currentTimeMillis()} thread=${Thread.currentThread().name}")
+                val stackSnippet = Throwable().stackTrace.take(12).joinToString("\n") { it.toString() }
+                Timber.w("Emitter cancellation stack (short):\n$stackSnippet")
+
                 Timber.d("Iniciando cancelación de CustomDoubleTypeBase")
 
 

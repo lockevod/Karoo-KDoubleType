@@ -38,7 +38,7 @@
     <string name="critical_power_label">Critical Power (CP) - Watts</string>
     <string name="critical_power_hint">Critical power in watts. If the switch above is enabled, the profile FTP is used.</string>
     <string name="wprime_label">W\' (W Prime) - Joules</string>
-    <string name="wprime_hint">Anaerobic work capacity in joules (J). Typical: 15000-25000J. Puedes usar intervals.icu values o ttps://www.highnorth.co.uk/articles/critical-power-calculator</string>
+    <string name="wprime_hint">Anaerobic work capacity in joules (J). Typical: 10000-35000J. You can use intervals.icu values o ttps://www.highnorth.co.uk/articles/critical-power-calculator</string>
     <string name="visual_zones_title">Visual Zones</string>
     <string name="use_visual_zones">Use visual color zones for W\' Balance?</string>
     <string name="visual_zones_description">When enabled, the field background will change color according to percentage:\n🟢 80-100%: Green (Optimal)\n🟡 55-79%: Yellow (Good)\n🟠 30-54%: Orange (Caution)\n🔴 0-29%: Red (Critical)</string>

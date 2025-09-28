@@ -38,7 +38,7 @@
     <string name="critical_power_label">Critical Power (CP) - Vatios</string>
     <string name="critical_power_hint">Potencia crítica en vatios. Si está habilitado el switch arriba, se usa el FTP del perfil.</string>
     <string name="wprime_label">W\' (W Prima) - Julios</string>
-    <string name="wprime_hint">Capacidad de trabajo anaeróbico en julios (J). Típico: 15000-25000J. Puedes usar intervals.icu values o ttps://www.highnorth.co.uk/articles/critical-power-calculator</string>
+    <string name="wprime_hint">Capacidad de trabajo anaeróbico en julios (J). Típico: 10000-35000J. Puedes usar intervals.icu values o ttps://www.highnorth.co.uk/articles/critical-power-calculator</string>
     <string name="visual_zones_title">Zonas Visuales</string>
     <string name="use_visual_zones">¿Usar zonas visuales de colores para W\' Balance?</string>
     <string name="visual_zones_description">Cuando está habilitado, el fondo del campo cambiará de color según el porcentaje:\n🟢 80-100%: Verde (Óptimo)\n🟡 55-79%: Amarillo (Bueno)\n🟠 30-54%: Naranja (Precaución)\n🔴 0-29%: Rojo (Crítico)</string>

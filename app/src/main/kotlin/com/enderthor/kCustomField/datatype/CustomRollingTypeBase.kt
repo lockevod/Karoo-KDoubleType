@@ -44,7 +44,6 @@ import io.hammerhead.karooext.models.UserProfile
 import io.hammerhead.karooext.models.ViewConfig
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
@@ -111,19 +110,23 @@ abstract class CustomRollingTypeBase(
         val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
 
         val viewjob = scope.launch {
-
-
             try {
                 val userProfile = karooSystem.consumerFlow<UserProfile>().first()
+
+                // Optimización: usar stateIn con timeout más largo para evitar recrear flows
                 val settings = context.streamOneFieldSettings()
                     .stateIn(
                         scope,
-                        SharingStarted.WhileSubscribed(4000),
+                        SharingStarted.WhileSubscribed(5000L), // Aumentado timeout
                         listOf(OneFieldSettings())
                     )
 
                 val generalSettings = context.streamGeneralSettings()
-                    .stateIn(scope, SharingStarted.WhileSubscribed(6000), GeneralSettings())
+                    .stateIn(
+                        scope,
+                        SharingStarted.WhileSubscribed(5000L), // Aumentado timeout
+                        GeneralSettings()
+                    )
                 delay(50L + (Random.nextInt(4) * 15L))
 
                 try {
@@ -145,63 +148,34 @@ abstract class CustomRollingTypeBase(
                 }
 
 
-                retryFlow(
-                    action = {
-                        val settingsFlow = combine(
-                            settings,
-                            generalSettings
-                        ) { settings, generalSettings -> settings to generalSettings }
-                            .firstOrNull { (settings, _) -> globalIndex in settings.indices }
-
-                        if (settingsFlow != null) {
-                            Timber.d("ROLLING INITIAL RETRYFLOW encontrado: $index  campo: $dataTypeId ")
-                            val (settings, generalSettings) = settingsFlow
-                            emit(settings to generalSettings)
-                        } else {
-                            Timber.e("ROLLING Index out of bounds: $globalIndex ")
-                            throw IndexOutOfBoundsException("GlobalIndex out of bounds")
-                        }
-                    },
-                    onFailure = { attempts, e ->
-                        Timber.e("Not valid Rolling index in $attempts attempts. Error: $e ")
-                        emit(listOf(OneFieldSettings()) to GeneralSettings())
-                    }
-                )
-
                 val cyclicIndexFlow = settings.flatMapLatest { settings ->
-                    if (settings.isNotEmpty() && globalIndex in settings.indices && rollingtime(
-                            settings[globalIndex]
-                        ).time > 0L
-                    ) {
+                    if (settings.isNotEmpty() && globalIndex in settings.indices && rollingtime(settings[globalIndex]).time > 0L) {
                         flow {
                             var cyclicindex = 0
                             val currentSetting = settings[globalIndex]
                             while (true) {
                                 emit(cyclicindex)
-                                val delayFactor =
-                                    if (isextratime(currentSetting) && cyclicindex == 0) 3
-                                    else 1
+                                val delayFactor = if (isextratime(currentSetting) && cyclicindex == 0) 3 else 1
 
                                 cyclicindex = when (cyclicindex) {
-                                    0 -> if (secondField(currentSetting).isactive) 1 else if (thirdField(
-                                            currentSetting
-                                        ).isactive
-                                    ) 2 else 0
-
+                                    0 -> if (secondField(currentSetting).isactive) 1 else if (thirdField(currentSetting).isactive) 2 else 0
                                     1 -> if (thirdField(currentSetting).isactive) 2 else 0
                                     else -> 0
                                 }
 
-                                delay(delayFactor* rollingtime(currentSetting).time)
+                                delay(delayFactor * rollingtime(currentSetting).time)
                             }
-                        }.flowOn(Dispatchers.IO).distinctUntilChanged().catch { e ->
+                        }
+                        .flowOn(Dispatchers.IO)
+                        .distinctUntilChanged()
+                        .catch { e ->
                             Timber.e(e, "Error in cyclicIndexFlow")
                             emit(0)
                         }
                     } else {
                         flowOf(0)
                     }
-                }.stateIn(scope, SharingStarted.WhileSubscribed(), 0)
+                }.stateIn(scope, SharingStarted.WhileSubscribed(2000L), 0) // Añadido timeout
 
                 val combinedFlow = combine(
                     settings,
@@ -345,7 +319,7 @@ abstract class CustomRollingTypeBase(
                                     )
                                 }.remoteViews
                             }
-                            Timber.d("ROLLING Updating view: $extension $index cyclic: $cyclicIndex value: $value ")
+                            //Timber.d("ROLLING Updating view: $extension $index cyclic: $cyclicIndex value: $value ")
                             if (newView == null) return@onEach
                             withContext(Dispatchers.Main) {
                                 if (ViewState.isCancelled()) return@withContext
@@ -409,6 +383,13 @@ abstract class CustomRollingTypeBase(
 
         emitter.setCancellable {
             try {
+                // Ignorar cancelación inmediata si estamos en modo preview (Profile)
+                Timber.d("CANCEL ROLLING and config.preview is = "+config.preview)
+                if (config.preview) {
+                    Timber.w("Emitter.setCancellable ignored because config.preview=true (profile/preview). extension=$extension index=$index")
+                    return@setCancellable
+                }
+
                 Timber.d("Cancelando todos los jobs y flujos")
                 ViewState.setCancelled(true)
 

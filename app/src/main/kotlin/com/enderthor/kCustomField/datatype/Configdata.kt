@@ -21,6 +21,9 @@ const val WAIT_STREAMS_NORMAL = 60000L // 1 minute
 const val STREAM_TIMEOUT = 15000L // 15 seconds
 const val WAIT_STREAMS_LONG = 120000L // 120 seconds
 const val WAIT_STREAMS_MEDIUM = 10000L // 10 seconds
+const val DEFAULT_CP = 248.0         // W, fuente única de CP por defecto
+const val DEFAULT_WPRIME = 16800.0   // J, fuente única de W' por defecto
+
 
 
 data class Quintuple<out A, out B, out C, out D, out E>(
@@ -69,18 +72,18 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     AVERAGE_POWER(DataType.Type.AVERAGE_POWER, "Avg Power", R.drawable.ic_power_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
     AVERAGE_SPEED(DataType.Type.AVERAGE_SPEED, "Avg Speed", R.drawable.ic_speed_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "speed"),
     AVERAGE_VAM(DataType.Type.AVERAGE_VERTICAL_SPEED_30S, "Avg 30s VAM", R.drawable.ic_vam_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    ELEV_GAIN(DataType.Type.ELEVATION_GAIN, "Ascent", R.drawable.ic_ascent, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    ELEV_REMAIN(DataType.Type.ELEVATION_REMAINING, "Ascent Remain", R.drawable.ic_elevation, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    ELEV_GAIN(DataType.Type.ELEVATION_GAIN, "Ascent", R.drawable.ic_ascent, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "elevation"),
+    ELEV_REMAIN(DataType.Type.ELEVATION_REMAINING, "Ascent Remain", R.drawable.ic_elevation, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "elevation"),
     CADENCE(DataType.Type.CADENCE, "Cadence",R.drawable.ic_cadence,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
     CIVIL_DAWN(DataType.Type.CIVIL_DAWN, "Civil Dawn", R.drawable.ic_sunrise, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     CIVIL_DUSK(DataType.Type.CIVIL_DUSK, "Civil Dusk", R.drawable.ic_sunset, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    ELEV_LOSS(DataType.Type.ELEVATION_LOSS, "Descent", R.drawable.ic_descent, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    ELEV_LOSS(DataType.Type.ELEVATION_LOSS, "Descent", R.drawable.ic_descent, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "elevation"),
     DISTANCE(DataType.Type.DISTANCE, "Distance", R.drawable.ic_distance, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "distance"),
     DISTANCE_REMAIN(DataType.Type.DISTANCE_TO_DESTINATION, "Distance Remain", R.drawable.ic_distance_remain, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "distance"),
     DISTANCE_FROM_BOTTOM(DataType.Type.DISTANCE_FROM_BOTTOM, "Distance from Bottom", R.drawable.ic_distance_from_bottom, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     DISTANCE_TO_TOP(DataType.Type.DISTANCE_TO_TOP, "Distance to Top", R.drawable.ic_distance_to_top, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    ELEVATION_FROM_BOTTOM(DataType.Type.ELEVATION_FROM_BOTTOM, "Elevation to Bottom", R.drawable.ic_elevation_from_bottom, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    ELEVATION_TO_TOP(DataType.Type.ELEVATION_TO_TOP, "Elevation to Top", R.drawable.ic_elevation_to_top, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    ELEVATION_FROM_BOTTOM(DataType.Type.ELEVATION_FROM_BOTTOM, "Elevation to Bottom", R.drawable.ic_elevation_from_bottom, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "elevation"),
+    ELEVATION_TO_TOP(DataType.Type.ELEVATION_TO_TOP, "Elevation to Top", R.drawable.ic_elevation_to_top, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "elevation"),
     //FTP(DataType.dataTypeId("FTP", "FTP"), "FTP", R.drawable.ic_ftp, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     FTPG(DataType.dataTypeId("FTPG", "FTPG"), "FTP", R.drawable.ic_ftp, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     GEARS_FRONT(DataType.Type.SHIFTING_FRONT_GEAR, "Gears Front", R.drawable.ic_front_gear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
@@ -157,8 +160,11 @@ data class OneFieldType(val kaction: KarooAction, val iszone: Boolean, val isact
 data class OneFieldSettings(
     var index: Int = 0,
     var onefield: OneFieldType = OneFieldType(KarooAction.HR, true, true),
-    var secondfield: OneFieldType = OneFieldType(KarooAction.CADENCE, false,false),
-    var thirdfield: OneFieldType = OneFieldType(KarooAction.POWER, false,false),
+    var secondfield: OneFieldType = OneFieldType(KarooAction.CADENCE,
+        iszone = false,
+        isactive = false
+    ),
+    var thirdfield: OneFieldType = OneFieldType(KarooAction.POWER, false, isactive = false),
     var rollingtime: RollingTime = RollingTime("ZERO","0",0L),
     var isextratime: Boolean = false,
 )
@@ -212,16 +218,14 @@ data class powerSettings(
 
 @Serializable
 data class WPrimeBalanceSettings(
-    val criticalPower: String = "250",        // CP por defecto
-    val wPrime: String = "20000",             // W' por defecto
-    val tauWPlus: String = "546",             // Constante de tiempo para recuperación
-    val tauWMinus: String = "316",            // Constante de tiempo para depleción
-    val useUserFTPAsCP: Boolean = true,         // Usar FTP del perfil como CP
-    val useVisualZones: Boolean = true          // Usar zonas visuales de colores
+    val criticalPower: String = DEFAULT_CP.toInt().toString(),        // CP por defecto desde constante
+    val wPrime: String = DEFAULT_WPRIME.toInt().toString(),           // W' por defecto desde constante
+    val useUserFTPAsCP: Boolean = true,
+    val useVisualZones: Boolean = true
 )
 
 enum class RefreshTime( val time: Long) {
-    HALF (400L),  MID(800L) , EXTRA_ROLLING(200L);
+    HALF (400L),  MID(800L) , EXTRA_ROLLING(200L),
 }
 
 enum class Delay( val time: Long) {
@@ -255,9 +259,11 @@ data class ClimbGlobalConfigState(
 
 
 val defaultGeneralSettings = Json.encodeToString(GeneralSettings())
-val previewDoubleFieldSettings = listOf(DoubleFieldSettings(index=0),DoubleFieldSettings(1, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(2, DoubleFieldType(KarooAction.IF, false),DoubleFieldType(KarooAction.TSS, false),false,true),DoubleFieldSettings(3, DoubleFieldType(KarooAction.ELEV_GAIN, false),DoubleFieldType(KarooAction.ELEV_REMAIN,false),false,true),DoubleFieldSettings(4, DoubleFieldType(KarooAction.SPEED, false),DoubleFieldType(KarooAction.SLOPE, true),false,true),DoubleFieldSettings(5, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),false,true))
+val previewDoubleFieldSettings = listOf(DoubleFieldSettings(index=0),DoubleFieldSettings(1, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(2, DoubleFieldType(KarooAction.IF, false),DoubleFieldType(KarooAction.TSS, false),false,true),DoubleFieldSettings(3, DoubleFieldType(KarooAction.ELEV_GAIN, false),DoubleFieldType(KarooAction.ELEV_REMAIN,false),false,true),DoubleFieldSettings(4, DoubleFieldType(KarooAction.PEDAL_BALANCE, false),DoubleFieldType(KarooAction.AVERAGE_PEDAL_BALANCE, true),false,true),DoubleFieldSettings(5, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.WPRIME_BALANCE, true),false,true))
 val defaultDoubleFieldSettings = Json.encodeToString(previewDoubleFieldSettings)
-val previewOneFieldSettings = listOf(OneFieldSettings(index=0),OneFieldSettings(1, OneFieldType(KarooAction.POWER_NORMALIZED, false, true),OneFieldType(KarooAction.POWER20m, false, true),OneFieldType(KarooAction.SPEED, false, false),RollingTime("MED", "20s", 20000L)),OneFieldSettings(2, OneFieldType(KarooAction.DISTANCE, false, true),OneFieldType(KarooAction.DISTANCE_REMAIN, false, true),OneFieldType(KarooAction.TIMETODEST, false, true),RollingTime("MED", "20s", 20000L)))
+val previewOneFieldSettings = listOf(OneFieldSettings(index=0),OneFieldSettings(1, OneFieldType(KarooAction.POWER_NORMALIZED, false,
+    isactive = true
+),OneFieldType(KarooAction.POWER20m, false, true),OneFieldType(KarooAction.SPEED, false, false),RollingTime("MED", "20s", 20000L)),OneFieldSettings(2, OneFieldType(KarooAction.DISTANCE, false, true),OneFieldType(KarooAction.DISTANCE_REMAIN, false, true),OneFieldType(KarooAction.TIMETODEST, false, true),RollingTime("MED", "20s", 20000L)))
 val defaultOneFieldSettings = Json.encodeToString(previewOneFieldSettings)
 val defaultPowerSettings = Json.encodeToString(powerSettings())
 val defaultWPrimeBalanceSettings = Json.encodeToString(WPrimeBalanceSettings())

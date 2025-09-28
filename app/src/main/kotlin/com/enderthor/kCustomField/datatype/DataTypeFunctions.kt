@@ -43,6 +43,7 @@ import kotlinx.coroutines.isActive
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.math.exp
 
 
 
@@ -65,9 +66,9 @@ class StickyStreamState private constructor() {
 
             if (currentTime - timestamp < STICKY_TIMEOUT_MS) {
 
-                if (state !is StreamState.Searching || Random.nextInt(20) == 0) {
-                    Timber.d("Usando valor almacenado para $actionName, edad: ${currentTime - timestamp}ms")
-                }
+               // if (state !is StreamState.Searching || Random.nextInt(20) == 0) {
+                    //Timber.d("Usando valor almacenado para $actionName, edad: ${currentTime - timestamp}ms")
+                //}
                 return lastState
             }
 
@@ -146,11 +147,15 @@ fun convertValue(
                 if (convert == "distance") value / 1000 else value * 3.6
             UserProfile.PreferredUnit.UnitType.IMPERIAL ->
                 if (convert == "distance") value / 1609.345 else value * 2.237
-
         }
         "pressure" -> when (unitType) {
             UserProfile.PreferredUnit.UnitType.METRIC -> value / 100.0
             UserProfile.PreferredUnit.UnitType.IMPERIAL -> value * 0.145038
+        }
+        "elevation" -> when (unitType) {
+            // stream proporciona elevación en metros
+            UserProfile.PreferredUnit.UnitType.METRIC -> value
+            UserProfile.PreferredUnit.UnitType.IMPERIAL -> value * 3.2808399 // m -> ft
         }
         else -> value
     }
@@ -215,24 +220,11 @@ fun KarooSystemService.getFieldFlow(
             else -> throw IllegalArgumentException("Tipo de campo no soportado")
         }
 
-        Timber.d("Stream action.name: ${action.name} y actionId: $actionId")
-
-
-            if (action.name == "HEADWIND" && generalSettings.isheadwindenabled) {
-                Timber.d("Emisión inicial headwindFlow en action.name: ${action.name}")
-                emit(StreamHeadWindData(0.0, 0.0))
-            } else {
-                Timber.d("Emisión inicial streamDataFlow en action.name: ${action.name}")
-                // No emitimos nada inicialmente.
-                /*emit(
-                    StreamState.Streaming(
-                        DataPoint(
-                            dataTypeId = actionId,
-                            values = mapOf(DataType.Field.SINGLE to 0.0)
-                        )
-                    )
-                )*/
-            }
+        // OPTIMIZACIÓN: evitar emit inicial innecesario para reducir carga
+        // Emitir solo para streams que realmente lo necesiten
+        if (action.name == "HEADWIND" && generalSettings.isheadwindenabled) {
+            emit(StreamHeadWindData(0.0, 0.0))
+        }
 
         while (currentCoroutineContext().isActive) {
             try {
@@ -243,7 +235,7 @@ fun KarooSystemService.getFieldFlow(
                                 when (e) {
                                     is CancellationException -> {
                                         if (ViewState.isCancelledByEmitter) throw e
-                                        Timber.d("Cancelación ignorada en headwindFlow")
+                                        // OPTIMIZACIÓN: menos logging para reducir overhead
                                     }
                                     else -> {
                                         Timber.e(e, "Error en headwindFlow")
@@ -312,7 +304,6 @@ fun KarooSystemService.getFieldFlow(
                     }
 
                     action.name == "WPRIME_BALANCE" -> {
-                        // Combinar los streams de power, user profile y configuraciones de W' Balance
                         combine(
                             streamDataFlow(DataType.Type.POWER),
                             streamUserProfile(),
@@ -331,6 +322,7 @@ fun KarooSystemService.getFieldFlow(
                                 StreamState.Searching
                             }
                         }
+                        .distinctUntilChanged() // OPTIMIZACIÓN: evitar updates innecesarios
                         .timeout(STREAM_TIMEOUT.milliseconds)
                     }
 
@@ -339,7 +331,6 @@ fun KarooSystemService.getFieldFlow(
                             when (e) {
                                 is CancellationException -> {
                                     if (ViewState.isCancelledByEmitter) throw e
-                                    Timber.d("Cancelación ignorada en streamDataFlow")
                                 }
                                 else -> {
                                     Timber.e(e, "Error en streamDataFlow")
@@ -350,6 +341,7 @@ fun KarooSystemService.getFieldFlow(
                         .timeout(STREAM_TIMEOUT.milliseconds)
                 }
 
+                // OPTIMIZACIÓN: aplicar distinctUntilChanged antes del collect
                 streamFlow.distinctUntilChanged().collect { state ->
                     val processedState = StickyStreamState.process(state, action.name)
                     emit(processedState)
@@ -360,6 +352,10 @@ fun KarooSystemService.getFieldFlow(
                     is CancellationException -> {
                         if (ViewState.isCancelledByEmitter) {
                             Timber.d("getFieldFlow cancelado por emitter para ${action.name}")
+                            // Nuevo logging diagnóstico: traza corta y contexto
+                            Timber.w("getFieldFlow cancellation diagnostic: action=${action.name} time=${System.currentTimeMillis()} thread=${Thread.currentThread().name}")
+                            val cancelStack = Throwable().stackTrace.take(16).joinToString("\n") { it.toString() }
+                            Timber.w("getFieldFlow cancellation stack (short):\n$cancelStack")
                             throw e
                         }
                         Timber.d("Cancelación ignorada en getFieldFlow para ${action.name}")
@@ -376,6 +372,10 @@ fun KarooSystemService.getFieldFlow(
     } catch (e: CancellationException) {
         if (ViewState.isCancelledByEmitter) {
             Timber.d("getFieldFlow cancelado por emitter")
+            // Nuevo logging diagnóstico general
+            Timber.w("getFieldFlow cancellation diagnostic (general) time=${System.currentTimeMillis()} thread=${Thread.currentThread().name}")
+            val cancelStack = Throwable().stackTrace.take(16).joinToString("\n") { it.toString() }
+            Timber.w("getFieldFlow cancellation stack (short):\n$cancelStack")
             throw e
         }
         Timber.d("Cancelación ignorada en getFieldFlow")
@@ -420,45 +420,40 @@ fun calculateFTP(powerValue: Double): Double {
     return powerValue * 0.95
 }
 
+
 fun calculateFTPG(powerValue: Double, userProfile: UserProfile): Double {
-    if (powerValue <= 0) return 0.0
+    // 0 si no hay potencia
+    if (powerValue <= 0.0) return 0.0
 
     val weight = userProfile.weight
+    // Si no hay peso válido, aplicar la regla básica del 95 %
     if (weight <= 0) return powerValue * 0.95
 
-    // Allen & Coggan
-    val ftpStandard = powerValue * 0.95
-
-    //  Coogan & Allen Improve
+    // Vatios por kilo
     val wattsPerKg = powerValue / weight
-    val ftpAdjusted = when {
-        wattsPerKg > 4.0 -> powerValue * 0.97
-        wattsPerKg > 3.0 -> powerValue * 0.95
-        wattsPerKg > 2.0 -> powerValue * 0.93
-        else -> powerValue * 0.90
+
+    // Seleccionamos el factor según la referencia Allen & Coggan (más simple y barato)
+    val factor = when {
+        wattsPerKg >= 4.0 -> 0.97
+        wattsPerKg >= 3.0 -> 0.95
+        wattsPerKg >= 2.0 -> 0.93
+        else -> 0.90
     }
 
-    // Historical FTP
+    // Estimación preliminar del FTP a partir de la potencia normalizada
+    var ftpEst = powerValue * factor
 
-    val ftpHistorical = userProfile.powerZones.let { zones ->
-        if (zones.isNotEmpty()) {
-
-            val currentFTP = zones[3].max
-            if (currentFTP > 0) {
-                val changeLimit = 0.05
-                val minFTP = currentFTP * (1 - changeLimit)
-                val maxFTP = currentFTP * (1 + changeLimit)
-                ftpStandard.coerceIn(minFTP, maxFTP)
-            } else {
-                ftpStandard
-            }
-        } else {
-            ftpStandard
+    // Si el usuario tiene un FTP histórico en las zonas de potencia, ajustamos a ±5 %
+    userProfile.powerZones.takeIf { it.size > 3 }?.let { zones ->
+        val currentFTP = zones[3].max
+        if (currentFTP > 0) {
+            val minFTP = currentFTP * 0.95
+            val maxFTP = currentFTP * 1.05
+            ftpEst = ftpEst.coerceIn(minFTP, maxFTP)
         }
     }
 
-
-    return ((ftpStandard * 0.4) + (ftpAdjusted * 0.3) + (ftpHistorical * 0.3)).roundToInt().toDouble()
+    return ftpEst
 }
 
 
@@ -493,10 +488,11 @@ fun updateFieldState(
         else -> throw IllegalArgumentException("Unsupported field type")
     }
 
-    Timber.d("updateFieldState: fieldSettings: $fieldSettings, kaction: ${kaction.name}, iszone: $iszone")
+    //Timber.d("updateFieldState: fieldSettings: $fieldSettings, kaction: ${kaction.name}, iszone: $iszone")
     val (value, valueRight) = if (kaction.powerField) {
         multipleStreamValues(fieldState, kaction)
     } else {
+        // aquí se llama convertValue con kaction.convert y la unidad del usuario
         Pair(
             convertValue(fieldState, kaction.convert, userProfile.preferredUnit.distance, kaction.action),
             0.0
@@ -599,78 +595,119 @@ fun <T> retryFlow(
 //ADD
 
 // Estado del modelo diferencial W' Balance Prime - Variables estáticas para mantener estado
+
+
 private object WPrimeBalanceState {
     var currentWPrimeBalance = 0.0
     var lastUpdateTime = 0L
     var isInitialized = false
-
-    // Constantes del modelo Diferencial de Froncioni/Clarke
-    const val TAU_W_PLUS = 546.0  // Constante de tiempo para recuperación (segundos)
-    const val TAU_W_MINUS = 316.0 // Constante de tiempo para depleción (segundos)
-    const val DEFAULT_CP = 250.0  // Critical Power por defecto (W)
-    const val DEFAULT_WPRIME = 20000.0 // W' por defecto (J)
+    var smoothedPower = 0.0
+    var lastCp = Double.NaN
+    var lastWPrime = Double.NaN  // nuevo: guarda el último W′ usado
+    var avgBelowCp = 0.0
+    const val MAX_DT_SECONDS = 5.0
 }
 
 /**
- * Calcula el W' Balance usando el modelo diferencial de Froncioni/Clarke
- * Variante optimizada para tiempo real, no requiere histórico completo
- * Devuelve el porcentaje de W' Balance restante como número entero (0-100%)
+ * Calcula el W' Balance usando modelo Skiba:
+ * - Depleción: si P > CP -> W' -= (P - CP) * dt
+ * - Recuperación: si P < CP -> tau = W'max / (CP - P)  (Skiba). W'(t+dt) = Wmax - (Wmax - W') * exp(-dt / tau)
+ *
+ * Se aplican salvaguardas: límites en dt, suavizado de potencia, caps en tau y fallback cuando (CP - P) es muy pequeño.
  */
-fun calculateWPrimeBalance(currentPower: Double, userProfile: UserProfile, wPrimeSettings: WPrimeBalanceSettings): Double {
-    val currentTime = System.currentTimeMillis()
+fun calculateWPrimeBalance(currentPowerInput: Double, userProfile: UserProfile, wPrimeSettings: WPrimeBalanceSettings): Double {
+    val now = System.currentTimeMillis()
 
-    // Obtener CP y W' desde la configuración del usuario
-    val cp = getCriticalPower(userProfile, wPrimeSettings)
-    val wPrime = getWPrime(wPrimeSettings)
-    val tauWPlus = wPrimeSettings.tauWPlus.toDoubleOrNull() ?: WPrimeBalanceState.TAU_W_PLUS
-    val tauWMinus = wPrimeSettings.tauWMinus.toDoubleOrNull() ?: WPrimeBalanceState.TAU_W_MINUS
+    // asegurar valores sensatos
+    val powerInput = if (currentPowerInput.isFinite() && currentPowerInput >= 0.0) currentPowerInput else 0.0
 
-    if (!WPrimeBalanceState.isInitialized) {
-        // Inicializar con W' completo
-        WPrimeBalanceState.currentWPrimeBalance = wPrime
-        WPrimeBalanceState.lastUpdateTime = currentTime
-        WPrimeBalanceState.isInitialized = true
-        return 100.0 // 100% de batería al inicio
-    }
+    // obtener CP y W' max (con fallback seguro) - usar los valores por defecto centralizados en Configdata.kt
+    val cpRaw = getCriticalPower(userProfile, wPrimeSettings)
+    val cp = if (cpRaw.isFinite() && cpRaw > 0.0) cpRaw else DEFAULT_CP
+    val wPrimeMaxRaw = getWPrime(wPrimeSettings)
+    val wPrimeMax = if (wPrimeMaxRaw.isFinite() && wPrimeMaxRaw > 0.0) wPrimeMaxRaw else DEFAULT_WPRIME
 
-    val deltaTime = (currentTime - WPrimeBalanceState.lastUpdateTime) / 1000.0 // Convertir a segundos
-
-    if (deltaTime <= 0) {
-        // Devolver como porcentaje entero
-        return (WPrimeBalanceState.currentWPrimeBalance / wPrime * 100.0).roundToInt().toDouble().coerceIn(0.0, 100.0)
-    }
-
-    // Modelo diferencial de Froncioni/Clarke
-    when {
-        currentPower > cp -> {
-            // Potencia por encima de CP - depleción
-            val powerAboveCP = currentPower - cp
-
-            // dW'/dt = -(P - CP) - W'/τ_w-
-            val dWPrimeDt = -powerAboveCP - (WPrimeBalanceState.currentWPrimeBalance / tauWMinus)
-            WPrimeBalanceState.currentWPrimeBalance += dWPrimeDt * deltaTime
-
-            // W' no puede ser negativo
-            WPrimeBalanceState.currentWPrimeBalance = kotlin.math.max(0.0, WPrimeBalanceState.currentWPrimeBalance)
+    synchronized(WPrimeBalanceState) {
+        // inicialización
+        if (!WPrimeBalanceState.isInitialized) {
+            WPrimeBalanceState.currentWPrimeBalance = wPrimeMax
+            WPrimeBalanceState.lastUpdateTime = now
+            WPrimeBalanceState.smoothedPower = powerInput
+            WPrimeBalanceState.lastCp = cp
+            WPrimeBalanceState.lastWPrime = wPrimeMax
+            WPrimeBalanceState.avgBelowCp = cp      // inicializa la media bajo CP
+            WPrimeBalanceState.isInitialized = true
+            return 100.0
         }
-        else -> {
-            // Potencia por debajo o igual a CP - recuperación
 
-            // dW'/dt = (W'_max - W') / τ_w+
-            val dWPrimeDt = (wPrime - WPrimeBalanceState.currentWPrimeBalance) / tauWPlus
-            WPrimeBalanceState.currentWPrimeBalance += dWPrimeDt * deltaTime
+        // detectar cambio de CP o de W′ mayor al 5 %
+        val cpChange = if (!WPrimeBalanceState.lastCp.isNaN())
+            kotlin.math.abs(cp - WPrimeBalanceState.lastCp) / WPrimeBalanceState.lastCp
+        else 0.0
+        val wPrimeChange = if (!WPrimeBalanceState.lastWPrime.isNaN())
+            kotlin.math.abs(wPrimeMax - WPrimeBalanceState.lastWPrime) / WPrimeBalanceState.lastWPrime
+        else 0.0
+        if (cpChange > 0.05 || wPrimeChange > 0.05) {
+            WPrimeBalanceState.currentWPrimeBalance = wPrimeMax
+            WPrimeBalanceState.smoothedPower = powerInput
+            WPrimeBalanceState.lastUpdateTime = now
+            WPrimeBalanceState.lastCp = cp
+            WPrimeBalanceState.lastWPrime = wPrimeMax
+            return 100.0
+        }
+        WPrimeBalanceState.lastCp = cp
+        WPrimeBalanceState.lastWPrime = wPrimeMax
 
-            // W' no puede exceder W'_max
-            if (WPrimeBalanceState.currentWPrimeBalance > wPrime) {
-                WPrimeBalanceState.currentWPrimeBalance = wPrime
+
+
+        // calcular dt en segundos, con tope
+        var dtSec = (now - WPrimeBalanceState.lastUpdateTime) / 1000.0
+        if (dtSec <= 0.0) {
+            val pctCurrent = (WPrimeBalanceState.currentWPrimeBalance / wPrimeMax * 1000.0).roundToInt() / 10.0
+            return pctCurrent.coerceIn(0.0, 100.0)
+        }
+        if (dtSec > WPrimeBalanceState.MAX_DT_SECONDS) dtSec = WPrimeBalanceState.MAX_DT_SECONDS
+
+        // suavizado exponencial simple de la potencia (time constant ~1.5s)
+        val tauSmooth = 1.5
+        val alpha = 1.0 - exp(-dtSec / tauSmooth)
+        WPrimeBalanceState.smoothedPower += (powerInput - WPrimeBalanceState.smoothedPower) * alpha
+        val power = WPrimeBalanceState.smoothedPower
+
+        // modelo de integración:
+        if (power > cp) {
+            // depleción directa: energía por encima de CP se resta (W * s = J)
+            val energyDepleted = (power - cp) * dtSec
+            WPrimeBalanceState.currentWPrimeBalance -= energyDepleted
+            if (WPrimeBalanceState.currentWPrimeBalance < 0.0) WPrimeBalanceState.currentWPrimeBalance = 0.0
+        } else {
+            // Actualiza la media de potencias cuando ruedas por debajo de CP (suavizado ~30 s).
+            if (power < cp) {
+                val smoothing = dtSec / (dtSec + 30.0)
+                WPrimeBalanceState.avgBelowCp += smoothing * (power - WPrimeBalanceState.avgBelowCp)
             }
+
+            // DCP = CP − media de potencias bajo CP. Puede ser 0 si aún no ha bajado de CP.
+            val dcp = (cp - WPrimeBalanceState.avgBelowCp).coerceAtLeast(0.0)
+
+            // Cálculo de τ según Skiba usando DCP.
+            val tauSkiba = 546.0 * exp(-0.01 * dcp) + 316.0
+            val tauUsed = tauSkiba.coerceAtMost(3600.0)
+
+            val expFactor = exp(-dtSec / tauUsed)
+            WPrimeBalanceState.currentWPrimeBalance = wPrimeMax - (wPrimeMax - WPrimeBalanceState.currentWPrimeBalance) * expFactor
+
+            // asegurar rangos
+            if (WPrimeBalanceState.currentWPrimeBalance > wPrimeMax) WPrimeBalanceState.currentWPrimeBalance = wPrimeMax
+            if (WPrimeBalanceState.currentWPrimeBalance < 0.0) WPrimeBalanceState.currentWPrimeBalance = 0.0
         }
+
+        WPrimeBalanceState.lastUpdateTime = now
+
+        // devolver porcentaje con una decimal
+        val percentage = (WPrimeBalanceState.currentWPrimeBalance / wPrimeMax * 1000.0).roundToInt() / 10.0
+        return percentage.coerceIn(0.0, 100.0)
     }
-
-    WPrimeBalanceState.lastUpdateTime = currentTime
-
-    // Devolver como porcentaje entero (0-100%)
-    return (WPrimeBalanceState.currentWPrimeBalance / wPrime * 100.0).roundToInt().toDouble().coerceIn(0.0, 100.0)
 }
 
 /**
@@ -678,9 +715,12 @@ fun calculateWPrimeBalance(currentPower: Double, userProfile: UserProfile, wPrim
  */
 private fun getCriticalPower(userProfile: UserProfile, wPrimeSettings: WPrimeBalanceSettings): Double {
     return if (wPrimeSettings.useUserFTPAsCP && userProfile.powerZones.size > 3) {
-        userProfile.powerZones[3].max.toDouble() // FTP como aproximación de CP
+
+        val ftp = userProfile.ftp.toDouble()
+        val cpFromFtp = ftp * 0.96
+        if (cpFromFtp.isFinite() && cpFromFtp > 0.0) cpFromFtp else DEFAULT_CP
     } else {
-        wPrimeSettings.criticalPower.toDoubleOrNull() ?: WPrimeBalanceState.DEFAULT_CP
+        wPrimeSettings.criticalPower.toDoubleOrNull() ?: DEFAULT_CP
     }
 }
 
@@ -688,5 +728,5 @@ private fun getCriticalPower(userProfile: UserProfile, wPrimeSettings: WPrimeBal
  * Obtiene el W' de la configuración del usuario
  */
 private fun getWPrime(wPrimeSettings: WPrimeBalanceSettings): Double {
-    return wPrimeSettings.wPrime.toDoubleOrNull() ?: WPrimeBalanceState.DEFAULT_WPRIME
+    return wPrimeSettings.wPrime.toDoubleOrNull() ?: DEFAULT_WPRIME
 }

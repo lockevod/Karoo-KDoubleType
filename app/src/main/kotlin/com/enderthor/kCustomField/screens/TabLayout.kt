@@ -220,7 +220,7 @@ fun ConfRolling(ctx: Context) {
 
 
     var savedDialogVisible by remember { mutableStateOf(false) }
-    var oneFieldSettingsList = remember { mutableStateListOf<OneFieldSettings> (OneFieldSettings(), OneFieldSettings()) }
+    val oneFieldSettingsList = remember { mutableStateListOf(OneFieldSettings(), OneFieldSettings()) }
     var generalSettings by remember { mutableStateOf(GeneralSettings()) }
 
     // Añadir stream de configuración general
@@ -412,7 +412,7 @@ fun ConfFields(ctx: Context) {
 
     var savedDialogVisible by remember { mutableStateOf(false) }
 
-    var doubleFieldSettingsList = remember { mutableStateListOf<DoubleFieldSettings> (DoubleFieldSettings(), DoubleFieldSettings(), DoubleFieldSettings(),DoubleFieldSettings(), DoubleFieldSettings()) }
+    val doubleFieldSettingsList = remember { mutableStateListOf(DoubleFieldSettings(), DoubleFieldSettings(), DoubleFieldSettings(),DoubleFieldSettings(), DoubleFieldSettings()) }
 
     var generalSettings by remember { mutableStateOf(GeneralSettings()) }
 
@@ -542,7 +542,7 @@ fun ConfFields(ctx: Context) {
 fun ConfSmart(ctx: Context) {
     val coroutineScope = rememberCoroutineScope()
     var savedDialogVisible by remember { mutableStateOf(false) }
-    var climbFieldSettingsList = remember { mutableStateListOf<ClimbFieldSettings>(ClimbFieldSettings()) }
+    val climbFieldSettingsList = remember { mutableStateListOf(ClimbFieldSettings()) }
     var generalSettings by remember { mutableStateOf(GeneralSettings()) }
 
     LaunchedEffect(Unit) {
@@ -964,9 +964,9 @@ fun ConfWBal(ctx: Context) {
     val coroutineScope = rememberCoroutineScope()
     var savedDialogVisible by remember { mutableStateOf(false) }
 
-
-    var criticalPower by remember { mutableStateOf("250") }
-    var wPrime by remember { mutableStateOf("20000") }
+    // Inicializar con los valores por defecto centralizados en Configdata.kt
+    var criticalPower by remember { mutableStateOf(DEFAULT_CP.toInt().toString()) }
+    var wPrime by remember { mutableStateOf(DEFAULT_WPRIME.toInt().toString()) }
 
     var useUserFTPAsCP by remember { mutableStateOf(true) }
     var useVisualZones by remember { mutableStateOf(true) }

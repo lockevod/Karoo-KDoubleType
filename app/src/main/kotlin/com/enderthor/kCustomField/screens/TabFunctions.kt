@@ -139,10 +139,10 @@ fun KarooKeyDropdown(remotekey: String, options: List<DropdownOption>, selectedO
 @Composable
 fun DropdownOneField(enabled: Boolean, firstpos: Boolean, label: String, action: OneFieldType,  isheadwindenabled: Boolean = false, onActionChange: (OneFieldType) -> Unit) {
 
-    var dropdownOptions = KarooAction.entries.map { DropdownOption(it.action.toString(), it.label) }
+    var dropdownOptions = KarooAction.entries.map { DropdownOption(it.action, it.label) }
 
     if (!isheadwindenabled) {
-        dropdownOptions = dropdownOptions.filter { it.id != KarooAction.HEADWIND.action.toString() }
+        dropdownOptions = dropdownOptions.filter { it.id != KarooAction.HEADWIND.action }
     }
 
 
@@ -154,7 +154,7 @@ fun DropdownOneField(enabled: Boolean, firstpos: Boolean, label: String, action:
             if (!action.isactive || !enabled) {
                 dropdownOptions.find { it.id == "none" } ?: dropdownOptions.first()
             } else {
-                dropdownOptions.find { it.id == action.kaction.action.toString() } ?: dropdownOptions.first()
+                dropdownOptions.find { it.id == action.kaction.action } ?: dropdownOptions.first()
             }
         )
     }
@@ -174,16 +174,16 @@ fun DropdownOneField(enabled: Boolean, firstpos: Boolean, label: String, action:
 
 @Composable
 fun DropdownDoubleField(label: String, action: DoubleFieldType, isheadwindenabled: Boolean, onActionChange: (DoubleFieldType) -> Unit) {
-    var dropdownOptions = KarooAction.entries.map { DropdownOption(it.action.toString(), it.label) }
+    var dropdownOptions = KarooAction.entries.map { DropdownOption(it.action, it.label) }
 
     // Filtrar la opción HEADWIND si isheadwindenabled es false
     if (!isheadwindenabled) {
-        dropdownOptions = dropdownOptions.filter { it.id != KarooAction.HEADWIND.action.toString() }
+        dropdownOptions = dropdownOptions.filter { it.id != KarooAction.HEADWIND.action }
     }
 
     val dropdownInitialSelection by remember(action) {
         mutableStateOf(
-            dropdownOptions.find { it.id == action.kaction.action.toString() } ?: dropdownOptions.first()
+            dropdownOptions.find { it.id == action.kaction.action } ?: dropdownOptions.first()
         )
     }
 

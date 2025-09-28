@@ -244,7 +244,7 @@ fun Context.streamSmartFieldSettings(): Flow<List<SmartFieldSettings>> {
 }
 
 fun KarooSystemService.streamDataFlow(dataTypeId: String): Flow<StreamState> {
-    return callbackFlow<StreamState> {
+    return callbackFlow {
         val listenerId = addConsumer(OnStreamState.StartStreaming(dataTypeId)) { event: OnStreamState ->
             trySendBlocking(event.state)
         }

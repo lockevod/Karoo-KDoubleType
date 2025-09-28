@@ -47,6 +47,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.cancel
 
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -88,7 +89,7 @@ abstract class CustomClimbTypeBase(
             else -> RefreshTime.HALF.time
         }.coerceAtLeast(100L)
 
-    
+
 
     private fun previewFlow(): Flow<StreamState> = flow {
         while (true) {
@@ -103,18 +104,21 @@ abstract class CustomClimbTypeBase(
         }
     }.flowOn(Dispatchers.IO)
 
+    // MANTENER: este job es necesario para detectar isOnClimb
     private fun checkClimbStatus(): Job {
         return karooSystem.streamDataFlow(DataType.Type.ELEVATION_TO_TOP)
             .map { elevationState ->
-                //Timber.w("CLIMB Elevation State: $elevationState")
                 val elevationValue = (elevationState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_TO_TOP_ID") ?: 0.0
-                //Timber.w("CLIMB Elevation Value: $elevationValue")
+                val newIsOnClimb = elevationValue > 0.0
 
-
-                isOnClimb = elevationValue > 0.0
-                Timber.w("CLIMB before isOnClimb: $isOnClimb")
+                // Solo actualizar si cambia para reducir overhead
+                if (newIsOnClimb != isOnClimb) {
+                    isOnClimb = newIsOnClimb
+                    Timber.d("CLIMB isOnClimb changed to: $isOnClimb (elevation: $elevationValue)")
+                }
             }
-            .throttle(1000L)
+            .distinctUntilChanged()
+            .throttle(2000L) // Aumentado de 1000L a 2000L para menos CPU
             .flowOn(Dispatchers.IO)
             .launchIn(CoroutineScope(Dispatchers.IO))
     }
@@ -138,6 +142,8 @@ abstract class CustomClimbTypeBase(
             climbMonitorJob.cancel()
         }
 
+        // OPTIMIZACIÓN: reutilizar bitmap solo para el círculo base (no datos)
+        val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
 
         val dataflow = context.streamClimbFieldSettings()
             .onStart {
@@ -167,10 +173,9 @@ abstract class CustomClimbTypeBase(
             awaitCancellation()
         }
 
-        val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
         val viewjob = scope.launch {
             try {
-                Timber.d("CLIMB Starting view: $extension $globalIndex ")
+                //Timber.d("CLIMB Starting view: $extension $globalIndex ")
 
                 try {
 
@@ -222,8 +227,7 @@ abstract class CustomClimbTypeBase(
 
 
                         isAlwaysclimbOnEnabled = isAlwaysClimbPos(currentSettings)
-                        val originalFirstHorizontal = isfirsthorizontal(currentSettings)
-                        val originalSecondHorizontal = issecondhorizontal(currentSettings)
+
 
 
                         val headwindFlow =
@@ -307,7 +311,7 @@ abstract class CustomClimbTypeBase(
                             return@onEach
                         }
 
-                        Timber.d("CLIMB Result: $result")
+                        //Timber.d("CLIMB Result: $result")
 
 
 
@@ -331,7 +335,7 @@ abstract class CustomClimbTypeBase(
 
 
 
-                        val (firstvalue, firstIconcolor, firstColorzone, isleftzone, firstvalueRight) = getFieldState(
+                        val (firstvalue, firstIconcolor, firstColorzone, _, firstvalueRight) = getFieldState(
                             firstFieldState,
                             firstField(settings),
                             context,
@@ -339,21 +343,21 @@ abstract class CustomClimbTypeBase(
                             generalSettings.ispalettezwift
                         )
 
-                        val (secondvalue, secondIconcolor, secondColorzone, isrightzone, secondvalueRight) = getFieldState(
+                        val (secondvalue, secondIconcolor, secondColorzone, _, secondvalueRight) = getFieldState(
                             secondFieldState,
                             secondField((settings)),
                             context,
                             userProfile,
                             generalSettings.ispalettezwift
                         )
-                        val (thirdvalue, thirdIconcolor, thirdColorzone, isleftzone2, thirdvalueRight) = getFieldState(
+                        val (thirdvalue, thirdIconcolor, thirdColorzone, _, thirdvalueRight) = getFieldState(
                             thirdFieldState,
                             thirdField(settings),
                             context,
                             userProfile,
                             generalSettings.ispalettezwift
                         )
-                        val (fourthvalue, fourthIconcolor, fourthColorzone, isrightzone2, fourthvalueRight) = getFieldState(
+                        val (fourthvalue, fourthIconcolor, fourthColorzone, _, fourthvalueRight) = getFieldState(
                             fourthFieldState,
                             fourthField(settings),
                             context,
@@ -361,7 +365,7 @@ abstract class CustomClimbTypeBase(
                             generalSettings.ispalettezwift
                         )
 
-                        val (climbvalue, climbIconcolor, climbColorzone, isleftzone3, climbvalueRight) = getFieldState(
+                        val (climbvalue, climbIconcolor, climbColorzone, _, climbvalueRight) = getFieldState(
                             climbFieldState,
                             if(isOnClimb) climbOnField(settings) else climbField(settings),
                             context,
@@ -394,9 +398,9 @@ abstract class CustomClimbTypeBase(
                         val issecondhorizontal = if (isShowClimbField) false else issecondhorizontal(settings)
 
 
-                        Timber.d("isfirsthorizontal: $isfirsthorizontal, issecondhorizontal: $issecondhorizontal")
+                       // Timber.d("isfirsthorizontal: $isfirsthorizontal, issecondhorizontal: $issecondhorizontal")
 
-                        Timber.w("CLIMB field climbField: ${climbField(settings)}  isOnClimb: $isOnClimb isAlwaysclimbOnEnabled: $isAlwaysclimbOnEnabled")
+                        //Timber.w("CLIMB field climbField: ${climbField(settings)}  isOnClimb: $isOnClimb isAlwaysclimbOnEnabled: $isAlwaysclimbOnEnabled")
                         try {
                             if ( ViewState.isCancelled()) {
                                 Timber.d("DOUBLE Skipping composition, job cancelled: $extension $globalIndex")
@@ -522,6 +526,18 @@ abstract class CustomClimbTypeBase(
 
         emitter.setCancellable {
             try {
+                // Si esta vista está en modo preview (p.ej. Profile del Karoo), no hacemos la cancelación completa
+                Timber.d("CANCEL CLIMB and config.preview is = "+config.preview)
+                if (config.preview) {
+                    Timber.w("Emitter.setCancellable ignored because config.preview=true (profile/preview). extension=$extension index=$globalIndex")
+                    return@setCancellable
+                }
+
+                // Nuevo logging diagnóstico para entender por qué se solicita la cancelación
+                Timber.w("Emitter.setCancellable invoked for CustomClimbTypeBase: extension=$extension index=$globalIndex time=${System.currentTimeMillis()} thread=${Thread.currentThread().name}")
+                val stackSnippet = Throwable().stackTrace.take(12).joinToString("\n") { it.toString() }
+                Timber.w("Emitter cancellation stack (short):\n$stackSnippet")
+
                 Timber.d("Cancelando todos los jobs y flujos de CLIMB")
                 ViewState.setCancelled(true)
 
