@@ -127,9 +127,10 @@ fun convertValue(
     unitType: UserProfile.PreferredUnit.UnitType,
     type: String
 ): Double {
-
+    //Timber.d("convertValue: convert=$convert, unitType=$unitType, type=$type, streamState=$streamState")
     val value = when (type) {
-        "TYPE_ELEVATION_REMAINING_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_REMAINING_ID")
+        "TYPE_ELEVATION_REMAINING_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ASCENT_REMAINING_ID")
+            ?: (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_REMAINING_ID")
         "TYPE_DISTANCE_TO_DESTINATION_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_DISTANCE_TO_DESTINATION_ID")
         "TYPE_VERTICAL_SPEED_ID", "TYPE_AVERAGE_VERTICAL_SPEED_30S_ID" ->
             (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_VERTICAL_SPEED_ID")
@@ -730,3 +731,4 @@ private fun getCriticalPower(userProfile: UserProfile, wPrimeSettings: WPrimeBal
 private fun getWPrime(wPrimeSettings: WPrimeBalanceSettings): Double {
     return wPrimeSettings.wPrime.toDoubleOrNull() ?: DEFAULT_WPRIME
 }
+
