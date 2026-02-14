@@ -1,3 +1,5 @@
+@file:Suppress("UNUSED_VALUE", "UNUSED_IMPORT", "DEPRECATION", "UNUSED_EXPRESSION", "UNUSED_VARIABLE", "RedundantUnitReturnType", "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+
 package com.enderthor.kCustomField.screens
 
 import android.content.Context
@@ -31,10 +33,17 @@ import androidx.compose.ui.graphics.Brush
 import kotlin.math.abs
 
 import kotlinx.coroutines.launch
+import timber.log.Timber
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import android.widget.Toast
+import com.enderthor.kCustomField.manager.BackupStorage
 
 import com.enderthor.kCustomField.datatype.*
 import com.enderthor.kCustomField.extensions.*
+import com.enderthor.kCustomField.manager.ImportExportManager
 import com.enderthor.kCustomField.R
+import kotlinx.coroutines.flow.first
 
 
 val alignmentOptions = listOf(FieldPosition.LEFT, FieldPosition.CENTER, FieldPosition.RIGHT)
@@ -192,7 +201,7 @@ fun ScrollableTabRowWithIndicators(
 
         // Íconos posicionados correctamente dentro de la altura de la tab
         Icon(
-            imageVector = Icons.Default.ArrowBack,
+            imageVector = Icons.Filled.ArrowBack,
             contentDescription = null,
             modifier = Modifier
                 .align(Alignment.CenterStart)
@@ -202,7 +211,7 @@ fun ScrollableTabRowWithIndicators(
         )
 
         Icon(
-            imageVector = Icons.Default.ArrowForward,
+            imageVector = Icons.Filled.ArrowForward,
             contentDescription = null,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
@@ -395,10 +404,7 @@ fun ConfRolling(ctx: Context) {
     }
 
     if (savedDialogVisible) {
-        AlertDialog(onDismissRequest = { savedDialogVisible = false },
-            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text(stringResource(R.string.ok)) } },
-            text = { Text(stringResource(R.string.settings_saved)) }
-        )
+        SimpleOkDialog(show = true, onDismiss = { savedDialogVisible = false }, text = { Text(stringResource(R.string.settings_saved)) })
     }
 }
 
@@ -529,10 +535,7 @@ fun ConfFields(ctx: Context) {
     }
 
     if (savedDialogVisible) {
-        AlertDialog(onDismissRequest = { savedDialogVisible = false },
-            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text(stringResource(R.string.ok)) } },
-            text = { Text(stringResource(R.string.settings_saved)) }
-        )
+        SimpleOkDialog(show = true, onDismiss = { savedDialogVisible = false }, text = { Text(stringResource(R.string.settings_saved)) })
     }
 }
 
@@ -733,11 +736,7 @@ fun ConfSmart(ctx: Context) {
     }
 
     if (savedDialogVisible) {
-        AlertDialog(
-            onDismissRequest = { savedDialogVisible = false },
-            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text(stringResource(R.string.ok)) } },
-            text = { Text(stringResource(R.string.settings_saved)) }
-        )
+        SimpleOkDialog(show = true, onDismiss = { savedDialogVisible = false }, text = { Text(stringResource(R.string.settings_saved)) })
     }
 }
 
@@ -764,7 +763,9 @@ fun ConfGeneral() {
 
     var savedDialogVisible by remember { mutableStateOf(false) }
 
-
+    // Variables para importación/exportación
+    var showBackupPicker by remember { mutableStateOf(false) }
+    var backupListState by remember { mutableStateOf<List<String>>(emptyList()) }
 
     LaunchedEffect(Unit) {
         ctx.streamGeneralSettings().collect { settings ->
@@ -783,6 +784,28 @@ fun ConfGeneral() {
         }
     }
 
+    // Collect in-process configApplied events so we refresh UI immediately after an import
+    LaunchedEffect(Unit) {
+        ImportExportManager.configApplied.collect {
+            try {
+                val gs = ctx.streamGeneralSettings().first()
+                ispalettezwift = gs.ispalettezwift
+                iscenteralign = gs.iscenteralign
+                iscentervertical = gs.iscentervertical
+                iscenterkaroo = gs.iscenterkaroo
+                isheadwindenabled = gs.isheadwindenabled
+                isdivider = gs.isdivider
+                bellsong = gs.bellBeepKey
+
+                val ps = ctx.streamStoredPowerSettings().first()
+                powerLoss = ps.powerLoss
+                rollingResistanceCoefficient = ps.rollingResistanceCoefficient
+                bikeMass = ps.bikeMass
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to refresh settings after import")
+            }
+        }
+    }
 
     Column(modifier = Modifier
         .fillMaxSize()
@@ -916,47 +939,146 @@ fun ConfGeneral() {
 */
             Spacer(modifier = Modifier.height(16.dp))
 
-
-            FilledTonalButton(modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp), onClick = {
-                val newGeneralSettings = GeneralSettings(
-                    ispalettezwift = ispalettezwift,
-                    iscenteralign = iscenteralign,
-                    iscentervertical = iscentervertical,
-                    iscenterkaroo = iscenterkaroo,
-                    isheadwindenabled = isheadwindenabled,
-                    isdivider = isdivider,
-                    bellBeepKey = bellsong
-
-                )
-
-                val newPowerSettings = powerSettings(
-                    powerLoss = powerLoss,
-                    rollingResistanceCoefficient = rollingResistanceCoefficient,
-                    bikeMass = bikeMass
-                )
+            // Simplified Export / Import buttons: create timestamped backup and also update a 'latest' file
+            // Note: use ImportExportManager.exportConfigToText to serialize with defaults included
+            fun saveCurrentConfigToFixedFile() {
                 coroutineScope.launch {
-                    savedDialogVisible = true
-                    saveGeneralSettings(ctx, newGeneralSettings)
-                    savePowerSettings(ctx, newPowerSettings)
+                    try {
+                        val cfg = ImportExportManager.buildExportConfig(ctx)
+                        val text = ImportExportManager.exportConfigToText(cfg)
+                        // human-readable timestamp
+                        val timestamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                        val filenameTimestamp = "kcustomfield-config-$timestamp.json"
+                        // write timestamped file only (no fixed 'latest' file)
+                        val written = BackupStorage.writeBackupAtomic(ctx, filenameTimestamp, text, writeMeta = false)
+                        if (written != null) {
+                            Toast.makeText(ctx, ctx.getString(R.string.export_completed) + " -> " + written.name, Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(ctx, "Export failed", Toast.LENGTH_LONG).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(ctx, "Export error: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
                 }
-            }) {
-                Icon(Icons.Default.Done, contentDescription = stringResource(R.string.save_general_desc))
-                Spacer(modifier = Modifier.width(5.dp))
-                Text(stringResource(R.string.save_general))
-                Spacer(modifier = Modifier.width(5.dp))
             }
-        }
-    }
 
-    if (savedDialogVisible) {
-        AlertDialog(onDismissRequest = { savedDialogVisible = false },
-            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text(stringResource(R.string.ok)) } },
-            text = { Text(stringResource(R.string.settings_saved)) }
-        )
-    }
-}
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(modifier = Modifier.weight(1f).height(50.dp), onClick = { saveCurrentConfigToFixedFile() }) {
+                    Text(stringResource(R.string.export_config))
+                }
+            }
+
+            // Show only the sdcard-accessible app files path as requested
+            val sdcardAccessible = "/sdcard/Android/data/${ctx.packageName}/files"
+            Text(text = sdcardAccessible, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp, top = 6.dp))
+
+            // continue with other buttons row
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(modifier = Modifier.weight(1f).height(50.dp), onClick = {
+                    // show dialog with backups from BackupStorage (app external files dir)
+                    val backups = BackupStorage.listBackups(ctx)
+                    if (backups.isEmpty()) {
+                        Toast.makeText(ctx, ctx.getString(R.string.no_backups_found), Toast.LENGTH_SHORT).show()
+                    } else {
+                        // show simple AlertDialog with choices; sort by filename desc (timestamp lexicographic)
+                        coroutineScope.launch {
+                            // Use state vars already declared
+                            backupListState = backups.sortedByDescending { it.name }.map { it.name }
+                            showBackupPicker = true
+                        }
+                    }
+                }) {
+                    Text(stringResource(R.string.import_from_backups))
+                }
+             }
+
+            // Backup picker dialog (extracted)
+             BackupPickerDialog(show = showBackupPicker, backups = backupListState, onSelect = { name ->
+                coroutineScope.launch {
+                    val text = BackupStorage.readBackup(ctx, name)
+                    if (text != null) {
+                        try {
+                            val cfg = ImportExportManager.parseExportFromText(text)
+                            if (cfg.payload == null) {
+                                Toast.makeText(ctx, ctx.getString(R.string.invalid_backup), Toast.LENGTH_LONG).show()
+                            } else {
+                                // create a single preapply backup (delete previous preapply backups)
+                                try {
+                                    val preCfg = ImportExportManager.buildExportConfig(ctx)
+                                    val preText = ImportExportManager.exportConfigToText(preCfg)
+                                    val timestamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                                    val preName = "preapply-backup-$timestamp.json"
+                                    // delete any existing preapply backups and their meta files
+                                    try {
+                                        val existing = BackupStorage.listBackups(ctx).filter { it.name.startsWith("preapply-backup-") }
+                                        for (f in existing) {
+                                            try { f.delete() } catch (_: Throwable) {}
+                                            try { java.io.File(f.parentFile, f.name + ".meta.json").delete() } catch (_: Throwable) {}
+                                        }
+                                    } catch (_: Throwable) {}
+                                    BackupStorage.writeBackupAtomic(ctx, preName, preText, writeMeta = false)
+                                } catch (e: Exception) {
+                                    Timber.w(e, "Failed to write preapply backup")
+                                }
+
+                                // apply immediately without further confirmation
+                                try {
+                                    ImportExportManager.applyPayload(ctx, cfg.payload)
+                                    Toast.makeText(ctx, ctx.getString(R.string.import_completed), Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                    Toast.makeText(ctx, "Apply error: ${e.message}", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(ctx, "Error parsing backup: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        Toast.makeText(ctx, ctx.getString(R.string.invalid_backup), Toast.LENGTH_LONG).show()
+                    }
+                    showBackupPicker = false
+                }
+            }, onClose = { showBackupPicker = false })
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+
+             FilledTonalButton(modifier = Modifier
+                 .fillMaxWidth()
+                 .height(50.dp), onClick = {
+                 val newGeneralSettings = GeneralSettings(
+                     ispalettezwift = ispalettezwift,
+                     iscenteralign = iscenteralign,
+                     iscentervertical = iscentervertical,
+                     iscenterkaroo = iscenterkaroo,
+                     isheadwindenabled = isheadwindenabled,
+                     isdivider = isdivider,
+                     bellBeepKey = bellsong
+
+                 )
+
+                 val newPowerSettings = powerSettings(
+                     powerLoss = powerLoss,
+                     rollingResistanceCoefficient = rollingResistanceCoefficient,
+                     bikeMass = bikeMass
+                 )
+                 coroutineScope.launch {
+                     savedDialogVisible = true
+                     saveGeneralSettings(ctx, newGeneralSettings)
+                     savePowerSettings(ctx, newPowerSettings)
+                 }
+             }) {
+                 Icon(Icons.Default.Done, contentDescription = stringResource(R.string.save_general_desc))
+                 Spacer(modifier = Modifier.width(5.dp))
+                 Text(stringResource(R.string.save_general))
+                 Spacer(modifier = Modifier.width(5.dp))
+             }
+         }
+     }
+
+     if (savedDialogVisible) {
+         SimpleOkDialog(show = true, onDismiss = { savedDialogVisible = false }, text = { Text(stringResource(R.string.settings_saved)) })
+     }
+ }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1082,10 +1204,46 @@ fun ConfWBal(ctx: Context) {
     }
 
     if (savedDialogVisible) {
-        AlertDialog(
-            onDismissRequest = { savedDialogVisible = false },
-            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text(stringResource(R.string.ok)) } },
-            text = { Text(stringResource(R.string.wbal_settings_saved)) }
-        )
+        SimpleOkDialog(show = true, onDismiss = { savedDialogVisible = false }, text = { Text(stringResource(R.string.wbal_settings_saved)) })
     }
+}
+
+@Composable
+fun SimpleOkDialog(show: Boolean, onDismiss: () -> Unit, title: (@Composable () -> Unit)? = null, text: (@Composable () -> Unit)? = null) {
+    if (!show) return
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = title,
+        text = text,
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) }
+        }
+    )
+}
+
+@Composable
+fun BackupPickerDialog(show: Boolean, backups: List<String>, onSelect: (String) -> Unit, onClose: () -> Unit) {
+    if (!show) return
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text(stringResource(R.string.select_backup)) },
+        text = {
+            // Use a LazyColumn to allow scrolling when there are many backups
+            val maxHeight = 320.dp
+            Box(modifier = Modifier.heightIn(max = maxHeight)) {
+                LazyColumn {
+                    items(backups) { name ->
+                        Column(modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(name) }
+                            .padding(8.dp)) {
+                            Text(text = name)
+                            HorizontalDivider()
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onClose) { Text(stringResource(R.string.close)) } }
+    )
 }

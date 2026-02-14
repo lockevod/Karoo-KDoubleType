@@ -38,10 +38,10 @@
     <string name="critical_power_label">Critical Power (CP) - Watts</string>
     <string name="critical_power_hint">Critical power in watts. If the switch above is enabled, the profile FTP is used.</string>
     <string name="wprime_label">W\' (W Prime) - Joules</string>
-    <string name="wprime_hint">Anaerobic work capacity in joules (J). Typical: 10000-35000J. You can use intervals.icu values o ttps://www.highnorth.co.uk/articles/critical-power-calculator</string>
+    <string name="wprime_hint">Anaerobic work capacity in joules (J). Typical: 10000–35000J. You can use intervals.icu values o ttps://www.highnorth.co.uk/articles/critical-power-calculator</string>
     <string name="visual_zones_title">Visual Zones</string>
     <string name="use_visual_zones">Use visual color zones for W\' Balance?</string>
-    <string name="visual_zones_description">When enabled, the field background will change color according to percentage:\n🟢 80-100%: Green (Optimal)\n🟡 55-79%: Yellow (Good)\n🟠 30-54%: Orange (Caution)\n🔴 0-29%: Red (Critical)</string>
+    <string name="visual_zones_description" formatted="false">When enabled, the field background will change color according to percentage:\n🟢 80–100%: Green (Optimal)\n🟡 55–79%: Yellow (Good)\n🟠 30–54%: Orange (Caution)\n🔴 0–29%: Red (Critical)</string>
     <string name="temporal_constants_title">Model Temporal Constants</string>
     <string name="tau_wplus_label">τ W+ (Tau W Plus) - Seconds</string>
     <string name="tau_wplus_hint">Time constant for recovery. Standard value: 546s</string>
@@ -63,6 +63,23 @@
     <string name="divider_enabled_question">Divider Enabled?</string>
     <string name="bell_sound_title">Bell Sound</string>
     <string name="save_general">Save General</string>
+
+    <!-- Export / Import -->
+    <string name="export_config">Export configuration</string>
+    <string name="import_config">Import configuration</string>
+    <string name="export_completed">Export completed</string>
+    <string name="import_confirm_title">Confirm import</string>
+    <string name="import_confirm_message">The file contains the following sections: %1$s. Do you want to apply them?</string>
+    <string name="backup_and_apply">Backup and apply</string>
+    <string name="apply_without_backup">Apply without backup</string>
+    <string name="cancel">Cancel</string>
+    <string name="import_from_backups">Import from backups</string>
+    <string name="no_backups_found">No backups found</string>
+    <string name="select_backup">Select a backup</string>
+    <string name="invalid_backup">Invalid backup file</string>
+    <string name="close">Close</string>
+    <string name="no_file_picker">No file picker available on this device</string>
+    <string name="import_completed">Import completed</string>
 
     <!-- Common -->
     <string name="ok">OK</string>

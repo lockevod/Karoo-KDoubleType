@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package com.enderthor.kCustomField.extensions
 
 import android.content.Context
@@ -23,6 +25,8 @@ import com.enderthor.kCustomField.datatype.defaultPowerSettings
 import com.enderthor.kCustomField.datatype.powerSettings
 import com.enderthor.kCustomField.datatype.WPrimeBalanceSettings
 import com.enderthor.kCustomField.datatype.defaultWPrimeBalanceSettings
+import com.enderthor.kCustomField.datatype.RollingTime
+import com.enderthor.kCustomField.datatype.defaultRollingTimes
 
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.DataPoint
@@ -61,6 +65,7 @@ val smartfieldKey = stringPreferencesKey("smartfieldsettings")
 val climbfieldKey = stringPreferencesKey("climbfieldsettings")
 val powerKey = stringPreferencesKey("powersettings")
 val wprimeBalanceKey = stringPreferencesKey("wprimebalancesettings")
+val rollingTimesKey = stringPreferencesKey("rollingtimes")
 
 
 suspend fun savePowerSettings(context: Context, settings: powerSettings) {
@@ -365,4 +370,26 @@ inline fun <reified T : KarooEvent> KarooSystemService.consumerFlow(): Flow<T> {
             removeConsumer(listenerId)
         }
     }
+}
+
+// Persistencia para rollingTimes
+suspend fun saveRollingTimes(context: Context, times: List<RollingTime>) {
+    context.dataStore.edit { t ->
+        t[rollingTimesKey] = Json.encodeToString(times)
+    }
+}
+
+fun Context.streamRollingTimes(): Flow<List<RollingTime>> {
+    return dataStore.data.map { settingsJson ->
+        try {
+            if (settingsJson.contains(rollingTimesKey)) {
+                jsonWithUnknownKeys.decodeFromString<List<RollingTime>>(settingsJson[rollingTimesKey] ?: Json.encodeToString(defaultRollingTimes))
+            } else {
+                defaultRollingTimes
+            }
+        } catch (e: Throwable) {
+            Timber.tag("KarooDualTypeExtension").e(e, "Failed to read rolling times")
+            defaultRollingTimes
+        }
+    }.distinctUntilChanged()
 }

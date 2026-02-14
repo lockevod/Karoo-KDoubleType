@@ -38,10 +38,10 @@
     <string name="critical_power_label">Critical Power (CP) - Vatios</string>
     <string name="critical_power_hint">Potencia crítica en vatios. Si está habilitado el switch arriba, se usa el FTP del perfil.</string>
     <string name="wprime_label">W\' (W Prima) - Julios</string>
-    <string name="wprime_hint">Capacidad de trabajo anaeróbico en julios (J). Típico: 10000-35000J. Puedes usar intervals.icu values o ttps://www.highnorth.co.uk/articles/critical-power-calculator</string>
+    <string name="wprime_hint">Capacidad de trabajo anaeróbico en julios (J). Típico: 10000–35000J. Puedes usar intervals.icu values o ttps://www.highnorth.co.uk/articles/critical-power-calculator</string>
     <string name="visual_zones_title">Zonas Visuales</string>
     <string name="use_visual_zones">¿Usar zonas visuales de colores para W\' Balance?</string>
-    <string name="visual_zones_description">Cuando está habilitado, el fondo del campo cambiará de color según el porcentaje:\n🟢 80-100%: Verde (Óptimo)\n🟡 55-79%: Amarillo (Bueno)\n🟠 30-54%: Naranja (Precaución)\n🔴 0-29%: Rojo (Crítico)</string>
+    <string name="visual_zones_description">Cuando está habilitado, el fondo del campo cambiará de color según el porcentaje:\n🟢 80–100%: Verde (Óptimo)\n🟡 55–79%: Amarillo (Bueno)\n🟠 30–54%: Naranja (Precaución)\n🔴 0–29%: Rojo (Crítico)</string>
     <string name="temporal_constants_title">Constantes Temporales del Modelo</string>
     <string name="tau_wplus_label">τ W+ (Tau W Plus) - Segundos</string>
     <string name="tau_wplus_hint">Constante de tiempo para recuperación. Valor estándar: 546s</string>
@@ -63,6 +63,23 @@
     <string name="divider_enabled_question">¿Divisor Habilitado?</string>
     <string name="bell_sound_title">Sonido de Campana</string>
     <string name="save_general">Guardar General</string>
+
+    <!-- Export / Import -->
+    <string name="export_config">Exportar configuración</string>
+    <string name="import_config">Importar configuración</string>
+    <string name="export_completed">Exportación completada</string>
+    <string name="import_confirm_title">Confirmar importación</string>
+    <string name="import_confirm_message">El fichero contiene las siguientes secciones: %1$s. ¿Desea aplicarlas?</string>
+    <string name="backup_and_apply">Guardar copia y aplicar</string>
+    <string name="apply_without_backup">Aplicar sin copia</string>
+    <string name="cancel">Cancelar</string>
+    <string name="import_from_backups">Importar desde copias</string>
+    <string name="no_backups_found">No se han encontrado copias</string>
+    <string name="select_backup">Seleccionar copia</string>
+    <string name="invalid_backup">Copia inválida</string>
+    <string name="close">Cerrar</string>
+    <string name="no_file_picker">No hay un selector de archivos disponible en este dispositivo</string>
+    <string name="import_completed">Importación completada</string>
 
     <!-- Common -->
     <string name="ok">Aceptar</string>

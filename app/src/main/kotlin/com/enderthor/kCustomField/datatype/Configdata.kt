@@ -85,6 +85,11 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     ELEVATION_FROM_BOTTOM(DataType.Type.ELEVATION_FROM_BOTTOM, "Elevation to Bottom", R.drawable.ic_elevation_from_bottom, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "elevation"),
     ELEVATION_TO_TOP(DataType.Type.ELEVATION_TO_TOP, "Elevation to Top", R.drawable.ic_elevation_to_top, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "elevation"),
     //FTP(DataType.dataTypeId("FTP", "FTP"), "FTP", R.drawable.ic_ftp, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    FA_SUSPENSION_STATE_FRONT(DataType.Type.SUSPENSION_STATE_FRONT, "FA Suspension Front", R.drawable.ic_suspension_front, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    FA_SUSPENSION_STATE_REAR(DataType.Type.SUSPENSION_STATE_REAR, "FA Suspension Rear", R.drawable.ic_suspension_rear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    FA_SUSPENSION_STATE_COUNT_FRONT(DataType.Type.SUSPENSION_STATE_COUNT_FRONT, "FA Suspension Count Front", R.drawable.ic_suspension_count_front, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    FA_SUSPENSION_STATE_COUNT_REAR(DataType.Type.SUSPENSION_STATE_COUNT_REAR, "FA Suspension Count Rear", R.drawable.ic_suspension_count_rear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    FA_SUSPENSION_BIAS(DataType.Type.SUSPENSION_BIAS, "FA Suspension Count Rear", R.drawable.ic_suspension_bias, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     FTPG(DataType.dataTypeId("FTPG", "FTPG"), "FTP", R.drawable.ic_ftp, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     GEARS_FRONT(DataType.Type.SHIFTING_FRONT_GEAR, "Gears Front", R.drawable.ic_front_gear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     GEARS_REAR(DataType.Type.SHIFTING_REAR_GEAR, "Gears Rear", R.drawable.ic_rear_gear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
@@ -146,6 +151,7 @@ enum class FieldSize {
 data class FieldSizeRange(val name: FieldSize, val min: Int, val max: Int)
 
 
+@Serializable
 enum class FieldPosition {
     LEFT, CENTER, RIGHT;
 }
@@ -224,6 +230,7 @@ data class WPrimeBalanceSettings(
     val useVisualZones: Boolean = true
 )
 
+@Serializable
 enum class RefreshTime( val time: Long) {
     HALF (400L),  MID(800L) , EXTRA_ROLLING(200L),
 }
