@@ -267,7 +267,11 @@ abstract class CustomDoubleTypeBase(
                                             baseBitmap,
                                             generalSettings.isdivider,
                                             firstvalueRight,
-                                            secondvalueRight
+                                            secondvalueRight,
+                                            false,
+                                            false,
+                                            if (firstFieldState is StreamState) firstFieldState else null,
+                                            if (secondFieldState is StreamState) secondFieldState else null
                                         )
                                     }.remoteViews
                                 }

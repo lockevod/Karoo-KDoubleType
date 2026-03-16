@@ -16,7 +16,7 @@ import io.hammerhead.karooext.models.UserProfile
 
 
 const val RETRY_CHECK_STREAMS = 4
-const val WAIT_STREAMS_SHORT = 3000L // 3 seconds
+const val WAIT_STREAMS_SHORT = 1000L // 1 seconds
 const val WAIT_STREAMS_NORMAL = 60000L // 1 minute
 const val STREAM_TIMEOUT = 15000L // 15 seconds
 const val WAIT_STREAMS_LONG = 120000L // 120 seconds
@@ -232,11 +232,11 @@ data class WPrimeBalanceSettings(
 
 @Serializable
 enum class RefreshTime( val time: Long) {
-    HALF (400L),  MID(800L) , EXTRA_ROLLING(200L),
+    HALF (200L),  MID(800L) , EXTRA_ROLLING(200L),
 }
 
 enum class Delay( val time: Long) {
-    PREVIEW (2000L), RETRY_SHORT (2000L), RETRY_LONG (6000L),
+    PREVIEW (2000L), RETRY_SHORT (1500L), RETRY_LONG (6000L),
 }
 
 @Serializable

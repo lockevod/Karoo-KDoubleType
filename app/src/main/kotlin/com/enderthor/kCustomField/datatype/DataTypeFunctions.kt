@@ -164,6 +164,54 @@ fun convertValue(
     return convertedValue
 }
 
+/**
+ * Formatea valores de Flight Attendant (FA) a strings legibles
+ * Convierte valores numéricos enum a etiquetas descriptivas
+ */
+fun formatFAValue(fieldState: StreamState, actionName: String): String {
+    if (fieldState !is StreamState.Streaming) return "--"
+    
+    val value = fieldState.dataPoint.singleValue?.toInt() ?: 0
+    
+    return when (actionName) {
+        // Estados de suspensión (enum values de Flight Attendant)
+        "FA_SUSPENSION_STATE_FRONT", "FA_SUSPENSION_STATE_REAR" -> {
+            when (value) {
+                0 -> "Close"
+                1 -> "Open"
+                2 -> "Lock"
+                3 -> "Med"
+                4 -> "Firm"
+                5 -> "Soft"
+                else -> "NA"
+            }
+        }
+        // Conteos de compresión (mostrar número simples)
+        "FA_SUSPENSION_STATE_COUNT_FRONT", "FA_SUSPENSION_STATE_COUNT_REAR" -> {
+            value.toString()
+        }
+        // Sesgo/balance de suspensión (mostrar con porcentaje)
+        "FA_SUSPENSION_BIAS" -> {
+            "$value%"
+        }
+        else -> value.toString()
+    }
+}
+
+/**
+ * Verifica si un valor de FA está disponible
+ */
+fun isFAFieldAvailable(fieldState: StreamState): Boolean {
+    return fieldState is StreamState.Streaming && fieldState.dataPoint.singleValue != null
+}
+
+/**
+ * Obtiene el valor numérico de un campo FA para usar en colores/zonas
+ */
+fun getFANumericValue(fieldState: StreamState): Double {
+    return (fieldState as? StreamState.Streaming)?.dataPoint?.singleValue ?: 0.0
+}
+
 fun getColorProvider(context: Context, action: KarooAction, colorzone: Boolean): ColorProvider {
 
 
