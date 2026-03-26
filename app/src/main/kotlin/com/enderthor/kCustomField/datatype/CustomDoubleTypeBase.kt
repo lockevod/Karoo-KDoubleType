@@ -72,6 +72,8 @@ abstract class CustomDoubleTypeBase(
     private val secondField = { settings: DoubleFieldSettings -> settings.secondfield }
     private val ishorizontal = { settings: DoubleFieldSettings -> settings.ishorizontal }
 
+    @Volatile private var isCancelled = false
+
     private val refreshTime: Long
         get() = when (karooSystem.hardwareType) {
             HardwareType.K2 -> RefreshTime.MID.time
@@ -99,6 +101,7 @@ abstract class CustomDoubleTypeBase(
 
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
+        isCancelled = false
         ViewState.setCancelled(false)
 
         val dataflow = context.streamDoubleFieldSettings()
@@ -123,7 +126,7 @@ abstract class CustomDoubleTypeBase(
 
 
 
-        val configjob = CoroutineScope(Dispatchers.IO).launch {
+        val configjob = scope.launch {
             emitter.onNext(UpdateGraphicConfig(showHeader = false))
             emitter.onNext(ShowCustomStreamState(message = "", color = null))
             awaitCancellation()
@@ -186,7 +189,7 @@ abstract class CustomDoubleTypeBase(
                             }
                     }.onEach { (firstFieldState, secondFieldState, globalConfig) ->
 
-                        if ( ViewState.isCancelled()) {
+                        if ( isCancelled) {
                             Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
                         }
@@ -239,12 +242,12 @@ abstract class CustomDoubleTypeBase(
                             }
 
                             try {
-                                if ( ViewState.isCancelled()) {
+                                if ( isCancelled) {
                                     Timber.d("DOUBLE Skipping composition, job cancelled: $extension $globalIndex")
                                     return@onEach
                                 }
                                 val newView = withContext(Dispatchers.Main) {
-                                    if ( ViewState.isCancelled()) {
+                                    if ( isCancelled) {
                                         return@withContext null
                                     }
                                     glance.compose(context, DpSize.Unspecified) {
@@ -279,7 +282,7 @@ abstract class CustomDoubleTypeBase(
 
                                // Timber.d("DOUBLE Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
                                 withContext(Dispatchers.Main) {
-                                    if ( ViewState.isCancelled()) return@withContext
+                                    if ( isCancelled) return@withContext
                                     emitter.updateView(newView)
                                 }
                                 delay(refreshTime)
@@ -288,7 +291,7 @@ abstract class CustomDoubleTypeBase(
                                     Timber.d("DOUBLE View update cancelled normally: $extension $globalIndex")
                                 } else {
                                     Timber.e(e, "DOUBLE Error composing/updating view: $extension $globalIndex")
-                                    if (coroutineContext.isActive && !ViewState.isCancelled()) {
+                                    if (coroutineContext.isActive && !isCancelled) {
                                         throw e
                                     }
                                 }
@@ -310,7 +313,7 @@ abstract class CustomDoubleTypeBase(
 
                             when {
 
-                                cause is CancellationException && ViewState.isCancelled() -> {
+                                cause is CancellationException && isCancelled -> {
                                     Timber.d("DOUBLE No se reintenta el flujo cancelado por el emitter: $extension $globalIndex")
                                     false
                                 }
@@ -356,26 +359,15 @@ abstract class CustomDoubleTypeBase(
                 }
 
                 // Nuevo logging diagnóstico para entender por qué se solicita la cancelación
-                Timber.w("Emitter.setCancellable invoked for CustomDoubleTypeBase: extension=$extension index=$globalIndex time=${System.currentTimeMillis()} thread=${Thread.currentThread().name}")
-                val stackSnippet = Throwable().stackTrace.take(12).joinToString("\n") { it.toString() }
-                Timber.w("Emitter cancellation stack (short):\n$stackSnippet")
+
 
                 Timber.d("Iniciando cancelación de CustomDoubleTypeBase")
 
-
+                isCancelled = true
                 ViewState.setCancelled(true)
 
                 configjob.cancel()
                 viewjob.cancel()
-
-
-                scope.launch {
-                    delay(100)
-                    if (scope.isActive) {
-                        Timber.w("Forzando cancelación del scope de double")
-                    }
-                }
-
                 scope.cancel()
                 scopeJob.cancel()
 

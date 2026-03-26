@@ -31,7 +31,16 @@ import kotlin.math.roundToInt
 // This file is from the KarooHeadwind project by Tim Kluge
 data class BitmapWithBearing(val bitmap: Bitmap, val bearing: Int)
 
-val bitmapsByBearing = mutableMapOf<BitmapWithBearing, Bitmap>()
+private const val MAX_CACHED_BEARINGS = 36
+val bitmapsByBearing = object : LinkedHashMap<BitmapWithBearing, Bitmap>(MAX_CACHED_BEARINGS, 0.75f, true) {
+    override fun removeEldestEntry(eldest: Map.Entry<BitmapWithBearing, Bitmap>): Boolean {
+        if (size > MAX_CACHED_BEARINGS) {
+            eldest.value.recycle()
+            return true
+        }
+        return false
+    }
+}
 
 
 fun getArrowBitmapByBearing(baseBitmap: Bitmap, bearing: Int): Bitmap {

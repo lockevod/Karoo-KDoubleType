@@ -25,7 +25,7 @@ suspend fun readStringFromUri(context: Context, uri: Uri): String {
     return withContext(Dispatchers.IO) {
         try {
             context.contentResolver.openInputStream(uri)?.use { input ->
-                input.readBytes().toString(Charsets.UTF_8)
+                String(input.readBytes(), Charsets.UTF_8)
             } ?: throw IOException("No se pudo abrir InputStream para URI: $uri")
         } catch (e: Exception) {
             Timber.e(e, "Error leyendo URI $uri")

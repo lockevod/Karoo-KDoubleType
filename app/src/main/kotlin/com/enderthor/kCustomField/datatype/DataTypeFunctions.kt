@@ -49,7 +49,10 @@ import kotlin.math.exp
 
 class StickyStreamState private constructor() {
     companion object {
-        private val lastValidStates = mutableMapOf<String, Pair<Any, Long>>()
+        private const val MAX_STATES = 20
+        private val lastValidStates = object : LinkedHashMap<String, Pair<Any, Long>>(MAX_STATES, 0.75f, true) {
+            override fun removeEldestEntry(eldest: Map.Entry<String, Pair<Any, Long>>) = size > MAX_STATES
+        }
         private const val STICKY_TIMEOUT_MS = 7000L
 
         fun process(state: Any, actionName: String): Any {
@@ -401,10 +404,6 @@ fun KarooSystemService.getFieldFlow(
                     is CancellationException -> {
                         if (ViewState.isCancelledByEmitter) {
                             Timber.d("getFieldFlow cancelado por emitter para ${action.name}")
-                            // Nuevo logging diagnóstico: traza corta y contexto
-                            Timber.w("getFieldFlow cancellation diagnostic: action=${action.name} time=${System.currentTimeMillis()} thread=${Thread.currentThread().name}")
-                            val cancelStack = Throwable().stackTrace.take(16).joinToString("\n") { it.toString() }
-                            Timber.w("getFieldFlow cancellation stack (short):\n$cancelStack")
                             throw e
                         }
                         Timber.d("Cancelación ignorada en getFieldFlow para ${action.name}")
@@ -421,10 +420,6 @@ fun KarooSystemService.getFieldFlow(
     } catch (e: CancellationException) {
         if (ViewState.isCancelledByEmitter) {
             Timber.d("getFieldFlow cancelado por emitter")
-            // Nuevo logging diagnóstico general
-            Timber.w("getFieldFlow cancellation diagnostic (general) time=${System.currentTimeMillis()} thread=${Thread.currentThread().name}")
-            val cancelStack = Throwable().stackTrace.take(16).joinToString("\n") { it.toString() }
-            Timber.w("getFieldFlow cancellation stack (short):\n$cancelStack")
             throw e
         }
         Timber.d("Cancelación ignorada en getFieldFlow")
