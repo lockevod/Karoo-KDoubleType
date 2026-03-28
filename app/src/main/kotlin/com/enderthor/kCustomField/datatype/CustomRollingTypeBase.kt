@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retryWhen
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
@@ -244,6 +245,10 @@ abstract class CustomRollingTypeBase(
                             )
                         }
                     }
+                    // conflate() descarta emisiones intermedias mientras el render está ocupado.
+                    // El SDK Karoo limita los streams a 1Hz máximo, así que el tiempo de
+                    // composición de Glance (~50-100ms) ya actúa de throttle suficiente.
+                    .conflate()
                     .onEach { (fieldStates, settingsData) ->
 
                         if ( isCancelled) {
@@ -329,7 +334,9 @@ abstract class CustomRollingTypeBase(
 
                                 emitter.updateView(newView)
                             }
-                            delay(refreshTime)
+                            // Sin delay: el SDK Karoo limita los streams a 1Hz como máximo,
+                            // así que el tiempo de composición de Glance (~50-100ms) ya actúa
+                            // de throttle suficiente. conflate() actúa de red de seguridad.
 
                         } catch (e: Exception) {
                             Timber.e(e, "ROLLING Error composing/updating view: $extension $index")

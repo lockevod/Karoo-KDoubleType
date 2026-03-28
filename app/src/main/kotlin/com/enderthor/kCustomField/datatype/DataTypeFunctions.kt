@@ -29,10 +29,8 @@ import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlin.random.Random
 import timber.log.Timber
 
 
@@ -68,10 +66,6 @@ class StickyStreamState private constructor() {
             val (lastState, timestamp) = lastStatePair
 
             if (currentTime - timestamp < STICKY_TIMEOUT_MS) {
-
-               // if (state !is StreamState.Searching || Random.nextInt(20) == 0) {
-                    //Timber.d("Usando valor almacenado para $actionName, edad: ${currentTime - timestamp}ms")
-                //}
                 return lastState
             }
 
@@ -272,10 +266,13 @@ fun KarooSystemService.getFieldFlow(
             else -> throw IllegalArgumentException("Tipo de campo no soportado")
         }
 
-        // OPTIMIZACIÓN: evitar emit inicial innecesario para reducir carga
-        // Emitir solo para streams que realmente lo necesiten
+        // Emitir un valor inicial para que combine() no bloquee esperando el primer valor de cada stream.
+        // Crítico en ClimbType que combina 6 streams: sin esto, el primer render puede tardar 4-5s
+        // si algún stream (p.ej. DISTANCE_TO_TOP fuera de subida) tarda en responder.
         if (action.name == "HEADWIND" && generalSettings.isheadwindenabled) {
             emit(StreamHeadWindData(0.0, 0.0))
+        } else {
+            emit(StreamState.Searching)
         }
 
         while (currentCoroutineContext().isActive) {
@@ -600,45 +597,6 @@ fun getFieldState(
         Quintuple(0.0, ColorProvider(Color.White, Color.Black), ColorProvider(Color.White, Color.Black), false, 0.0)
     }
 }
-
-fun <T> retryFlow(
-    maxAttempts: Int = 8,
-    initialDelayMillis: Long = 80,
-    maxDelayMillis: Long = 400,
-    action: suspend FlowCollector<T>.() -> Unit,
-    onFailure: suspend FlowCollector<T>.(Int, Throwable) -> Unit
-): Flow<T> = flow {
-    var attempts = 0
-    var delayMillis = initialDelayMillis
-
-    while (attempts < maxAttempts) {
-        try {
-            action()
-            return@flow
-        } catch (e: Throwable) {
-            when (e) {
-                is IndexOutOfBoundsException, is Exception -> {
-                    if (e is CancellationException) {
-                        Timber.d("Job cancelled during attempt $attempts")
-                    } else {
-                        Timber.e(e, "Error en attempt $attempts")
-                    }
-                    attempts++
-                    if (attempts >= maxAttempts) {
-                        onFailure(attempts, e)
-                    } else {
-                        delay(delayMillis + Random.nextLong(0, delayMillis / 2))
-                        delayMillis = (delayMillis * 2).coerceAtMost(maxDelayMillis)
-                    }
-                }
-                else -> throw e
-            }
-        }
-    }
-}
-//ADD
-
-// Estado del modelo diferencial W' Balance Prime - Variables estáticas para mantener estado
 
 
 private object WPrimeBalanceState {

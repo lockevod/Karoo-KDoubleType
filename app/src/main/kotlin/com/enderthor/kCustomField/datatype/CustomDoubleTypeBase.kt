@@ -46,6 +46,7 @@ import kotlinx.coroutines.cancel
 
 import kotlinx.coroutines.flow.catch
 
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
@@ -187,7 +188,7 @@ abstract class CustomDoubleTypeBase(
                             combine(firstFieldFlow, secondFieldFlow) { firstState, secondState ->
                                 Triple(firstState, secondState, state)
                             }
-                    }.onEach { (firstFieldState, secondFieldState, globalConfig) ->
+                    }.conflate().onEach { (firstFieldState, secondFieldState, globalConfig) ->
 
                         if ( isCancelled) {
                             Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
@@ -285,7 +286,9 @@ abstract class CustomDoubleTypeBase(
                                     if ( isCancelled) return@withContext
                                     emitter.updateView(newView)
                                 }
-                                delay(refreshTime)
+                                // Sin delay: SDK Karoo limita streams a 1Hz máximo.
+                                // El tiempo de composición Glance (~50-100ms) ya es throttle suficiente.
+                                // conflate() actúa como red de seguridad ante cualquier ráfaga.
                             } catch (e: Exception) {
                                 if (e is CancellationException) {
                                     Timber.d("DOUBLE View update cancelled normally: $extension $globalIndex")
