@@ -28,7 +28,7 @@ class KCustomApplication : Application() {
       } else {
           Timber.plant(object : Tree() {
               override fun isLoggable(tag: String?, priority: Int): Boolean {
-                  return priority > Log.WARN
+                  return priority >= Log.ERROR  // Solo ERROR(6) y ASSERT(7)
               }
 
               override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
