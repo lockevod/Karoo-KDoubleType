@@ -167,13 +167,7 @@ fun Context.streamSextupleFieldSettings(): Flow<List<SextupleFieldSettings>> {
                 jsonWithUnknownKeys.decodeFromString<List<SextupleFieldSettings>>(defaultSextupleFieldSettings)
             }
 
-            if (decodedSettings.size == 5) {
-                decodedSettings + SextupleFieldSettings(
-                    index = 5
-                )
-            } else {
-                decodedSettings
-            }
+            decodedSettings
         } catch (e: Throwable) {
             Timber.tag("KarooDualTypeExtension").e(e, "Failed to read preferences")
             jsonWithUnknownKeys.decodeFromString<List<SextupleFieldSettings>>(defaultSextupleFieldSettings)

@@ -252,7 +252,7 @@ abstract class CustomRollingTypeBase(
                     .onEach { (fieldStates, settingsData) ->
 
                         if ( isCancelled) {
-                            Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
+                            Timber.d("ROLLING Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
                         }
 
@@ -297,7 +297,7 @@ abstract class CustomRollingTypeBase(
 
                         try {
                             if (isCancelled) {
-                                Timber.d("CLIMB Skipping composition, job cancelled: $extension $globalIndex")
+                                Timber.d("ROLLING Skipping composition, job cancelled: $extension $globalIndex")
                                 return@onEach
                             }
                             val newView = withContext(Dispatchers.Main) {

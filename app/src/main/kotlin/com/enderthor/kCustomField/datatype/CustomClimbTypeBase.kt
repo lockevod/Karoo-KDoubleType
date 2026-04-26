@@ -232,7 +232,11 @@ abstract class CustomClimbTypeBase(
                         val headwindFlow =
                             if (listOf(
                                     primaryField,
-                                    secondaryField
+                                    secondaryField,
+                                    thirdField,
+                                    fourthField,
+                                    climbField,
+                                    climbOnField
                                 ).any { it.kaction.name == "HEADWIND" } && generalSettings.isheadwindenabled
                             )
                                 createHeadwindFlow(karooSystem, refreshTime) else flowOf(
@@ -309,7 +313,7 @@ abstract class CustomClimbTypeBase(
                     // (6 streams × 1Hz > 5 renders/seg con delay 200ms) → cola que crece 4-5s de lag.
                     }.conflate().onEach { result ->
                         if ( isCancelled) {
-                            Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
+                            Timber.d("CLIMB Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
                         }
 
@@ -377,11 +381,14 @@ abstract class CustomClimbTypeBase(
 
 
 
-                        val (winddiff, windtext) = if (firstFieldState !is StreamState || secondFieldState !is StreamState) {
-                            val windData = (firstFieldState as? StreamHeadWindData)
-                                ?: (secondFieldState as StreamHeadWindData)
-                            windData.diff to windData.windSpeed.roundToInt().toString()
-                        } else 0.0 to ""
+                        val (winddiff, windtext) = listOf(
+                            firstFieldState, secondFieldState,
+                            thirdFieldState, fourthFieldState,
+                            climbStartFieldState, climbOnFieldState
+                        ).firstOrNull { it is StreamHeadWindData }
+                            ?.let { it as StreamHeadWindData }
+                            ?.let { it.diff to it.windSpeed.roundToInt().toString() }
+                            ?: (0.0 to "")
 
 
                         val clayout = when {
@@ -405,7 +412,7 @@ abstract class CustomClimbTypeBase(
                         //Timber.w("CLIMB field climbField: ${climbField(settings)}  isOnClimb: $isOnClimb isAlwaysclimbOnEnabled: $isAlwaysclimbOnEnabled")
                         try {
                             if ( isCancelled) {
-                                Timber.d("DOUBLE Skipping composition, job cancelled: $extension $globalIndex")
+                                Timber.d("CLIMB Skipping composition, job cancelled: $extension $globalIndex")
                                 return@onEach
                             }
                             val newView = withContext(Dispatchers.Main) {

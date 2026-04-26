@@ -340,7 +340,7 @@ abstract class CustomDoubleTypeBase(
                     throw e
                 }
                 catch (e: DeadObjectException) {
-                    Timber.e(e, "ROLLING Dead object en vista principal, parando")
+                    Timber.e(e, "DOUBLE Dead object en vista principal, parando")
                     scope.cancel()
                 }
 
@@ -354,14 +354,12 @@ abstract class CustomDoubleTypeBase(
 
         emitter.setCancellable {
             try {
-                // Ignorar cancelación inmediata si estamos en modo preview (Profile)
-                Timber.d("CANCEL DOUBLEand config.preview is = "+config.preview)
+                Timber.d("CANCEL DOUBLE config.preview=%s", config.preview)
                 if (config.preview) {
                     Timber.w("Emitter.setCancellable ignored because config.preview=true (profile/preview). extension=$extension index=$globalIndex")
                     return@setCancellable
                 }
 
-                // Nuevo logging diagnóstico para entender por qué se solicita la cancelación
 
 
                 Timber.d("Iniciando cancelación de CustomDoubleTypeBase")

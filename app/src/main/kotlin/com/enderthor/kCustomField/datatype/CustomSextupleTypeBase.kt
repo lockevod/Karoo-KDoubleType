@@ -46,11 +46,11 @@ import kotlinx.coroutines.cancel
 
 import kotlinx.coroutines.flow.catch
 
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.retryWhen
-import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
@@ -59,8 +59,6 @@ import timber.log.Timber
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 
-import android.os.SystemClock
-import kotlinx.coroutines.flow.conflate
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
 abstract class CustomSextupleTypeBase(
@@ -153,7 +151,7 @@ abstract class CustomSextupleTypeBase(
                             }
 
                         } catch (e: Exception) {
-                            Timber.e(e, "DOUBLE Error en vista inicial: $extension $globalIndex ")
+                            Timber.e(e, "SEXTUPLE Error en vista inicial: $extension $globalIndex ")
                         }
                         delay(400L + (Random.nextInt(10) * 150L))
 
@@ -161,8 +159,6 @@ abstract class CustomSextupleTypeBase(
 
                     Timber.d("SEXTUPLE Starting view flow: $extension $globalIndex  karooSystem@$karooSystem ")
 
-                    //var lastTime = 0L // ADDED FOR DEBUGGING
-                    //var counter = 0L // ADDED FOR DEBUGGING
                     dataflow
                         .flatMapLatest { state ->
                             val (settings, generalSettings, userProfile) = state
@@ -190,8 +186,9 @@ abstract class CustomSextupleTypeBase(
 
                             val headwindFlow =
                                 if (listOf(
-                                        primaryField,
-                                        secondaryField
+                                        primaryField, secondaryField,
+                                        thirdField, fourthField,
+                                        fifthField, sixthField
                                     ).any { it.kaction.name == "HEADWIND" } && generalSettings.isheadwindenabled
                                 )
                                     createHeadwindFlow(karooSystem, refreshTime) else flowOf(
@@ -228,10 +225,6 @@ abstract class CustomSextupleTypeBase(
                                 headwindFlow,
                                 generalSettings
                             ) else previewFlow()
-//??????????????????????????????????????????????????????????????
-//                            combine(firstFieldFlow, secondFieldFlow) { firstState, secondState ->
-//                                Triple(firstState, secondState, state)
-//                            }
                             val combinedFlow1 = combine(
                                 firstFieldFlow,
                                 secondFieldFlow,
@@ -268,22 +261,16 @@ abstract class CustomSextupleTypeBase(
                                     state
                                 )
                             }
-                        }.sample(refreshTime)
+                        }.conflate()
                         .onEach { result ->
-                        // ADDED FOR DEBUGGING
-                        //var now = SystemClock.elapsedRealtime()
-                        //var delta = now - lastTime
-                        //lastTime = now
-                        // END DEBUG CODE
 
                         if ( ViewState.isCancelled()) {
-                            Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
+                            Timber.d("SEXTUPLE Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
                         }
                         val (firstFieldState, secondFieldState, thirdFieldState,
                         fourthFieldState, fifthFieldState, sixthFieldState, globalConfig) = result as SextupleResultData
 
-                        //val (setting, generalSettings, userProfile) = globalConfig
                         val setting = globalConfig.settings
                         val generalSettings = globalConfig.generalSettings
                         val userProfile = globalConfig.userProfile
@@ -341,20 +328,15 @@ abstract class CustomSextupleTypeBase(
                                 userProfile,
                                 generalSettings.ispalettezwift
                             )
-// ###################################################################### other fields added about but unsure if isrightzone is okay
-                            val (winddiff, windtext) = if (firstFieldState !is StreamState || secondFieldState !is StreamState ) {
-                                val windData = (firstFieldState as? StreamHeadWindData)
-                                    ?: (secondFieldState as StreamHeadWindData)
-                                        //???????????????????????
-                                windData.diff to windData.windSpeed.roundToInt().toString()
-                            } else 0.0 to ""
-//FOLLOWING appears to be irrelevant
-                            //val fieldNumber = when {
-                            //    firstFieldState is StreamState && secondFieldState is StreamState -> 3
-                            //    firstFieldState is StreamState -> 0
-                            //    secondFieldState is StreamState -> 1
-                            //    else -> 2
-                            //}
+                            val (winddiff, windtext) = listOf(
+                                firstFieldState, secondFieldState,
+                                thirdFieldState, fourthFieldState,
+                                fifthFieldState, sixthFieldState
+                            ).firstOrNull { it is StreamHeadWindData }
+                                ?.let { it as StreamHeadWindData }
+                                ?.let { it.diff to it.windSpeed.roundToInt().toString() }
+                                ?: (0.0 to "")
+
                             val fieldNumber = 2
 
                             val clayout = when {
@@ -368,7 +350,7 @@ abstract class CustomSextupleTypeBase(
 
                             try {
                                 if ( ViewState.isCancelled()) {
-                                    Timber.d("DOUBLE Skipping composition, job cancelled: $extension $globalIndex")
+                                    Timber.d("SEXTUPLE Skipping composition, job cancelled: $extension $globalIndex")
                                     return@onEach
                                 }
                                 val newView = withContext(Dispatchers.Main) {
@@ -383,7 +365,7 @@ abstract class CustomSextupleTypeBase(
                                             secondvalue,
                                             thirdvalue,
                                             fourthvalue,
-                                            fifthvalue, //DEBUGGING: counter.toDouble(), //delta.toDouble()/100
+                                            fifthvalue,
                                             sixthvalue,
                                             firstField(settings),
                                             secondField(settings),
@@ -421,23 +403,15 @@ abstract class CustomSextupleTypeBase(
                                 }
                                 if (newView == null) return@onEach
 
-                               // Timber.d("DOUBLE Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
                                 withContext(Dispatchers.Main) {
                                     if ( ViewState.isCancelled()) return@withContext
                                     emitter.updateView(newView)
-                                    // ADDED TO DEBUG
-                                    //counter += 1
-                                    //if ( counter > 999 ) {
-                                    //    counter = 0
-                                    //}
                                 }
-                                // ***********************************************************
-                                //delay(refreshTime)
                             } catch (e: Exception) {
                                 if (e is CancellationException) {
-                                    Timber.d("DOUBLE View update cancelled normally: $extension $globalIndex")
+                                    Timber.d("SEXTUPLE View update cancelled normally: $extension $globalIndex")
                                 } else {
-                                    Timber.e(e, "DOUBLE Error composing/updating view: $extension $globalIndex")
+                                    Timber.e(e, "SEXTUPLE Error composing/updating view: $extension $globalIndex")
                                     if (coroutineContext.isActive && !ViewState.isCancelled()) {
                                         throw e
                                     }
@@ -447,11 +421,11 @@ abstract class CustomSextupleTypeBase(
                         .catch { e ->
                             when (e) {
                                 is CancellationException -> {
-                                    Timber.d("DOUBLE Flow cancelled: $extension $globalIndex")
+                                    Timber.d("SEXTUPLE Flow cancelled: $extension $globalIndex")
                                     throw e
                                 }
                                 else -> {
-                                    Timber.e(e, "DOUBLE Flow error: $extension $globalIndex")
+                                    Timber.e(e, "SEXTUPLE Flow error: $extension $globalIndex")
                                     throw e
                                 }
                             }
@@ -461,16 +435,16 @@ abstract class CustomSextupleTypeBase(
                             when {
 
                                 cause is CancellationException && ViewState.isCancelled() -> {
-                                    Timber.d("DOUBLE No se reintenta el flujo cancelado por el emitter: $extension $globalIndex")
+                                    Timber.d("SEXTUPLE No se reintenta el flujo cancelado por el emitter: $extension $globalIndex")
                                     false
                                 }
                                 attempt > 4 -> {
-                                    Timber.e(cause, "DOUBLE Max retries reached: $extension $globalIndex (attempt $attempt)")
+                                    Timber.e(cause, "SEXTUPLE Max retries reached: $extension $globalIndex (attempt $attempt)")
                                     delay(Delay.RETRY_LONG.time)
                                     true
                                 }
                                 else -> {
-                                    Timber.w(cause, "DOUBLE Retrying flow: $extension $globalIndex (attempt $attempt)")
+                                    Timber.w(cause, "SEXTUPLE Retrying flow: $extension $globalIndex (attempt $attempt)")
                                     delay(Delay.RETRY_SHORT.time)
                                     true
                                 }
@@ -480,16 +454,16 @@ abstract class CustomSextupleTypeBase(
                         .launchIn(scope)
 
                 } catch (e: CancellationException) {
-                    Timber.d("DOUBLE View operation cancelled: $extension $globalIndex ")
+                    Timber.d("SEXTUPLE View operation cancelled: $extension $globalIndex ")
                     throw e
                 }
                 catch (e: DeadObjectException) {
-                    Timber.e(e, "ROLLING Dead object en vista principal, parando")
+                    Timber.e(e, "SEXTUPLE Dead object en vista principal, parando")
                     scope.cancel()
                 }
 
           } catch (e: Exception) {
-                Timber.e(e, "DOUBLE ViewJob error: $extension $globalIndex ")
+                Timber.e(e, "SEXTUPLE ViewJob error: $extension $globalIndex ")
                 if (!scope.isActive) return@launch
                 delay(1000L)
 
@@ -498,43 +472,20 @@ abstract class CustomSextupleTypeBase(
 
         emitter.setCancellable {
             try {
-                // Ignorar cancelación inmediata si estamos en modo preview (Profile)
-                Timber.d("CANCEL DOUBLEand config.preview is = "+config.preview)
-                if (config.preview) {
-                    Timber.w("Emitter.setCancellable ignored because config.preview=true (profile/preview). extension=$extension index=$globalIndex")
-                    return@setCancellable
-                }
+                if (config.preview) return@setCancellable
 
-                // Nuevo logging diagnóstico para entender por qué se solicita la cancelación
-                Timber.w("Emitter.setCancellable invoked for CustomDoubleTypeBase: extension=$extension index=$globalIndex time=${System.currentTimeMillis()} thread=${Thread.currentThread().name}")
-                val stackSnippet = Throwable().stackTrace.take(12).joinToString("\n") { it.toString() }
-                Timber.w("Emitter cancellation stack (short):\n$stackSnippet")
-
-                Timber.d("Iniciando cancelación de CustomDoubleTypeBase")
-
+                Timber.d("SEXTUPLE Emitter.setCancellable: extension=$extension index=$globalIndex")
 
                 ViewState.setCancelled(true)
-
                 configjob.cancel()
                 viewjob.cancel()
-
-
-                scope.launch {
-                    delay(100)
-                    if (scope.isActive) {
-                        Timber.w("Forzando cancelación del scope de double")
-                    }
-                }
-
                 scope.cancel()
                 scopeJob.cancel()
 
-                Timber.d("Cancelación de CustomDoubleTypeBase completada")
-
-            } catch (e: CancellationException) {
-
+            } catch (_: CancellationException) {
+                // normal
             } catch (e: Exception) {
-                Timber.e(e, "Error durante la cancelación")
+                Timber.e(e, "SEXTUPLE Error durante la cancelación: $extension $globalIndex")
             }
 
         }

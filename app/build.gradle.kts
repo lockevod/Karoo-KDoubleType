@@ -1,8 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.compose.compiler)
-    kotlin("plugin.serialization") version "2.0.20"
+    alias(libs.plugins.jetbrains.kotlin.serialization)
 }
 
 android {
@@ -13,8 +12,8 @@ android {
         applicationId = "com.enderthor.kCustomField"
         minSdk = 23
         targetSdk = 34
-        versionCode = 202602031
-        versionName = "4.1.kmk.1"
+        versionCode = 202604261
+        versionName = "4.0.0"
     }
 
     buildTypes {
@@ -27,15 +26,13 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
     buildFeatures {
         viewBinding = true
         compose = true
         buildConfig = true
     }
 }
+
 
 dependencies {
     implementation(libs.hammerhead.karoo.ext)
