@@ -3,7 +3,7 @@
 
 KDoubleType allows to use custom fields with double types (HR,Power,etc)
 
-<a href="https://www.buymeacoffee.com/enderthor" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+**If you have kdouble < 3.4.0 you must to uninstall first and install the new one. Sorry, it's a problem with android signatures.**
 
 ## Requirements
 - Karoo (tested on last Karoo ) with version 1.527 or later

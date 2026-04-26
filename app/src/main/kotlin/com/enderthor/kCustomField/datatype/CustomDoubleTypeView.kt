@@ -15,6 +15,7 @@ import androidx.glance.preview.ExperimentalGlancePreviewApi
 import androidx.glance.preview.Preview
 import androidx.glance.text.*
 import androidx.glance.unit.ColorProvider
+import io.hammerhead.karooext.models.StreamState
 import timber.log.Timber
 import java.text.DateFormat
 import java.util.Calendar
@@ -503,10 +504,11 @@ fun checkRealZone(action: KarooAction, iszone: Boolean, dNumber: Double, secondV
 @Preview(widthDp = 200, heightDp = 150)
 @Composable
 fun DoubleScreenSelector(
-    selector: Int, showH: Boolean, leftNumber: Double, rightNumber: Double,leftField: DoubleFieldType, rightField: DoubleFieldType,
+    selector: Int, showH: Boolean, leftNumber: Double, rightNumber: Double, leftField: DoubleFieldType, rightField: DoubleFieldType,
     iconColorLeft: ColorProvider, iconColorRight: ColorProvider,
     zoneColorLeft: ColorProvider, zoneColorRight: ColorProvider, fieldSize: FieldSize,
-    isKaroo3: Boolean, layout: FieldPosition, text: String, windDirection: Int, baseBitmap: Bitmap, isdivider:Boolean,  leftNumberSecond:Double = 0.0, rightNumberSecond:Double = 0.0, isClimb: Boolean = false,isClimbField: Boolean = false){
+    isKaroo3: Boolean, layout: FieldPosition, text: String, windDirection: Int, baseBitmap: Bitmap, isdivider:Boolean, leftNumberSecond:Double = 0.0, rightNumberSecond:Double = 0.0, isClimb: Boolean = false, isClimbField: Boolean = false,
+    leftFieldState: StreamState? = null, rightFieldState: StreamState? = null){
 
 
     val leftIcon= leftField.kaction.icon
@@ -516,6 +518,11 @@ fun DoubleScreenSelector(
 
     val ispowerLeft= leftField.kaction.powerField
     val ispowerRight= rightField.kaction.powerField
+    
+    // Detectar si son campos de Flight Attendant
+    val isLeftFA = leftField.kaction.name.startsWith("FA_")
+    val isRightFA = rightField.kaction.name.startsWith("FA_")
+    
     val isLeftInt= (!(leftField.kaction.convert == "speed" || leftField.kaction.zone == "slopeZones" || leftField.kaction.label == "IF")) || (ispowerLeft) || (isClimb)
     val isRightInt= !(rightField.kaction.convert == "speed" || rightField.kaction.zone == "slopeZones" || rightField.kaction.label == "IF")  || (ispowerRight) || (isClimb)
     val leftCivil=leftField.kaction.action==KarooAction.CIVIL_DUSK.action ||  leftField.kaction.action==KarooAction.CIVIL_DAWN.action
@@ -527,29 +534,34 @@ fun DoubleScreenSelector(
     val iszoneLeft= if (checkRealZone(leftField.kaction,leftField.iszone,leftNumber,leftNumberSecond)) leftField.iszone else false
     val iszoneRight= if (checkRealZone(rightField.kaction,rightField.iszone,rightNumber,rightNumberSecond)) rightField.iszone else false
 
-    val newLeft = if (ispowerLeft) (formatNumber(leftNumber, true) + "-" + formatNumber(
-        leftNumberSecond,
-        true
-    ))
-    else if (!showH) formatNumber(leftNumber, isLeftInt, leftTime, leftCivil)
-    else when (selector) {
-        0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString()
-            .take(3) else formatNumber(leftNumber, true, leftTime, leftCivil)
-
-        else -> "0.0"
+    // Formateo especial para campos FA
+    val newLeft = when {
+        isLeftFA && leftFieldState != null -> formatFAValue(leftFieldState, leftField.kaction.name)
+        ispowerLeft -> (formatNumber(leftNumber, true) + "-" + formatNumber(
+            leftNumberSecond,
+            true
+        ))
+        !showH -> formatNumber(leftNumber, isLeftInt, leftTime, leftCivil)
+        else -> when (selector) {
+            0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString()
+                .take(3) else formatNumber(leftNumber, true, leftTime, leftCivil)
+            else -> "0.0"
+        }
     }
 
 
-    val newRight = if (ispowerRight) (formatNumber(rightNumber, true) + "-" + formatNumber(
-        rightNumberSecond,
-        true
-    ))
-    else if (!showH) formatNumber(rightNumber, isRightInt, rightTime, rightCivil)
-    else when (selector) {
-        1, 3 -> if (rightLabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString()
-            .take(3) else formatNumber(rightNumber, true, rightTime, rightCivil)
-
-        else -> "0.0"
+    val newRight = when {
+        isRightFA && rightFieldState != null -> formatFAValue(rightFieldState, rightField.kaction.name)
+        ispowerRight -> (formatNumber(rightNumber, true) + "-" + formatNumber(
+            rightNumberSecond,
+            true
+        ))
+        !showH -> formatNumber(rightNumber, isRightInt, rightTime, rightCivil)
+        else -> when (selector) {
+            1, 3 -> if (rightLabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString()
+                .take(3) else formatNumber(rightNumber, true, rightTime, rightCivil)
+            else -> "0.0"
+        }
     }
 
 

@@ -47,7 +47,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.cancel
 
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.conflate
 
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -81,7 +81,8 @@ abstract class CustomClimbTypeBase(
     private val isAlwaysClimbPos = { settings: ClimbFieldSettings -> settings.isAlwaysClimbPos }
     private val isfirsthorizontal = { settings: ClimbFieldSettings -> settings.isfirsthorizontal }
     private val issecondhorizontal = { settings: ClimbFieldSettings -> settings.issecondhorizontal }
-    private var isOnClimb = false
+    @Volatile private var isCancelled = false
+    @Volatile private var isOnClimb = false
 
     private val refreshTime: Long
         get() = when (karooSystem.hardwareType) {
@@ -107,6 +108,7 @@ abstract class CustomClimbTypeBase(
     // MANTENER: este job es necesario para detectar isOnClimb
     private fun checkClimbStatus(): Job {
         return karooSystem.streamDataFlow(DataType.Type.ELEVATION_TO_TOP)
+            .throttle(2000L) // throttle ANTES del map para reducir carga de CPU
             .map { elevationState ->
                 val elevationValue = (elevationState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_TO_TOP_ID") ?: 0.0
                 val newIsOnClimb = elevationValue > 0.0
@@ -117,8 +119,6 @@ abstract class CustomClimbTypeBase(
                     Timber.d("CLIMB isOnClimb changed to: $isOnClimb (elevation: $elevationValue)")
                 }
             }
-            .distinctUntilChanged()
-            .throttle(2000L) // Aumentado de 1000L a 2000L para menos CPU
             .flowOn(Dispatchers.IO)
             .launchIn(CoroutineScope(Dispatchers.IO))
     }
@@ -134,7 +134,7 @@ abstract class CustomClimbTypeBase(
         var isAlwaysclimbOnEnabled = true
         var isShowClimbField = true
 
-
+        isCancelled = false
         ViewState.setCancelled(false)
 
         val climbMonitorJob = checkClimbStatus()
@@ -167,7 +167,7 @@ abstract class CustomClimbTypeBase(
 
 
 
-        val configjob = CoroutineScope(Dispatchers.IO).launch {
+        val configjob = scope.launch {
             emitter.onNext(UpdateGraphicConfig(showHeader = false))
             emitter.onNext(ShowCustomStreamState(message = "", color = null))
             awaitCancellation()
@@ -175,7 +175,6 @@ abstract class CustomClimbTypeBase(
 
         val viewjob = scope.launch {
             try {
-                //Timber.d("CLIMB Starting view: $extension $globalIndex ")
 
                 try {
 
@@ -305,8 +304,11 @@ abstract class CustomClimbTypeBase(
                             )
                         }
 
-                    }.onEach { result ->
-                        if ( ViewState.isCancelled()) {
+                    // conflate() descarta emisiones intermedias mientras el render está ocupado.
+                    // Sin esto, los 6 streams producen más emisiones de las que se pueden renderizar
+                    // (6 streams × 1Hz > 5 renders/seg con delay 200ms) → cola que crece 4-5s de lag.
+                    }.conflate().onEach { result ->
+                        if ( isCancelled) {
                             Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
                         }
@@ -402,12 +404,12 @@ abstract class CustomClimbTypeBase(
 
                         //Timber.w("CLIMB field climbField: ${climbField(settings)}  isOnClimb: $isOnClimb isAlwaysclimbOnEnabled: $isAlwaysclimbOnEnabled")
                         try {
-                            if ( ViewState.isCancelled()) {
+                            if ( isCancelled) {
                                 Timber.d("DOUBLE Skipping composition, job cancelled: $extension $globalIndex")
                                 return@onEach
                             }
                             val newView = withContext(Dispatchers.Main) {
-                                if ( ViewState.isCancelled()) {
+                                if ( isCancelled) {
                                     return@withContext null
                                 }
                                 glance.compose(context, DpSize.Unspecified) {
@@ -453,10 +455,12 @@ abstract class CustomClimbTypeBase(
                             if (newView == null) return@onEach
                             // Timber.d("CLIMB Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
                             withContext(Dispatchers.Main) {
-                                if ( ViewState.isCancelled()) return@withContext
+                                if ( isCancelled) return@withContext
                                 emitter.updateView(newView)
                             }
-                            delay(refreshTime)
+                            // Sin delay: el SDK Karoo limita los streams a 1Hz como máximo,
+                            // así que el tiempo de composición de Glance (~50-100ms) ya actúa
+                            // de throttle suficiente. conflate() actúa de red de seguridad.
                         } catch (e: Exception) {
                             Timber.e(
                                 e,
@@ -481,7 +485,7 @@ abstract class CustomClimbTypeBase(
 
                             when {
 
-                                cause is CancellationException && ViewState.isCancelled() -> {
+                                cause is CancellationException && isCancelled -> {
                                     Timber.d("CLIMB  No se reintenta el flujo cancelado por el emitter: $extension $globalIndex")
                                     false  // Importante: no reintentar
                                 }
@@ -527,31 +531,19 @@ abstract class CustomClimbTypeBase(
         emitter.setCancellable {
             try {
                 // Si esta vista está en modo preview (p.ej. Profile del Karoo), no hacemos la cancelación completa
-                Timber.d("CANCEL CLIMB and config.preview is = "+config.preview)
+                Timber.d("CANCEL CLIMB and config.preview is = %s", config.preview)
                 if (config.preview) {
                     Timber.w("Emitter.setCancellable ignored because config.preview=true (profile/preview). extension=$extension index=$globalIndex")
                     return@setCancellable
                 }
 
-                // Nuevo logging diagnóstico para entender por qué se solicita la cancelación
-                Timber.w("Emitter.setCancellable invoked for CustomClimbTypeBase: extension=$extension index=$globalIndex time=${System.currentTimeMillis()} thread=${Thread.currentThread().name}")
-                val stackSnippet = Throwable().stackTrace.take(12).joinToString("\n") { it.toString() }
-                Timber.w("Emitter cancellation stack (short):\n$stackSnippet")
 
                 Timber.d("Cancelando todos los jobs y flujos de CLIMB")
+                isCancelled = true
                 ViewState.setCancelled(true)
 
                 configjob.cancel()
                 viewjob.cancel()
-
-
-                scope.launch {
-                    delay(100)
-                    if (scope.isActive) {
-                        Timber.w("Forzando cancelación del scope de CLIMB")
-                    }
-                }
-
                 scope.cancel()
                 scopeJob.cancel()
 

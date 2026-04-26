@@ -29,10 +29,8 @@ import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlin.random.Random
 import timber.log.Timber
 
 
@@ -49,7 +47,10 @@ import kotlin.math.exp
 
 class StickyStreamState private constructor() {
     companion object {
-        private val lastValidStates = mutableMapOf<String, Pair<Any, Long>>()
+        private const val MAX_STATES = 20
+        private val lastValidStates = object : LinkedHashMap<String, Pair<Any, Long>>(MAX_STATES, 0.75f, true) {
+            override fun removeEldestEntry(eldest: Map.Entry<String, Pair<Any, Long>>) = size > MAX_STATES
+        }
         private const val STICKY_TIMEOUT_MS = 7000L
 
         fun process(state: Any, actionName: String): Any {
@@ -65,10 +66,6 @@ class StickyStreamState private constructor() {
             val (lastState, timestamp) = lastStatePair
 
             if (currentTime - timestamp < STICKY_TIMEOUT_MS) {
-
-               // if (state !is StreamState.Searching || Random.nextInt(20) == 0) {
-                    //Timber.d("Usando valor almacenado para $actionName, edad: ${currentTime - timestamp}ms")
-                //}
                 return lastState
             }
 
@@ -164,6 +161,54 @@ fun convertValue(
     return convertedValue
 }
 
+/**
+ * Formatea valores de Flight Attendant (FA) a strings legibles
+ * Convierte valores numéricos enum a etiquetas descriptivas
+ */
+fun formatFAValue(fieldState: StreamState, actionName: String): String {
+    if (fieldState !is StreamState.Streaming) return "--"
+    
+    val value = fieldState.dataPoint.singleValue?.toInt() ?: 0
+    
+    return when (actionName) {
+        // Estados de suspensión (enum values de Flight Attendant)
+        "FA_SUSPENSION_STATE_FRONT", "FA_SUSPENSION_STATE_REAR" -> {
+            when (value) {
+                0 -> "Close"
+                1 -> "Open"
+                2 -> "Lock"
+                3 -> "Med"
+                4 -> "Firm"
+                5 -> "Soft"
+                else -> "NA"
+            }
+        }
+        // Conteos de compresión (mostrar número simples)
+        "FA_SUSPENSION_STATE_COUNT_FRONT", "FA_SUSPENSION_STATE_COUNT_REAR" -> {
+            value.toString()
+        }
+        // Sesgo/balance de suspensión (mostrar con porcentaje)
+        "FA_SUSPENSION_BIAS" -> {
+            "$value%"
+        }
+        else -> value.toString()
+    }
+}
+
+/**
+ * Verifica si un valor de FA está disponible
+ */
+fun isFAFieldAvailable(fieldState: StreamState): Boolean {
+    return fieldState is StreamState.Streaming && fieldState.dataPoint.singleValue != null
+}
+
+/**
+ * Obtiene el valor numérico de un campo FA para usar en colores/zonas
+ */
+fun getFANumericValue(fieldState: StreamState): Double {
+    return (fieldState as? StreamState.Streaming)?.dataPoint?.singleValue ?: 0.0
+}
+
 fun getColorProvider(context: Context, action: KarooAction, colorzone: Boolean): ColorProvider {
 
 
@@ -221,10 +266,13 @@ fun KarooSystemService.getFieldFlow(
             else -> throw IllegalArgumentException("Tipo de campo no soportado")
         }
 
-        // OPTIMIZACIÓN: evitar emit inicial innecesario para reducir carga
-        // Emitir solo para streams que realmente lo necesiten
+        // Emitir un valor inicial para que combine() no bloquee esperando el primer valor de cada stream.
+        // Crítico en ClimbType que combina 6 streams: sin esto, el primer render puede tardar 4-5s
+        // si algún stream (p.ej. DISTANCE_TO_TOP fuera de subida) tarda en responder.
         if (action.name == "HEADWIND" && generalSettings.isheadwindenabled) {
             emit(StreamHeadWindData(0.0, 0.0))
+        } else {
+            emit(StreamState.Searching)
         }
 
         while (currentCoroutineContext().isActive) {
@@ -391,10 +439,6 @@ fun KarooSystemService.getFieldFlow(
                     is CancellationException -> {
                         if (ViewState.isCancelledByEmitter) {
                             Timber.d("getFieldFlow cancelado por emitter para ${action.name}")
-                            // Nuevo logging diagnóstico: traza corta y contexto
-                            Timber.w("getFieldFlow cancellation diagnostic: action=${action.name} time=${System.currentTimeMillis()} thread=${Thread.currentThread().name}")
-                            val cancelStack = Throwable().stackTrace.take(16).joinToString("\n") { it.toString() }
-                            Timber.w("getFieldFlow cancellation stack (short):\n$cancelStack")
                             throw e
                         }
                         Timber.d("Cancelación ignorada en getFieldFlow para ${action.name}")
@@ -411,10 +455,6 @@ fun KarooSystemService.getFieldFlow(
     } catch (e: CancellationException) {
         if (ViewState.isCancelledByEmitter) {
             Timber.d("getFieldFlow cancelado por emitter")
-            // Nuevo logging diagnóstico general
-            Timber.w("getFieldFlow cancellation diagnostic (general) time=${System.currentTimeMillis()} thread=${Thread.currentThread().name}")
-            val cancelStack = Throwable().stackTrace.take(16).joinToString("\n") { it.toString() }
-            Timber.w("getFieldFlow cancellation stack (short):\n$cancelStack")
             throw e
         }
         Timber.d("Cancelación ignorada en getFieldFlow")
@@ -595,45 +635,6 @@ fun getFieldState(
         Quintuple(0.0, ColorProvider(Color.White, Color.Black), ColorProvider(Color.White, Color.Black), false, 0.0)
     }
 }
-
-fun <T> retryFlow(
-    maxAttempts: Int = 8,
-    initialDelayMillis: Long = 80,
-    maxDelayMillis: Long = 400,
-    action: suspend FlowCollector<T>.() -> Unit,
-    onFailure: suspend FlowCollector<T>.(Int, Throwable) -> Unit
-): Flow<T> = flow {
-    var attempts = 0
-    var delayMillis = initialDelayMillis
-
-    while (attempts < maxAttempts) {
-        try {
-            action()
-            return@flow
-        } catch (e: Throwable) {
-            when (e) {
-                is IndexOutOfBoundsException, is Exception -> {
-                    if (e is CancellationException) {
-                        Timber.d("Job cancelled during attempt $attempts")
-                    } else {
-                        Timber.e(e, "Error en attempt $attempts")
-                    }
-                    attempts++
-                    if (attempts >= maxAttempts) {
-                        onFailure(attempts, e)
-                    } else {
-                        delay(delayMillis + Random.nextLong(0, delayMillis / 2))
-                        delayMillis = (delayMillis * 2).coerceAtMost(maxDelayMillis)
-                    }
-                }
-                else -> throw e
-            }
-        }
-    }
-}
-//ADD
-
-// Estado del modelo diferencial W' Balance Prime - Variables estáticas para mantener estado
 
 
 private object WPrimeBalanceState {

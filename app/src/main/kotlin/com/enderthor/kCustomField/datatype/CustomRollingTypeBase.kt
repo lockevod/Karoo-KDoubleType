@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retryWhen
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
@@ -68,6 +69,8 @@ abstract class CustomRollingTypeBase(
     private val rollingtime = { settings: OneFieldSettings -> settings.rollingtime }
     private val isextratime = { settings: OneFieldSettings -> settings.isextratime }
 
+    @Volatile private var isCancelled = false
+
     private val refreshTime: Long
         get() = if (karooSystem.hardwareType == HardwareType.K2)
             RefreshTime.MID.time + RefreshTime.EXTRA_ROLLING.time else RefreshTime.HALF.time + RefreshTime.EXTRA_ROLLING.time
@@ -95,13 +98,14 @@ abstract class CustomRollingTypeBase(
 
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
+        isCancelled = false
         ViewState.setCancelled(false)
 
 
 
         val globalIndex = index
 
-        val configjob = CoroutineScope(Dispatchers.IO).launch {
+        val configjob = scope.launch {
             emitter.onNext(UpdateGraphicConfig(showHeader = false))
             emitter.onNext(ShowCustomStreamState(message = "", color = null))
             awaitCancellation()
@@ -241,9 +245,13 @@ abstract class CustomRollingTypeBase(
                             )
                         }
                     }
+                    // conflate() descarta emisiones intermedias mientras el render está ocupado.
+                    // El SDK Karoo limita los streams a 1Hz máximo, así que el tiempo de
+                    // composición de Glance (~50-100ms) ya actúa de throttle suficiente.
+                    .conflate()
                     .onEach { (fieldStates, settingsData) ->
 
-                        if ( ViewState.isCancelled()) {
+                        if ( isCancelled) {
                             Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
                         }
@@ -288,12 +296,12 @@ abstract class CustomRollingTypeBase(
                         val selector: Boolean = valuestream is StreamState
 
                         try {
-                            if (ViewState.isCancelled()) {
+                            if (isCancelled) {
                                 Timber.d("CLIMB Skipping composition, job cancelled: $extension $globalIndex")
                                 return@onEach
                             }
                             val newView = withContext(Dispatchers.Main) {
-                                if ( ViewState.isCancelled()) {
+                                if ( isCancelled) {
                                     return@withContext null
                                 }
                                 glance.compose(context, DpSize.Unspecified) {
@@ -322,11 +330,13 @@ abstract class CustomRollingTypeBase(
                             //Timber.d("ROLLING Updating view: $extension $index cyclic: $cyclicIndex value: $value ")
                             if (newView == null) return@onEach
                             withContext(Dispatchers.Main) {
-                                if (ViewState.isCancelled()) return@withContext
+                                if (isCancelled) return@withContext
 
                                 emitter.updateView(newView)
                             }
-                            delay(refreshTime)
+                            // Sin delay: el SDK Karoo limita los streams a 1Hz como máximo,
+                            // así que el tiempo de composición de Glance (~50-100ms) ya actúa
+                            // de throttle suficiente. conflate() actúa de red de seguridad.
 
                         } catch (e: Exception) {
                             Timber.e(e, "ROLLING Error composing/updating view: $extension $index")
@@ -337,7 +347,7 @@ abstract class CustomRollingTypeBase(
                             Timber.d("ROLLING View update cancelled normally: $extension $globalIndex")
                         } else {
                             Timber.e(e, "ROLLING Error composing/updating view: $extension $globalIndex")
-                            if (coroutineContext.isActive && !ViewState.isCancelled()) {
+                            if (coroutineContext.isActive && !isCancelled) {
                                 throw e
                             }
                         }    }
@@ -345,7 +355,7 @@ abstract class CustomRollingTypeBase(
 
                         when {
                             // No reintentar si es cancelación del emitter
-                            cause is CancellationException && ViewState.isCancelled() -> {
+                            cause is CancellationException && isCancelled -> {
                                 Timber.d("ROLLING No se reintenta el flujo cancelado por el emitter: $extension $globalIndex")
                                 false
                             }
@@ -391,19 +401,11 @@ abstract class CustomRollingTypeBase(
                 }
 
                 Timber.d("Cancelando todos los jobs y flujos")
+                isCancelled = true
                 ViewState.setCancelled(true)
 
                 configjob.cancel()
                 viewjob.cancel()
-
-
-                scope.launch {
-                    delay(100)
-                    if (scope.isActive) {
-                        Timber.w("Forzando cancelación del scope de ROLLING")
-                    }
-                }
-
                 scope.cancel()
                 scopeJob.cancel()
 
