@@ -2,6 +2,7 @@
 <resources>
     <!-- Tab names -->
     <string name="tab_field" translatable="false">Custom</string>
+    <string name="tab_6field" translatable="false">Sextuple</string>
     <string name="tab_rolling" translatable="false">Rolling</string>
     <string name="tab_smart" translatable="false">Smart</string>
     <string name="tab_wbal" translatable="false">W\' Bal.</string>
@@ -22,6 +23,11 @@
     <string name="custom_field_title">Field %1$d</string>
     <string name="save_custom" translatable="false">Save Custom</string>
     <string name="custom_warning">Be careful to use more than 4 custom fields simultaneously in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues</string>
+
+    <!-- Sextuple fields -->
+    <string name="fifth_field">Fifth Field</string>
+    <string name="sixth_field">Sixth Field</string>
+    <string name="sextuple_warning">Be careful to use more than 1 sextuple field simultaneously in the same profile, Hammerhead extension are in early versions of Karoo and it may cause performance issues</string>
 
     <!-- Smart climb -->
     <string name="climb_field_title">Climb Field</string>
@@ -91,6 +97,12 @@
     <string name="custom_double_vertical_description2">Karoo DualType Five</string>
     <string name="custom_double_vertical_description3">Karoo DualType Six</string>
     <string name="custom_vertical_double2">KDouble Five</string>
+    <string name="custom_sextuple1">KSextuple One</string>
+    <string name="custom_sextuple_description1">Karoo SextupleType One</string>
+    <string name="custom_sextuple2">KSextuple Two</string>
+    <string name="custom_sextuple_description2">Karoo SextupleType Two</string>
+    <string name="custom_sextuple3">KSextuple Three</string>
+    <string name="custom_sextuple_description3">Karoo SextupleType Three</string>
     <string name="custom_rolling1">KRolling One</string>
     <string name="custom_rolling_description1">Karoo Rolling Type One</string>
     <string name="custom_rolling2">KRolling Two</string>

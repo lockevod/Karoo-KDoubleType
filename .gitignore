@@ -9,3 +9,5 @@
 .cxx
 local.properties
 /app/release
+gradle.properties
+settings.gradle.kts

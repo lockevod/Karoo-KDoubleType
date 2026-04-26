@@ -46,6 +46,7 @@ fun TabLayout() {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf(
         stringResource(R.string.tab_field),
+        stringResource(R.string.tab_6field),
         stringResource(R.string.tab_rolling),
         stringResource(R.string.tab_smart),
         stringResource(R.string.tab_wbal),
@@ -102,10 +103,11 @@ fun TabLayout() {
 
             when (selectedTabIndex) {
                 0 -> ConfFields(ctx)
-                1 -> ConfRolling(ctx)
-                2 -> ConfSmart(ctx)
-                3 -> ConfWBal(ctx)
-                4 -> ConfGeneral()
+                1 -> Conf6Fields(ctx)
+                2 -> ConfRolling(ctx)
+                3 -> ConfSmart(ctx)
+                4 -> ConfWBal(ctx)
+                5 -> ConfGeneral()
 
             }
 
@@ -518,6 +520,229 @@ fun ConfFields(ctx: Context) {
                 coroutineScope.launch {
                     savedDialogVisible = true
                     saveDoubleFieldSettings(ctx, doubleFieldSettingsList)
+                }
+            }) {
+                Icon(Icons.Default.Done, contentDescription = stringResource(R.string.save_custom_desc))
+                Spacer(modifier = Modifier.width(5.dp))
+                Text(stringResource(R.string.save_custom))
+                Spacer(modifier = Modifier.width(5.dp))
+            }
+        }
+    }
+
+    if (savedDialogVisible) {
+        AlertDialog(onDismissRequest = { savedDialogVisible = false },
+            confirmButton = { Button(onClick = { savedDialogVisible = false }) { Text(stringResource(R.string.ok)) } },
+            text = { Text(stringResource(R.string.settings_saved)) }
+        )
+    }
+}
+
+//ADDED change doublefieldindex to hexfieldindex, add fields
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun Conf6Fields(ctx: Context) {
+
+    val coroutineScope = rememberCoroutineScope()
+
+    var savedDialogVisible by remember { mutableStateOf(false) }
+
+    val sextupleFieldSettingsList = remember { mutableStateListOf(SextupleFieldSettings(), SextupleFieldSettings(), SextupleFieldSettings()) }
+
+    var generalSettings by remember { mutableStateOf(GeneralSettings()) }
+
+    LaunchedEffect(Unit) {
+        ctx.streamGeneralSettings().collect { settings ->
+            generalSettings = settings
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        ctx.streamSextupleFieldSettings().collect { settings ->
+            if (settings.isNotEmpty()) {
+                sextupleFieldSettingsList.clear()
+                sextupleFieldSettingsList.addAll(settings)
+            }
+        }
+    }
+
+
+    val sextupleFieldSettingsDerived = remember {
+        derivedStateOf { sextupleFieldSettingsList.toList() }
+    }
+
+    //imber.d("List size ${doubleFieldSettingsDerived.value.size} and iskaroo3 $iskaroo")
+
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .background(MaterialTheme.colorScheme.background)) {
+        Column(
+            modifier = Modifier
+                .padding(5.dp)
+                .verticalScroll(rememberScrollState())
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            sextupleFieldSettingsDerived.value.forEachIndexed { index, sextupleFieldSettings ->
+                if (index < 1 || (index in 1..2) ) {
+                    TopAppBar(title = { Text(stringResource(R.string.custom_field_title, index + 1)) })
+
+                    DropdownDoubleField(
+                        stringResource(R.string.first_field),
+                        sextupleFieldSettings.onefield,
+                        generalSettings.isheadwindenabled
+                    ) { newAction ->
+                        val updatedZone =
+                            if (newAction.kaction.zone == "none") false else sextupleFieldSettings.onefield.iszone
+                        val updatednewAction = newAction.copy(iszone = updatedZone)
+                        sextupleFieldSettingsList[index] =
+                            sextupleFieldSettings.copy(onefield = updatednewAction)
+                    }
+                    ZoneMultiSwitch(
+                        0,
+                        sextupleFieldSettings.onefield.iszone,
+                        sextupleFieldSettings.onefield.kaction.zone != "none"
+                    ) { newZone ->
+                        val updatedZone =
+                            if (sextupleFieldSettings.onefield.kaction.zone == "none") false else newZone
+                        sextupleFieldSettingsList[index] = sextupleFieldSettings.copy(
+                            onefield = sextupleFieldSettings.onefield.copy(iszone = updatedZone)
+                        )
+                    }
+
+                    DropdownDoubleField(
+                        stringResource(R.string.second_field),
+                        sextupleFieldSettings.secondfield,
+                        generalSettings.isheadwindenabled
+                    ) { newAction ->
+                        val updatedZone =
+                            if (newAction.kaction.zone == "none") false else sextupleFieldSettings.secondfield.iszone
+                        val updatednewAction = newAction.copy(iszone = updatedZone)
+                        sextupleFieldSettingsList[index] =
+                            sextupleFieldSettings.copy(secondfield = updatednewAction)
+                    }
+                    ZoneMultiSwitch(
+                        0,
+                        sextupleFieldSettings.secondfield.iszone,
+                        sextupleFieldSettings.secondfield.kaction.zone != "none"
+                    ) { newZone ->
+                        val updatedZone =
+                            if (sextupleFieldSettings.secondfield.kaction.zone == "none") false else newZone
+                        sextupleFieldSettingsList[index] = sextupleFieldSettings.copy(
+                            secondfield = sextupleFieldSettings.secondfield.copy(iszone = updatedZone)
+                        )
+                    }
+
+                    DropdownDoubleField(
+                        stringResource(R.string.third_field),
+                        sextupleFieldSettings.thirdfield,
+                        generalSettings.isheadwindenabled
+                    ) { newAction ->
+                        val updatedZone =
+                            if (newAction.kaction.zone == "none") false else sextupleFieldSettings.thirdfield.iszone
+                        val updatednewAction = newAction.copy(iszone = updatedZone)
+                        sextupleFieldSettingsList[index] =
+                            sextupleFieldSettings.copy(thirdfield = updatednewAction)
+                    }
+                    ZoneMultiSwitch(
+                        0,
+                        sextupleFieldSettings.thirdfield.iszone,
+                        sextupleFieldSettings.thirdfield.kaction.zone != "none"
+                    ) { newZone ->
+                        val updatedZone =
+                            if (sextupleFieldSettings.thirdfield.kaction.zone == "none") false else newZone
+                        sextupleFieldSettingsList[index] = sextupleFieldSettings.copy(
+                            thirdfield = sextupleFieldSettings.thirdfield.copy(iszone = updatedZone)
+                        )
+                    }
+
+                    DropdownDoubleField(
+                        stringResource(R.string.fourth_field),
+                        sextupleFieldSettings.fourthfield,
+                        generalSettings.isheadwindenabled
+                    ) { newAction ->
+                        val updatedZone =
+                            if (newAction.kaction.zone == "none") false else sextupleFieldSettings.fourthfield.iszone
+                        val updatednewAction = newAction.copy(iszone = updatedZone)
+                        sextupleFieldSettingsList[index] =
+                            sextupleFieldSettings.copy(fourthfield = updatednewAction)
+                    }
+                    ZoneMultiSwitch(
+                        0,
+                        sextupleFieldSettings.fourthfield.iszone,
+                        sextupleFieldSettings.fourthfield.kaction.zone != "none"
+                    ) { newZone ->
+                        val updatedZone =
+                            if (sextupleFieldSettings.fourthfield.kaction.zone == "none") false else newZone
+                        sextupleFieldSettingsList[index] = sextupleFieldSettings.copy(
+                            fourthfield = sextupleFieldSettings.fourthfield.copy(iszone = updatedZone)
+                        )
+                    }
+
+                    DropdownDoubleField(
+                        stringResource(R.string.fifth_field),
+                        sextupleFieldSettings.fifthfield,
+                        generalSettings.isheadwindenabled
+                    ) { newAction ->
+                        val updatedZone =
+                            if (newAction.kaction.zone == "none") false else sextupleFieldSettings.fifthfield.iszone
+                        val updatednewAction = newAction.copy(iszone = updatedZone)
+                        sextupleFieldSettingsList[index] =
+                            sextupleFieldSettings.copy(fifthfield = updatednewAction)
+                    }
+                    ZoneMultiSwitch(
+                        0,
+                        sextupleFieldSettings.fifthfield.iszone,
+                        sextupleFieldSettings.fifthfield.kaction.zone != "none"
+                    ) { newZone ->
+                        val updatedZone =
+                            if (sextupleFieldSettings.fifthfield.kaction.zone == "none") false else newZone
+                        sextupleFieldSettingsList[index] = sextupleFieldSettings.copy(
+                            fifthfield = sextupleFieldSettings.fifthfield.copy(iszone = updatedZone)
+                        )
+                    }
+
+                    DropdownDoubleField(
+                        stringResource(R.string.sixth_field),
+                        sextupleFieldSettings.sixthfield,
+                        generalSettings.isheadwindenabled
+                    ) { newAction ->
+                        val updatedZone =
+                            if (newAction.kaction.zone == "none") false else sextupleFieldSettings.sixthfield.iszone
+                        val updatednewAction = newAction.copy(iszone = updatedZone)
+                        sextupleFieldSettingsList[index] =
+                            sextupleFieldSettings.copy(sixthfield = updatednewAction)
+                    }
+                    ZoneMultiSwitch(
+                        0,
+                        sextupleFieldSettings.sixthfield.iszone,
+                        sextupleFieldSettings.sixthfield.kaction.zone != "none"
+                    ) { newZone ->
+                        val updatedZone =
+                            if (sextupleFieldSettings.sixthfield.kaction.zone == "none") false else newZone
+                        sextupleFieldSettingsList[index] = sextupleFieldSettings.copy(
+                            secondfield = sextupleFieldSettings.sixthfield.copy(iszone = updatedZone)
+                        )
+                    }
+
+                    if(index>1) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            stringResource(R.string.sextuple_warning),
+                            fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+
+                }
+            }
+
+            FilledTonalButton(modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp), onClick = {
+                coroutineScope.launch {
+                    savedDialogVisible = true
+                    saveSextupleFieldSettings(ctx, sextupleFieldSettingsList)
                 }
             }) {
                 Icon(Icons.Default.Done, contentDescription = stringResource(R.string.save_custom_desc))

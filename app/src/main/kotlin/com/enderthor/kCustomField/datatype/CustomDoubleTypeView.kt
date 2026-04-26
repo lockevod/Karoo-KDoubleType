@@ -86,6 +86,17 @@ fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivi
 }
 
 
+fun trimNumberTo3Chars(x: String): String {
+    val hasDecimal = x.contains('.')
+    if (!hasDecimal) return x
+
+    val limit = if (x.startsWith('-')) 4 else 3
+    val cut = x.take(limit)
+
+    return cut.trimEnd('.')
+}
+
+
 @Composable
 private fun VerticalDivider(isTopField: Boolean, fieldSize: FieldSize, isdivider: Boolean,isClimbField: Boolean = false) {
     val height = when {
@@ -624,6 +635,183 @@ fun DoubleScreenSelector(
     }
 }
 
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 200, heightDp = 150)
+@Composable
+fun SextupleScreenSelector(
+    selector: Int, showH: Boolean, firstNumber: Double, secondNumber: Double, thirdNumber: Double, fourthNumber: Double, fifthNumber: Double, sixthNumber: Double,
+    firstField: DoubleFieldType, secondField: DoubleFieldType, thirdField: DoubleFieldType, fourthField: DoubleFieldType, fifthField: DoubleFieldType, sixthField: DoubleFieldType,
+    iconColorFirst: ColorProvider, iconColorSecond: ColorProvider, iconColorThird: ColorProvider, iconColorFourth: ColorProvider, iconColorFifth: ColorProvider, iconColorSixth: ColorProvider,
+    zoneColorFirst: ColorProvider, zoneColorSecond: ColorProvider, zoneColorThird: ColorProvider, zoneColorFourth: ColorProvider, zoneColorFifth: ColorProvider, zoneColorSixth: ColorProvider, fieldSize: FieldSize,
+    isKaroo3: Boolean, layout: FieldPosition, text: String, windDirection: Int, baseBitmap: Bitmap, isdivider:Boolean,  firstNumberSecond:Double = 0.0, secondNumberSecond:Double = 0.0, thirdNumberSecond:Double = 0.0, fourthNumberSecond:Double = 0.0, fifthNumberSecond:Double = 0.0, sixthNumberSecond:Double = 0.0, isClimb: Boolean = false,isClimbField: Boolean = false){
+
+
+    val firstIcon= firstField.kaction.icon
+    val secondIcon= secondField.kaction.icon
+    val thirdIcon= thirdField.kaction.icon
+    val fourthIcon= fourthField.kaction.icon
+    val fifthIcon= fifthField.kaction.icon
+    val sixthIcon= sixthField.kaction.icon
+    val firstLabel= firstField.kaction.label
+    val secondLabel= secondField.kaction.label
+    val thirdLabel= thirdField.kaction.label
+    val fourthLabel= fourthField.kaction.label
+    val fifthLabel= fifthField.kaction.label
+    val sixthLabel= sixthField.kaction.label
+
+    val ispowerFirst= firstField.kaction.powerField
+    val ispowerSecond= secondField.kaction.powerField
+    val ispowerThird= thirdField.kaction.powerField
+    val ispowerFourth= fourthField.kaction.powerField
+    val ispowerFifth= fifthField.kaction.powerField
+    val ispowerSixth= sixthField.kaction.powerField
+    val isFirstInt= (!(firstField.kaction.convert == "speed" || firstField.kaction.zone == "slopeZones" || firstField.kaction.label == "IF")) || (ispowerFirst) || (isClimb)
+    val isSecondInt= !(secondField.kaction.convert == "speed" || secondField.kaction.zone == "slopeZones" || secondField.kaction.label == "IF")  || (ispowerSecond) || (isClimb)
+    val isThirdInt= !(thirdField.kaction.convert == "speed" || thirdField.kaction.zone == "slopeZones" || thirdField.kaction.label == "IF")  || (ispowerThird) || (isClimb)
+    val isFourthInt= !(fourthField.kaction.convert == "speed" || fourthField.kaction.zone == "slopeZones" || fourthField.kaction.label == "IF")  || (ispowerFourth) || (isClimb)
+    val isFifthInt= !(fifthField.kaction.convert == "speed" || fifthField.kaction.zone == "slopeZones" || fifthField.kaction.label == "IF")  || (ispowerFifth) || (isClimb)
+    val isSixthInt= !(sixthField.kaction.convert == "speed" || sixthField.kaction.zone == "slopeZones" || sixthField.kaction.label == "IF")  || (ispowerSixth) || (isClimb)
+    val firstCivil=firstField.kaction.action==KarooAction.CIVIL_DUSK.action ||  firstField.kaction.action==KarooAction.CIVIL_DAWN.action
+    val secondCivil=secondField.kaction.action==KarooAction.CIVIL_DUSK.action ||  secondField.kaction.action==KarooAction.CIVIL_DAWN.action
+    val thirdCivil=thirdField.kaction.action==KarooAction.CIVIL_DUSK.action ||  thirdField.kaction.action==KarooAction.CIVIL_DAWN.action
+    val fourthCivil=fourthField.kaction.action==KarooAction.CIVIL_DUSK.action ||  fourthField.kaction.action==KarooAction.CIVIL_DAWN.action
+    val fifthCivil=fifthField.kaction.action==KarooAction.CIVIL_DUSK.action ||  fifthField.kaction.action==KarooAction.CIVIL_DAWN.action
+    val sixthCivil=sixthField.kaction.action==KarooAction.CIVIL_DUSK.action ||  sixthField.kaction.action==KarooAction.CIVIL_DAWN.action
+    val firstTime=firstField.kaction.action==KarooAction.TIMETODEST.action
+    val secondTime=secondField.kaction.action==KarooAction.TIMETODEST.action
+    val thirdTime=thirdField.kaction.action==KarooAction.TIMETODEST.action
+    val fourthTime=fourthField.kaction.action==KarooAction.TIMETODEST.action
+    val fifthTime=fifthField.kaction.action==KarooAction.TIMETODEST.action
+    val sixthTime=sixthField.kaction.action==KarooAction.TIMETODEST.action
+
+
+    val iszoneFirst= if (checkRealZone(firstField.kaction,firstField.iszone,firstNumber,firstNumberSecond)) firstField.iszone else false
+    val iszoneSecond= if (checkRealZone(secondField.kaction,secondField.iszone,secondNumber,secondNumberSecond)) secondField.iszone else false
+    val iszoneThird= if (checkRealZone(thirdField.kaction,thirdField.iszone,thirdNumber,thirdNumberSecond)) thirdField.iszone else false
+    val iszoneFourth= if (checkRealZone(fourthField.kaction,fourthField.iszone,fourthNumber,fourthNumberSecond)) fourthField.iszone else false
+    val iszoneFifth= if (checkRealZone(fifthField.kaction,fifthField.iszone,fifthNumber,fifthNumberSecond)) fifthField.iszone else false
+    val iszoneSixth= if (checkRealZone(sixthField.kaction,sixthField.iszone,sixthNumber,sixthNumberSecond)) sixthField.iszone else false
+
+    val newFirst = if (ispowerFirst) (formatNumber(firstNumber, true) + "-" + formatNumber(
+        firstNumberSecond,
+        true
+    ))
+    else formatNumber(firstNumber, isFirstInt, firstTime, firstCivil)
+
+
+    val newSecond = if (ispowerSecond) (formatNumber(secondNumber, true) + "-" + formatNumber(
+        secondNumberSecond,
+        true
+    ))
+    else formatNumber(secondNumber, isSecondInt, secondTime, secondCivil)
+
+
+    val newThird = if (ispowerThird) (formatNumber(thirdNumber, true) + "-" + formatNumber(
+        thirdNumberSecond,
+        true
+    ))
+    else formatNumber(thirdNumber, isThirdInt, thirdTime, thirdCivil)
+
+
+    val newFourth = if (ispowerFourth) (formatNumber(fourthNumber, true) + "-" + formatNumber(
+        fourthNumberSecond,
+        true
+    ))
+    else formatNumber(fourthNumber, isFourthInt, fourthTime, fourthCivil)
+
+
+    val newFifth = if (ispowerFifth) (formatNumber(fifthNumber, true) + "-" + formatNumber(
+        fifthNumberSecond,
+        true
+    ))
+    else formatNumber(fifthNumber, isFifthInt, fifthTime, fifthCivil)
+
+
+    val newSixth = if (ispowerSixth) (formatNumber(sixthNumber, true) + "-" + formatNumber(
+        sixthNumberSecond,
+        true
+    ))
+    else formatNumber(sixthNumber, isSixthInt, sixthTime, sixthCivil)
+
+
+    // Timber.w("newLeft: $newLeft  iconColorLeft: $iconColorLeft  zoneColorLeft: $zoneColorLeft  iszoneLeft: $iszoneLeft")
+    when (fieldSize) {
+        FieldSize.SMALL -> SextupleTypesVerticalScreenSmall(
+            newFirst,
+            newSecond,
+            newThird,
+            newFourth,
+            newFifth,
+            newSixth,
+            firstIcon,
+            secondIcon,
+            thirdIcon,
+            fourthIcon,
+            fifthIcon,
+            sixthIcon,
+            iconColorFirst,
+            iconColorSecond,
+            iconColorThird,
+            iconColorFourth,
+            iconColorFifth,
+            iconColorSixth,
+            zoneColorFirst,
+            zoneColorSecond,
+            zoneColorThird,
+            zoneColorFourth,
+            zoneColorFifth,
+            zoneColorSixth,
+            isKaroo3,
+            layout,
+            iszoneFirst,
+            iszoneSecond,
+            iszoneThird,
+            iszoneFourth,
+            iszoneFifth,
+            iszoneSixth,
+            isdivider
+        )
+
+        FieldSize.MEDIUM, FieldSize.LARGE -> SextupleTypesVerticalScreenBig(
+            newFirst,
+            newSecond,
+            newThird,
+            newFourth,
+            newFifth,
+            newSixth,
+            firstIcon,
+            secondIcon,
+            thirdIcon,
+            fourthIcon,
+            fifthIcon,
+            sixthIcon,
+            iconColorFirst,
+            iconColorSecond,
+            iconColorThird,
+            iconColorFourth,
+            iconColorFifth,
+            iconColorSixth,
+            zoneColorFirst,
+            zoneColorSecond,
+            zoneColorThird,
+            zoneColorFourth,
+            zoneColorFifth,
+            zoneColorSixth,
+            isKaroo3,
+            layout,
+            iszoneFirst,
+            iszoneSecond,
+            iszoneThird,
+            iszoneFourth,
+            iszoneFifth,
+            iszoneSixth,
+            isdivider
+        )
+
+        FieldSize.EXTRA_LARGE -> NotSupported("Size Not Supported", 24)
+    }
+}
+
 
 fun getFieldTypeSelector(firstFieldState:String,secondFieldState:String) :Int
 {
@@ -926,6 +1114,120 @@ private fun DoubleTypesVerticalScreenBig(
             Spacer(modifier = GlanceModifier.fillMaxWidth().height(7.dp).background(zoneColor2))
             Column(modifier = GlanceModifier.defaultWeight().background(zoneColor2)) {
                 HorizontalScreenContent(rightNumber, rightIcon, iconColorRight, layout,iszoneRight)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 200, heightDp = 150)
+@Composable
+private fun SextupleTypesVerticalScreenSmall(
+    firstNumber: String, secondNumber: String, thirdNumber: String, fourthNumber: String, fifthNumber: String, sixthNumber: String,
+    firstIcon: Int, secondIcon: Int, thirdIcon: Int, fourthIcon: Int, fifthIcon: Int, sixthIcon: Int,
+    iconColorFirst: ColorProvider, iconColorSecond: ColorProvider, iconColorThird: ColorProvider, iconColorFourth: ColorProvider, iconColorFifth: ColorProvider, iconColorSixth: ColorProvider,
+    zoneColor1: ColorProvider, zoneColor2: ColorProvider, zoneColor3: ColorProvider, zoneColor4: ColorProvider, zoneColor5: ColorProvider, zoneColor6: ColorProvider,
+    isKaroo3: Boolean, layout: FieldPosition,
+    iszoneFirst: Boolean, iszoneSecond: Boolean, iszoneThird: Boolean, iszoneFourth: Boolean, iszoneFifth: Boolean, iszoneSixth: Boolean,
+    isdivider: Boolean
+) {
+    Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
+        //cornerRadius(8.dp)
+        Column(modifier = if (isKaroo3) GlanceModifier.fillMaxSize().background(ColorProvider(Color.White, Color.Black)).cornerRadius(0.dp) else GlanceModifier.fillMaxSize().background(ColorProvider(Color.White, Color.Black))) {
+            // row added
+            Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
+                Column(modifier = GlanceModifier.defaultWeight().background(zoneColor1)) {
+                    //Spacer(
+                    //    modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zoneColor1)
+                    //)
+                    HorizontalScreenContent(trimNumberTo3Chars(firstNumber), firstIcon, iconColorFirst, layout,iszoneFirst)
+                }
+                Column(modifier = GlanceModifier.defaultWeight().background(zoneColor2)) {
+                    //Spacer(
+                    //    modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zoneColor2)
+                    //)
+                    HorizontalScreenContent(trimNumberTo3Chars(secondNumber), secondIcon, iconColorSecond, layout,iszoneSecond)
+                }
+                Column(modifier = GlanceModifier.defaultWeight().background(zoneColor3)) {
+                    //Spacer(
+                    //    modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zoneColor3)
+                    //)
+                    HorizontalScreenContent(trimNumberTo3Chars(thirdNumber), thirdIcon, iconColorThird, layout,iszoneThird)
+                }
+            }
+            if (isdivider) Spacer(
+                modifier = GlanceModifier.fillMaxWidth().height(1.dp)
+                    .background(ColorProvider(Color.Black, Color.White))
+            ) else Spacer(
+                modifier = GlanceModifier.fillMaxWidth().height(1.dp)
+                    .background(ColorProvider(Color.White, Color.Black))
+            )
+
+            Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
+                Column(modifier = GlanceModifier.defaultWeight().background(zoneColor4)) {
+                    //Spacer(modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zoneColor4))
+                    HorizontalScreenContent(trimNumberTo3Chars(fourthNumber), fourthIcon, iconColorFourth, layout,iszoneFourth)
+                }
+                Column(modifier = GlanceModifier.defaultWeight().background(zoneColor5)) {
+                    //Spacer(modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zoneColor5))
+                    HorizontalScreenContent(trimNumberTo3Chars(fifthNumber), fifthIcon, iconColorFifth, layout,iszoneFifth)
+                }
+                Column(modifier = GlanceModifier.defaultWeight().background(zoneColor6)) {
+                    //Spacer(modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zoneColor6))
+                    HorizontalScreenContent(trimNumberTo3Chars(sixthNumber), sixthIcon, iconColorSixth, layout,iszoneSixth)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 200, heightDp = 150)
+@Composable
+private fun SextupleTypesVerticalScreenBig(
+    firstNumber: String, secondNumber: String, thirdNumber: String, fourthNumber: String, fifthNumber: String, sixthNumber: String,
+    firstIcon: Int, secondIcon: Int, thirdIcon: Int, fourthIcon: Int, fifthIcon: Int, sixthIcon: Int,
+    iconColorFirst: ColorProvider, iconColorSecond: ColorProvider, iconColorThird: ColorProvider, iconColorFourth: ColorProvider, iconColorFifth: ColorProvider, iconColorSixth: ColorProvider,
+    zoneColor1: ColorProvider, zoneColor2: ColorProvider, zoneColor3: ColorProvider, zoneColor4: ColorProvider, zoneColor5: ColorProvider, zoneColor6: ColorProvider,
+    isKaroo3: Boolean, layout: FieldPosition,
+    iszoneFirst: Boolean, iszoneSecond: Boolean, iszoneThird: Boolean, iszoneFourth: Boolean, iszoneFifth: Boolean, iszoneSixth: Boolean,
+    isdivider: Boolean
+) {
+    Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
+        //cornerRadius(8.dp)
+        Column(modifier = if (isKaroo3) GlanceModifier.fillMaxSize().background(ColorProvider(Color.White, Color.Black)).cornerRadius(0.dp) else GlanceModifier.fillMaxSize().background(ColorProvider(Color.White, Color.Black))) {
+            // row added
+            //Spacer(modifier = GlanceModifier.fillMaxWidth().height(7.dp).background(zoneColor1))
+            Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
+                Column(modifier = GlanceModifier.defaultWeight().background(zoneColor1)) {
+                    Spacer(modifier = GlanceModifier.fillMaxWidth().height(8.dp).background(zoneColor1))
+                    HorizontalScreenContent(trimNumberTo3Chars(firstNumber), firstIcon, iconColorFirst, layout,iszoneFirst)
+                }
+                Column(modifier = GlanceModifier.defaultWeight().background(zoneColor2)) {
+                    Spacer(modifier = GlanceModifier.fillMaxWidth().height(8.dp).background(zoneColor2))
+                    HorizontalScreenContent(trimNumberTo3Chars(secondNumber), secondIcon, iconColorSecond, layout,iszoneSecond)
+                }
+                Column(modifier = GlanceModifier.defaultWeight().background(zoneColor3)) {
+                    Spacer(modifier = GlanceModifier.fillMaxWidth().height(8.dp).background(zoneColor3))
+                    HorizontalScreenContent(trimNumberTo3Chars(thirdNumber), thirdIcon, iconColorThird, layout,iszoneThird)
+                }
+            }
+            if (isdivider) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.Black, Color.White)))
+            else Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.White, Color.Black)))
+            // row added
+            Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
+                Column(modifier = GlanceModifier.defaultWeight().background(zoneColor4)) {
+                    Spacer(modifier = GlanceModifier.fillMaxWidth().height(7.dp).background(zoneColor4))
+                    HorizontalScreenContent(trimNumberTo3Chars(fourthNumber), fourthIcon, iconColorFourth, layout,iszoneFourth)
+                }
+                Column(modifier = GlanceModifier.defaultWeight().background(zoneColor5)) {
+                    Spacer(modifier = GlanceModifier.fillMaxWidth().height(7.dp).background(zoneColor5))
+                    HorizontalScreenContent(trimNumberTo3Chars(fifthNumber), fifthIcon, iconColorFifth, layout,iszoneFifth)
+                }
+                Column(modifier = GlanceModifier.defaultWeight().background(zoneColor6)) {
+                    Spacer(modifier = GlanceModifier.fillMaxWidth().height(7.dp).background(zoneColor6))
+                    HorizontalScreenContent(trimNumberTo3Chars(sixthNumber), sixthIcon, iconColorSixth, layout,iszoneSixth)
+                }
             }
         }
     }
