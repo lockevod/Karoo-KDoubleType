@@ -99,6 +99,7 @@ abstract class CustomDoubleTypeBase(
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         Timber.d("DOUBLE StartView: field $extension index $globalIndex field $dataTypeId config: $config emitter: $emitter")
+        Timber.d("VIEWCONFIG [DOUBLE/$dataTypeId]: viewSize=${config.viewSize} gridSize=${config.gridSize} textSize=${config.textSize} effectiveFieldSize=${getEffectiveFieldSize(config.gridSize.second, config.textSize)}")
 
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
@@ -263,7 +264,7 @@ abstract class CustomDoubleTypeBase(
                                             secondIconcolor,
                                             firstColorzone,
                                             secondColorzone,
-                                            getFieldSize(config.gridSize.second),
+                                            getEffectiveFieldSize(config.gridSize.second, config.textSize),
                                             karooSystem.hardwareType == HardwareType.KAROO,
                                             clayout,
                                             windtext,

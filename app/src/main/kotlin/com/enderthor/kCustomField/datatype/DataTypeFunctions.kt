@@ -227,6 +227,33 @@ fun getFieldSize(size: Int): FieldSize {
 }
 
 /**
+ * Estima FieldSize a partir del textSize que proporciona el sistema Karoo.
+ * El textSize ya está calibrado por el sistema en función del espacio real del slot,
+ * por lo que es más fiable que gridSize para detectar slots reducidos (ej. pantalla climber).
+ *
+ * Umbrales conservadores: para calibración precisa, consultar logs VIEWCONFIG
+ * con build debug y `adb logcat | grep VIEWCONFIG` en cada pantalla.
+ */
+fun getFieldSizeFromTextSize(textSize: Int): FieldSize = when {
+    textSize >= 33 -> FieldSize.EXTRA_LARGE
+    textSize >= 25 -> FieldSize.LARGE
+    textSize >= 18 -> FieldSize.MEDIUM
+    else -> FieldSize.SMALL
+}
+
+/**
+ * Devuelve el FieldSize efectivo usando el mínimo (más conservador) entre
+ * la estimación por gridSize y la estimación por textSize.
+ * En pantallas normales ambas coinciden. En slots reducidos (ej. pantalla climber del GPS)
+ * donde textSize es menor, automáticamente se usa un tamaño más compacto.
+ */
+fun getEffectiveFieldSize(gridSizeSecond: Int, textSize: Int): FieldSize {
+    val sizeFromGrid = getFieldSize(gridSizeSecond)
+    val sizeFromText = getFieldSizeFromTextSize(textSize)
+    return if (sizeFromText.ordinal < sizeFromGrid.ordinal) sizeFromText else sizeFromGrid
+}
+
+/**
  * Convierte velocidad del viento de m/s (unidad nativa del stream karoo-headwind)
  * a la unidad preferida del usuario.
  * Factores idénticos a los de la extensión karoo-headwind (Conversion.kt):

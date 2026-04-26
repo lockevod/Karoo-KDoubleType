@@ -94,6 +94,7 @@ abstract class CustomRollingTypeBase(
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         Timber.d("ROLLING StartView: field $extension index $index field $dataTypeId config: $config")
+        Timber.d("VIEWCONFIG [ROLLING/$dataTypeId]: viewSize=${config.viewSize} gridSize=${config.gridSize} textSize=${config.textSize} effectiveFieldSize=${getEffectiveFieldSize(config.gridSize.second, config.textSize)}")
 
 
         val scopeJob = Job()
@@ -313,7 +314,7 @@ abstract class CustomRollingTypeBase(
                                         field(settings[globalIndex]).kaction,
                                         iconcolor,
                                         colorzone,
-                                        getFieldSize(config.gridSize.second),
+                                        getEffectiveFieldSize(config.gridSize.second, config.textSize),
                                         karooSystem.hardwareType == HardwareType.KAROO,
                                         generalSetting.iscenteralign,
                                         windtext,

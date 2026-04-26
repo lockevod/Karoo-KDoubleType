@@ -127,6 +127,7 @@ abstract class CustomClimbTypeBase(
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         Timber.d("CLIMB StartView: field $extension index $globalIndex field $dataTypeId config: $config emitter: $emitter")
+        Timber.d("VIEWCONFIG [CLIMB/$dataTypeId]: viewSize=${config.viewSize} gridSize=${config.gridSize} textSize=${config.textSize}")
 
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
