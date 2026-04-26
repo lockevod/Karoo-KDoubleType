@@ -13,8 +13,8 @@ android {
         applicationId = "com.enderthor.kCustomField"
         minSdk = 23
         targetSdk = 34
-        versionCode = 202604121
-        versionName = "3.8.0"
+        versionCode = 202602031
+        versionName = "4.1.kmk.1"
     }
 
     buildTypes {
@@ -56,5 +56,4 @@ dependencies {
     implementation(libs.timber)
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.foundation.layout.android)
-    implementation("androidx.documentfile:documentfile:1.0.1")
 }

@@ -314,6 +314,44 @@ fun KarooSystemService.getFieldFlow(
                             .timeout(STREAM_TIMEOUT.milliseconds)
                     }
 
+                    action.name == "GEARS" -> {
+                        streamDataFlow(DataType.Type.SHIFTING_GEARS)
+                            .map { gearState ->
+                                if (gearState is StreamState.Streaming) {
+
+                                    // raw object that comes from the extension SDK
+                                    val raw = gearState.dataPoint.values
+
+                                    // 1) type and raw toString
+                                    //Timber.d("SHIFTING_GEARS raw type = %s", raw?.let { it::class.java.name } ?: "null")
+                                    //Timber.d("SHIFTING_GEARS raw value = %s", raw)
+
+                                    val map = raw as? Map<String, *>
+
+                                    val frontGear    = map?.get("FIELD_SHIFTING_FRONT_GEAR_ID") as? Double ?: 0.0
+                                    //val frontMax = map?.get("FIELD_SHIFTING_FRONT_GEAR_MAX_ID") as? Double ?: 0.0
+                                    val rearGear     = map?.get("FIELD_SHIFTING_REAR_GEAR_ID") as? Double ?: 0.0
+                                    //val rearMax  = map?.get("FIELD_SHIFTING_REAR_GEAR_MAX_ID") as? Double ?: 0.0
+
+
+                                    //Timber.d("Parsed gears: F=%s/%s R=%s/%s", frontGear, frontMax, rearGear, rearMax)
+
+                                    val combinedGear = frontGear *100 + rearGear
+                                    //Timber.d("CombindesGear: %s", combinedGear)
+
+                                    StreamState.Streaming(
+                                        DataPoint(
+                                            dataTypeId = "GEARS",
+                                            values = mapOf(DataType.Field.SINGLE to combinedGear)
+                                        )
+                                    )
+                                } else {
+                                    StreamState.Searching
+                                }
+                            }
+                            .timeout(STREAM_TIMEOUT.milliseconds)
+                    }
+
                     action.name == "FTP" -> {
                         streamDataFlow(DataType.Type.NORMALIZED_POWER)
                             .map { powerState ->

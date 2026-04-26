@@ -41,6 +41,24 @@
         icon="@drawable/ic_field"
         typeId="vertical-three" />
     <DataType
+        description="@string/custom_sextuple_description1"
+        displayName="@string/custom_sextuple1"
+        graphical="true"
+        icon="@drawable/ic_field"
+        typeId="sextuple-one" />
+    <DataType
+        description="@string/custom_sextuple_description2"
+        displayName="@string/custom_sextuple2"
+        graphical="true"
+        icon="@drawable/ic_field"
+        typeId="sextuple-two" />
+    <DataType
+        description="@string/custom_sextuple_description3"
+        displayName="@string/custom_sextuple3"
+        graphical="true"
+        icon="@drawable/ic_field"
+        typeId="sextuple-three" />
+    <DataType
         description="@string/custom_rolling_description1"
         displayName="@string/custom_rolling1"
         graphical="true"

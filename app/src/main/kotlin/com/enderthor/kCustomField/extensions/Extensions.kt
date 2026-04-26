@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.enderthor.kCustomField.datatype.ClimbFieldSettings
 
 import com.enderthor.kCustomField.datatype.DoubleFieldSettings
+import com.enderthor.kCustomField.datatype.SextupleFieldSettings
 import com.enderthor.kCustomField.datatype.GeneralSettings
 import com.enderthor.kCustomField.datatype.OneFieldSettings
 import com.enderthor.kCustomField.datatype.RETRY_CHECK_STREAMS
@@ -18,6 +19,7 @@ import com.enderthor.kCustomField.datatype.WAIT_STREAMS_MEDIUM
 import com.enderthor.kCustomField.datatype.WAIT_STREAMS_SHORT
 import com.enderthor.kCustomField.datatype.defaultClimbFieldSettings
 import com.enderthor.kCustomField.datatype.defaultDoubleFieldSettings
+import com.enderthor.kCustomField.datatype.defaultSextupleFieldSettings
 import com.enderthor.kCustomField.datatype.defaultGeneralSettings
 import com.enderthor.kCustomField.datatype.defaultOneFieldSettings
 import com.enderthor.kCustomField.datatype.defaultSmartFieldSettings
@@ -60,6 +62,7 @@ import kotlin.time.Duration.Companion.milliseconds
 val jsonWithUnknownKeys = Json { ignoreUnknownKeys = true }
 val generalsettingsKey = stringPreferencesKey("generalsettings")
 val doublefieldKey = stringPreferencesKey("doublefieldsettings")
+val sextuplefieldKey = stringPreferencesKey("sextuplefieldsettings")
 val onefieldKey = stringPreferencesKey("onefieldsettings")
 val smartfieldKey = stringPreferencesKey("smartfieldsettings")
 val climbfieldKey = stringPreferencesKey("climbfieldsettings")
@@ -143,6 +146,37 @@ fun Context.streamDoubleFieldSettings(): Flow<List<DoubleFieldSettings>> {
         } catch (e: Throwable) {
             Timber.tag("KarooDualTypeExtension").e(e, "Failed to read preferences")
             jsonWithUnknownKeys.decodeFromString<List<DoubleFieldSettings>>(defaultDoubleFieldSettings)
+        }
+    }.distinctUntilChanged()
+}
+
+suspend fun saveSextupleFieldSettings(context: Context, settings: List<SextupleFieldSettings>) {
+    // Timber.d("saveSettings IN $settings")
+    context.dataStore.edit { t ->
+        t[sextuplefieldKey] = Json.encodeToString(settings)
+    }
+}
+fun Context.streamSextupleFieldSettings(): Flow<List<SextupleFieldSettings>> {
+    return dataStore.data.map { settingsJson ->
+        try {
+            val decodedSettings = if (settingsJson.contains(sextuplefieldKey)) {
+                jsonWithUnknownKeys.decodeFromString<List<SextupleFieldSettings>>(
+                    settingsJson[sextuplefieldKey] ?: defaultSextupleFieldSettings
+                )
+            } else {
+                jsonWithUnknownKeys.decodeFromString<List<SextupleFieldSettings>>(defaultSextupleFieldSettings)
+            }
+
+            if (decodedSettings.size == 5) {
+                decodedSettings + SextupleFieldSettings(
+                    index = 5
+                )
+            } else {
+                decodedSettings
+            }
+        } catch (e: Throwable) {
+            Timber.tag("KarooDualTypeExtension").e(e, "Failed to read preferences")
+            jsonWithUnknownKeys.decodeFromString<List<SextupleFieldSettings>>(defaultSextupleFieldSettings)
         }
     }.distinctUntilChanged()
 }
