@@ -221,17 +221,20 @@ abstract class CustomRollingTypeBase(
                         val firstFieldFlow = if (!config.preview)  karooSystem.getFieldFlow(
                             primaryField,
                             headwindFlow,
-                            generalSetting
+                            generalSetting,
+                            isCancelledProvider = { isCancelled }
                         ) else previewFlow()
                         val secondFieldFlow = if (!config.preview)  karooSystem.getFieldFlow(
                             secondaryField,
                             headwindFlow,
-                            generalSetting
+                            generalSetting,
+                            isCancelledProvider = { isCancelled }
                         ) else previewFlow()
                         val thirdFieldFlow = if (!config.preview)  karooSystem.getFieldFlow(
                             thirdField,
                             headwindFlow,
-                            generalSetting
+                            generalSetting,
+                            isCancelledProvider = { isCancelled }
                         ) else previewFlow()
 
                         combine(

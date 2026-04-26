@@ -106,7 +106,7 @@ abstract class CustomClimbTypeBase(
     }.flowOn(Dispatchers.IO)
 
     // MANTENER: este job es necesario para detectar isOnClimb
-    private fun checkClimbStatus(): Job {
+    private fun checkClimbStatus(scope: CoroutineScope): Job {
         return karooSystem.streamDataFlow(DataType.Type.ELEVATION_TO_TOP)
             .throttle(2000L) // throttle ANTES del map para reducir carga de CPU
             .map { elevationState ->
@@ -120,7 +120,7 @@ abstract class CustomClimbTypeBase(
                 }
             }
             .flowOn(Dispatchers.IO)
-            .launchIn(CoroutineScope(Dispatchers.IO))
+            .launchIn(scope)  // usa el scope padre — se cancela automáticamente con él
     }
 
 
@@ -139,10 +139,7 @@ abstract class CustomClimbTypeBase(
         isCancelled = false
         ViewState.setCancelled(false)
 
-        val climbMonitorJob = checkClimbStatus()
-        scopeJob.invokeOnCompletion {
-            climbMonitorJob.cancel()
-        }
+        checkClimbStatus(scope)
 
         // OPTIMIZACIÓN: reutilizar bitmap solo para el círculo base (no datos)
         val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
@@ -248,33 +245,39 @@ abstract class CustomClimbTypeBase(
                         val firstFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             primaryField,
                             headwindFlow,
-                            generalSettings
+                            generalSettings,
+                            isCancelledProvider = { isCancelled }
                         ) else previewFlow()
                         val secondFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             secondaryField,
                             headwindFlow,
-                            generalSettings
+                            generalSettings,
+                            isCancelledProvider = { isCancelled }
                         ) else previewFlow()
                         val thirdFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             thirdField,
                             headwindFlow,
-                            generalSettings
+                            generalSettings,
+                            isCancelledProvider = { isCancelled }
                         ) else previewFlow()
                         val fourthFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             fourthField,
                             headwindFlow,
-                            generalSettings
+                            generalSettings,
+                            isCancelledProvider = { isCancelled }
                         ) else previewFlow()
 
                         val climbStartFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             climbField,
                             headwindFlow,
-                            generalSettings
+                            generalSettings,
+                            isCancelledProvider = { isCancelled }
                         ) else previewFlow()
                         val climbOnFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             climbOnField,
                             headwindFlow,
-                            generalSettings
+                            generalSettings,
+                            isCancelledProvider = { isCancelled }
                         ) else previewFlow()
 
 

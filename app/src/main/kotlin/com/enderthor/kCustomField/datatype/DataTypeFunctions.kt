@@ -295,7 +295,8 @@ fun KarooSystemService.getFieldFlow(
     field: Any,
     headwindFlow: Flow<StreamHeadWindData>,
     generalSettings: GeneralSettings,
-    context: Context? = null
+    context: Context? = null,
+    isCancelledProvider: () -> Boolean = { ViewState.isCancelledByEmitter }
 ): Flow<Any> = flow {
 
 
@@ -323,7 +324,7 @@ fun KarooSystemService.getFieldFlow(
                             .catch { e ->
                                 when (e) {
                                     is CancellationException -> {
-                                        if (ViewState.isCancelledByEmitter) throw e
+                                        if (isCancelledProvider()) throw e
                                         // OPTIMIZACIÓN: menos logging para reducir overhead
                                     }
                                     else -> {
@@ -457,7 +458,7 @@ fun KarooSystemService.getFieldFlow(
                         .catch { e ->
                             when (e) {
                                 is CancellationException -> {
-                                    if (ViewState.isCancelledByEmitter) throw e
+                                    if (isCancelledProvider()) throw e
                                 }
                                 else -> {
                                     Timber.e(e, "Error en streamDataFlow")
@@ -477,7 +478,7 @@ fun KarooSystemService.getFieldFlow(
             } catch (e: Exception) {
                 when (e) {
                     is CancellationException -> {
-                        if (ViewState.isCancelledByEmitter) {
+                        if (isCancelledProvider()) {
                             Timber.d("getFieldFlow cancelado por emitter para ${action.name}")
                             throw e
                         }
@@ -493,7 +494,7 @@ fun KarooSystemService.getFieldFlow(
             }
         }
     } catch (e: CancellationException) {
-        if (ViewState.isCancelledByEmitter) {
+        if (isCancelledProvider()) {
             Timber.d("getFieldFlow cancelado por emitter")
             throw e
         }
@@ -501,7 +502,7 @@ fun KarooSystemService.getFieldFlow(
     }
 }.retryWhen { cause, attempt ->
         when {
-            cause is CancellationException && !ViewState.isCancelledByEmitter -> true
+            cause is CancellationException && !isCancelledProvider() -> true
             attempt > RETRY_CHECK_STREAMS -> {
                 Timber.e("Máximo de reintentos alcanzado")
                 emit(StreamState.Idle)
@@ -519,7 +520,7 @@ fun KarooSystemService.getFieldFlow(
     }
     .catch { e ->
         when {
-            e is CancellationException && ViewState.isCancelledByEmitter -> throw e
+            e is CancellationException && isCancelledProvider() -> throw e
             else -> {
                 Timber.e(e, "Error fatal en getFieldFlow")
                 emit(StreamState.NotAvailable)

@@ -82,6 +82,8 @@ abstract class CustomSextupleTypeBase(
             else -> RefreshTime.HALF.time
         }.coerceAtLeast(100L)
 
+    @Volatile private var isCancelled = false
+
 
 
     private fun previewFlow(): Flow<StreamState> = flow {
@@ -104,6 +106,7 @@ abstract class CustomSextupleTypeBase(
 
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
+        isCancelled = false
         ViewState.setCancelled(false)
 
         val dataflow = context.streamSextupleFieldSettings()
@@ -199,32 +202,38 @@ abstract class CustomSextupleTypeBase(
                             val firstFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                                 primaryField,
                                 headwindFlow,
-                                generalSettings
+                                generalSettings,
+                                isCancelledProvider = { isCancelled }
                             ) else previewFlow()
                             val secondFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                                 secondaryField,
                                 headwindFlow,
-                                generalSettings
+                                generalSettings,
+                                isCancelledProvider = { isCancelled }
                             ) else previewFlow()
                             val thirdFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                                 thirdField,
                                 headwindFlow,
-                                generalSettings
+                                generalSettings,
+                                isCancelledProvider = { isCancelled }
                             ) else previewFlow()
                             val fourthFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                                 fourthField,
                                 headwindFlow,
-                                generalSettings
+                                generalSettings,
+                                isCancelledProvider = { isCancelled }
                             ) else previewFlow()
                             val fifthFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                                 fifthField,
                                 headwindFlow,
-                                generalSettings
+                                generalSettings,
+                                isCancelledProvider = { isCancelled }
                             ) else previewFlow()
                             val sixthFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                                 sixthField,
                                 headwindFlow,
-                                generalSettings
+                                generalSettings,
+                                isCancelledProvider = { isCancelled }
                             ) else previewFlow()
                             val combinedFlow1 = combine(
                                 firstFieldFlow,
@@ -265,7 +274,7 @@ abstract class CustomSextupleTypeBase(
                         }.conflate()
                         .onEach { result ->
 
-                        if ( ViewState.isCancelled()) {
+                        if ( isCancelled) {
                             Timber.d("SEXTUPLE Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
                         }
@@ -350,12 +359,12 @@ abstract class CustomSextupleTypeBase(
                             }
 
                             try {
-                                if ( ViewState.isCancelled()) {
+                                if ( isCancelled) {
                                     Timber.d("SEXTUPLE Skipping composition, job cancelled: $extension $globalIndex")
                                     return@onEach
                                 }
                                 val newView = withContext(Dispatchers.Main) {
-                                    if ( ViewState.isCancelled()) {
+                                    if ( isCancelled) {
                                         return@withContext null
                                     }
                                     glance.compose(context, DpSize.Unspecified) {
@@ -405,7 +414,7 @@ abstract class CustomSextupleTypeBase(
                                 if (newView == null) return@onEach
 
                                 withContext(Dispatchers.Main) {
-                                    if ( ViewState.isCancelled()) return@withContext
+                                    if ( isCancelled) return@withContext
                                     emitter.updateView(newView)
                                 }
                             } catch (e: Exception) {
@@ -413,7 +422,7 @@ abstract class CustomSextupleTypeBase(
                                     Timber.d("SEXTUPLE View update cancelled normally: $extension $globalIndex")
                                 } else {
                                     Timber.e(e, "SEXTUPLE Error composing/updating view: $extension $globalIndex")
-                                    if (coroutineContext.isActive && !ViewState.isCancelled()) {
+                                    if (coroutineContext.isActive && !isCancelled) {
                                         throw e
                                     }
                                 }
@@ -435,7 +444,7 @@ abstract class CustomSextupleTypeBase(
 
                             when {
 
-                                cause is CancellationException && ViewState.isCancelled() -> {
+                                cause is CancellationException && isCancelled -> {
                                     Timber.d("SEXTUPLE No se reintenta el flujo cancelado por el emitter: $extension $globalIndex")
                                     false
                                 }
@@ -477,6 +486,7 @@ abstract class CustomSextupleTypeBase(
 
                 Timber.d("SEXTUPLE Emitter.setCancellable: extension=$extension index=$globalIndex")
 
+                isCancelled = true
                 ViewState.setCancelled(true)
                 configjob.cancel()
                 viewjob.cancel()

@@ -1,94 +1,96 @@
-# KDouble Field  Extension
+# KDouble Field Extension
 
-
-KDoubleType allows to use custom fields with double types (HR,Power,etc)
-
-**If you have kdouble < 3.4.0 you must to uninstall first and install the new one. Sorry, it's a problem with android signatures.**
+KDoubleType allows you to use custom fields with double types (HR, Power, etc.)
 
 ## Requirements
-- Karoo (tested on last Karoo ) with version 1.527 or later
-- Tested with Karoo 3 and metric configuration
+- Karoo (tested on latest firmware) with version 1.527 or later
+- Tested with Karoo 2 and Karoo 3 in both metric and imperial configurations
 
 ## Installation
 
-You can sideload the app using the following steps for Karoo 2
-
-1. Download the APK from the releases .
+### Karoo 2 (ADB sideload)
+1. Download the APK from the [releases page](https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.apk).
 2. Prepare your Karoo for sideloading by following the [step-by-step guide](https://www.dcrainmaker.com/2021/02/how-to-sideload-android-apps-on-your-hammerhead-karoo-1-karoo-2.html) by DC Rainmaker.
 3. Install the app using the command `adb install app-release.apk`.
 
-
-If you've Karoo 3 and v > 1.527 you can sideload the app using the following steps:
-
-1. Link with apk (releases link) from your mobile ( https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.apk )
-2. Share with Hammerhead companion app
+### Karoo 3 (v1.527+)
+1. Copy the APK link: `https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.apk`
+2. Share it with the Hammerhead companion app.
 3. Install the app using the Hammerhead companion app.
 
-**It's mandatory to reset the Karoo after the installation (shutdown and start again).**
+**It's mandatory to reboot the Karoo after installation (shutdown and start again).**
+
+## Field Types
+
+| Field | Slots | Description |
+|-------|-------|-------------|
+| **KDouble** (×3) | 1 slot | Two metrics side by side — horizontal or vertical split |
+| **KRolling** (×3) | 1 slot | Cycles automatically between up to 3 metrics |
+| **KSextuple** (×3) | 1 slot (large) | Six metrics in a 2×3 grid — ideal for a single full-width slot |
+| **Smart Climb** (×1) | 1 slot | Adaptive climb field: 4 standard metrics + 1 smart center that switches between start-of-climb / on-climb metrics |
+| **Bell** (×1) | action | Tap-to-buzz action field |
 
 ## Instructions
 
-- Add custom fields to your profiles (HR, Power, etc).
-- You can add horizontal or vertical fields.
-- You can add rolling fields and select de rolling period (ie. change every 5-10-20-30 seconds between three fields...). You can chose one/two/three rolling mesures, if you chose only one.. then you only have one messure in this field.
-- You can configure the fields in the configuration tab and select if you want colored zones or not.
-- You can use Smart Climb Field. This field is for map page (1x2 so-so space) and will show 4-5 measures (it changes "smart")
-- **W' Balance Field**: You can add W' Balance (W Prime Balance) field to track your anaerobic capacity in real-time. This field shows how much of your anaerobic energy reserve (W') remains available based on your power output above Critical Power (CP).
-  
+- Add custom fields to your profiles (HR, Power, Speed, etc.).
+- **Double fields**: show two metrics horizontally (left/right) or vertically (top/bottom).
+- **Rolling fields**: show one metric at a time and cycle between up to three — configurable interval (5 / 10 / 20 / 30 s). If you pick only one metric it behaves as a static field.
+- **Sextuple fields**: show six metrics simultaneously in a compact 2×3 grid. Best used in a full-width or large slot. Up to 3 independent sextuple fields available. ⚠️ Avoid using more than one sextuple field simultaneously in the same profile on low-resource devices.
+- **Smart Climb field**: designed for the Karoo map page (1×2 large space). Displays 4 configurable metrics plus a smart center panel that shows a *start-of-climb* metric by default and automatically switches to an *on-climb* metric (e.g. distance-to-top) when a climb is detected. The field respects the reduced slot size inside the Karoo climber screen.
+- **Bell field**: emulates a bell sound using the Karoo buzzer. Sound must be enabled on the device.
+- **W′ Balance field**: tracks your anaerobic energy reserve in real-time based on power output above Critical Power (CP).
+
 ## Configuration
-- You can configure, for double custom fields, left/up and right/top sides in custom configuration tab.
-- Horizontal fields rounds to integer numbers ( ie for speed 12.6 you will see 13) except for IF field.
-- If you chose vertical fields you can see 5 digits (including the decimal point for speed and slope).
-- Coloured zones are based in your Karoo zones. Slope zones are based in Hammerhead climber zones or you can chose use the Zwift colors.
-- You can align  to the left, center or right, but you can select to use Karoo default alignment (your alignment in the Karoo profile).
-- Rolling fields shows only one field (for small and medium size fields) and change every 5-10-20-30 seconds between three different measures. You can select only two if you want (or only want but I don't know if this is very useful ;) )
-- You can use Headwind Field, this is from Timklge app, and it's mandatory to install and configure the app. KDouble extension only takes the values from Timklge app and shows in the field (rolling/vertical/horizontal).
-In this case, you have to select Timklge headwind field also in this profile.
-- Rolling fields have Extra Time option. If you check this option first field has x3 time.
-- **W' Balance Configuration**: Configure your W' Balance parameters in the W'BAL tab:
-  - **Critical Power (CP)**: You can use your Karoo FTP as CP or set a custom value. CP represents the highest power output you can sustain indefinitely.
-  - **W' (W Prime)**: Your anaerobic capacity in joules (typically 15,000-25,000J for trained cyclists). This represents the finite amount of work you can do above CP.
-  - **Visual Zones**: Enable color-coded zones to visually represent your W' Balance status (green = high reserve, yellow = moderate, red = low/depleted).
-  - **Temporal Constants**: The app uses optimized default values (τ+ = 546s for recovery, τ- = 316s for depletion) based on scientific research.
 
-### Calculating Your W' and Critical Power Values
+- For **Double** fields, configure left/top and right/bottom metric in the custom configuration tab.
+- Horizontal fields round to integers (e.g. speed 12.6 → 13), except the IF field.
+- Vertical fields show up to 5 characters (including decimal point for speed and slope).
+- Colour zones are based on your Karoo zones. Slope zones use Hammerhead climber zones, or you can switch to Zwift colours.
+- Alignment can be set to left, centre, or right, or you can follow the default Karoo profile alignment.
+- **Rolling fields** — *Extra Time* option: when enabled the first metric gets 3× the display time of the others.
+- **Headwind field**: reads data from the [timklge Headwind extension](https://github.com/timklge?tab=repositories). You must install and configure that app separately, and also add its headwind field to the same profile.
+- **Sextuple fields** have 6 independently configurable metric slots. Each of the 3 sextuple field instances (One / Two / Three) stores its own configuration.
 
-To get accurate W' Balance readings, you need to determine your Critical Power and W' values:
+### W′ Balance Configuration
 
-**Online Calculators:**
-- [High North Critical Power Calculator](https://www.highnorth.co.uk/articles/critical-power-calculator) - Upload your power files to calculate CP and W'
-- [Intervals.icu](https://intervals.icu/) - Provides direct CP and W' calculations from your training data
-- https://powerlab.icu/ 
+Configure your W′ Balance parameters in the **W′BAL** tab:
 
-**Manual Testing:**
-- Perform 3-minute and 12-minute all-out efforts on separate days
-- Use the power values in the calculators above
-- Alternatively, use a 20-minute FTP test result as an approximation for CP
+- **Critical Power (CP)**: use your Karoo FTP as CP or set a custom value. CP represents the highest power output you can sustain indefinitely.
+- **W′ (W Prime)**: your anaerobic capacity in joules (typically 15,000–25,000 J for trained cyclists).
+- **Visual Zones**: enable colour-coded zones (green = high reserve, yellow = moderate, red = low/depleted).
+- **Temporal constants**: optimised defaults (τ+ = 546 s recovery, τ− = 316 s depletion) based on scientific research.
 
-Smart Climb Field. This field is for map page (1x2 so-so space) and will show 4-5 measures (it changes "smart")
-  - Four fields (you can select all available measures in the app) and horizontal/vertical/zones (it's a custom field = 2 x Double fields)
-  - One climber field (center position). You've two select two measures, one is active when you start a climb and the other is active (or not, you can select) when you finish the climb. You can select all available measures in the app but I use with the distance to top
-- Bell Field. You can add a Bell Fiel to emulate Bell sound (sound has to be enabled). Karoo hasn't a speaker (has a buzzer) and it isn't possible to emulate a bell completely, but you can use this field to emulate a bell sound. You can select the sound in the configuration tab.
+### Calculating Your W′ and Critical Power
 
-## Know Bugs
-- The max number of every field horizontal is 3 digits, but it's better if you don't mix two types with 3 digits always.
-- Not intensive tested with all the fields, please report any issue. For example, number adaptation for the fields is not tested with all the fields.
-- If you use several fields your Karoo can be freeze especially if you have a Karoo 2. I've made several performance improvements but be careful to use 5 fields + rolling + headwind (in the same rolling or custom fields).. it's a lot of data to process.
-- Extensions (Hammerhead API) have a problem with rendering (sometimes and it's random)... if you have some field that dissapears when you use custom fields, you can try to change ride profile, kill ride app or reboot karoo. Sorry, but I cannot solve this at this moment (we're talking with Hammerhead).
-- Karoo 2 has low resources. Kdouble limit number of fields you can use in Karoo. Please be careful (also with Karoo 3) if you use several custom field, several extensions (apps) and you have a lot of these fields in your profile...
+**Online calculators:**
+- [High North Critical Power Calculator](https://www.highnorth.co.uk/articles/critical-power-calculator)
+- [Intervals.icu](https://intervals.icu/)
+- [PowerLab.icu](https://powerlab.icu/)
+
+**Manual testing:**
+- Perform 3-minute and 12-minute all-out efforts on separate days and use the calculators above.
+- A 20-minute FTP test result can be used as an approximation for CP.
+
+## Known Bugs / Limitations
+
+- The maximum number of digits in a horizontal field is 3 — avoid combining two metrics that both need 3 digits.
+- Not all field combinations have been tested. Please report any display or rounding issues.
+- Using many fields simultaneously (especially Rolling + Headwind on a Karoo 2) can cause performance issues. Use with care.
+- The Hammerhead extension API occasionally causes fields to disappear randomly. If a field goes blank: switch your ride profile, force-stop the ride app, or reboot the Karoo. This is a known SDK issue being discussed with Hammerhead.
+- Karoo 2 has limited resources. Be careful when combining multiple custom fields, rolling fields, and other extensions in the same profile.
 
 ## Credits
 
-- Made possible by the generous usage terms of timklge (apache 2.0). He has a great development and I use part of his code to create this extension.
-  https://github.com/timklge?tab=repositories
-- Thanks to valterc for the great ki2 app. Colors file is from his app.
-- Thanks to vinapp for the vinapp app and for share code with me. 
-- Thanks to Hammerhead for the great Karoo device.
-- Thanks to DC Rainmaker for the great guide to sideload apps.
-- Thanks to Boxicons for the great icons.
-- Thanks to iconduck.com for the great icons.
-- Credits and copyright. Please respect license and specific parts licencsers (icons, etc). If you use this app you're agree.
-- KDouble doesn't save or share any information for it's use, but it use firebase crashlytics service only for crashes in app (and firebase use this crash information). I only use this information to prevent new crashes in the app. Please if you isn't agree with Firebase use (this conditions are in firebase web and can change, please read it), please you cannot use app. If you use it you are agree with all conditions and copyrights.
+- Made possible by the generous usage terms of [timklge](https://github.com/timklge?tab=repositories) (Apache 2.0). Parts of his code are used in this extension.
+- Thanks to [valterc](https://github.com/valterc) for the great ki2 app — colour definitions are based on his work.
+- Thanks to [kleinkm](https://github.com/kleinkm) for the inspiration and contributions around the Sextuple field.
+- Thanks to vinapp for sharing code and collaboration.
+- Thanks to Hammerhead for the Karoo platform and SDK.
+- Thanks to DC Rainmaker for the sideloading guide.
+- Thanks to Boxicons and iconduck.com for icons.
+- KDouble does **not** save or share any personal data. It uses Firebase Crashlytics solely to capture crash reports. By installing the app you agree to [Firebase's terms](https://firebase.google.com/terms). If you do not agree, please do not install the app.
+
 ## Links
 
-[karoo-ext source](https://github.com/hammerheadnav/karoo-ext)
+- [Latest APK](https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.apk)
+- [karoo-ext SDK source](https://github.com/hammerheadnav/karoo-ext)
