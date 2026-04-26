@@ -30,6 +30,7 @@ object ImportExportManager {
     suspend fun buildExportConfig(ctx: Context): ExportConfig = withContext(Dispatchers.IO) {
         val general = ctx.streamGeneralSettings().first()
         val doubleFields = ctx.streamDoubleFieldSettings().first()
+        val sextupleFields = ctx.streamSextupleFieldSettings().first()
         val oneFields = ctx.streamOneFieldSettings().first()
         val smartFields = ctx.streamSmartFieldSettings().first()
         val climbFields = ctx.streamClimbFieldSettings().first()
@@ -46,6 +47,7 @@ object ImportExportManager {
         val payload = ExportPayload(
              generalSettings = general,
              doubleFieldSettings = doubleFields,
+             sextupleFieldSettings = sextupleFields,
              oneFieldSettings = oneFields,
              smartFieldSettings = smartFields,
              climbFieldSettings = climbFields,
@@ -110,6 +112,7 @@ object ImportExportManager {
         // apply known sections using existing save helpers
         payload.generalSettings?.let { saveGeneralSettings(ctx, it) }
         payload.doubleFieldSettings?.let { saveDoubleFieldSettings(ctx, it) }
+        payload.sextupleFieldSettings?.let { saveSextupleFieldSettings(ctx, it) }
         payload.oneFieldSettings?.let { saveOneFieldSettings(ctx, it) }
         payload.smartFieldSettings?.let { saveSmartFieldSettings(ctx, it) }
         payload.climbFieldSettings?.let { saveClimbFieldSettings(ctx, it) }
@@ -136,6 +139,7 @@ object ImportExportManager {
         val list = mutableListOf<String>()
         if (payload.generalSettings != null) list.add("General")
         if (payload.doubleFieldSettings != null) list.add("Custom Fields")
+        if (payload.sextupleFieldSettings != null) list.add("Sextuple Fields")
         if (payload.oneFieldSettings != null) list.add("Rolling Fields")
         if (payload.smartFieldSettings != null) list.add("Smart Fields")
         if (payload.climbFieldSettings != null) list.add("Climb Fields")

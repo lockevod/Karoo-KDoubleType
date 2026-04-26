@@ -17,6 +17,7 @@ data class ExportConfig(
 data class ExportPayload(
     val generalSettings: GeneralSettings? = null,
     val doubleFieldSettings: List<DoubleFieldSettings>? = null,
+    val sextupleFieldSettings: List<SextupleFieldSettings>? = null,
     val oneFieldSettings: List<OneFieldSettings>? = null,
     val smartFieldSettings: List<SmartFieldSettings>? = null,
     val climbFieldSettings: List<ClimbFieldSettings>? = null,

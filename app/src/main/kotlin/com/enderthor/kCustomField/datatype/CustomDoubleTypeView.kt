@@ -861,6 +861,7 @@ fun ClimbScreenSelector(
     fourthZoneColor: ColorProvider,
     climbZoneColor: ColorProvider,
     fieldSize: Int,
+    effectiveFieldSize: FieldSize = FieldSize.MEDIUM,
     isKaroo3: Boolean,
     layout: FieldPosition,
     windText: String,
@@ -881,6 +882,11 @@ fun ClimbScreenSelector(
         return
     }
 
+    // Tamaño efectivo para sub-paneles: forzar máximo MEDIUM en climb
+    // (los paneles laterales de 90dp no soportan LARGE/EXTRA_LARGE)
+    val innerFieldSize = if (effectiveFieldSize.ordinal > FieldSize.MEDIUM.ordinal) FieldSize.MEDIUM else effectiveFieldSize
+    val centerTextSize = if (innerFieldSize == FieldSize.SMALL) 30 else 40
+
     if (!isClimbEnabled)
     {
 
@@ -898,7 +904,7 @@ fun ClimbScreenSelector(
                     iconColorRight = secondIconColor,
                     zoneColorLeft = firstZoneColor,
                     zoneColorRight = secondZoneColor,
-                    fieldSize = FieldSize.MEDIUM,
+                    fieldSize = innerFieldSize,
                     isKaroo3 = isKaroo3,
                     layout = layout,
                     text = windText,
@@ -934,7 +940,7 @@ fun ClimbScreenSelector(
                     iconColorRight = fourthIconColor,
                     zoneColorLeft = thirdZoneColor,
                     zoneColorRight = fourthZoneColor,
-                    fieldSize = FieldSize.MEDIUM,
+                    fieldSize = innerFieldSize,
                     isKaroo3 = isKaroo3,
                     layout = layout,
                     text = windText,
@@ -964,7 +970,7 @@ fun ClimbScreenSelector(
                     iconColorRight = secondIconColor,
                     zoneColorLeft = firstZoneColor,
                     zoneColorRight = secondZoneColor,
-                    fieldSize = FieldSize.MEDIUM,
+                    fieldSize = innerFieldSize,
                     isKaroo3 = isKaroo3,
                     layout = layout,
                     text = windText,
@@ -995,14 +1001,14 @@ fun ClimbScreenSelector(
                     action = climbField.kaction,
                     iconColor = climbIconColor,
                     zonecolor = climbZoneColor,
-                    fieldsize = FieldSize.MEDIUM,
+                    fieldsize = innerFieldSize,
                     iskaroo3 = isKaroo3,
                     clayout = FieldPosition.CENTER,
                     windtext = windText,
                     winddiff = windDirection,
                     baseBitmap = baseBitmap,
                     selector = true,
-                    textSize = 40,
+                    textSize = centerTextSize,
                     iszone = climbField.iszone,
                     ispreview = false,
                     secondValue = climbValueRight,
@@ -1032,7 +1038,7 @@ fun ClimbScreenSelector(
                     iconColorRight = fourthIconColor,
                     zoneColorLeft = thirdZoneColor,
                     zoneColorRight = fourthZoneColor,
-                    fieldSize = FieldSize.MEDIUM,
+                    fieldSize = innerFieldSize,
                     isKaroo3 = isKaroo3,
                     layout = layout,
                     text = windText,

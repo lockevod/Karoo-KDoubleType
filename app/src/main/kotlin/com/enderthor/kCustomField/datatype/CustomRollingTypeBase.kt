@@ -119,11 +119,13 @@ abstract class CustomRollingTypeBase(
                 val userProfile = karooSystem.consumerFlow<UserProfile>().first()
 
                 // Optimización: usar stateIn con timeout más largo para evitar recrear flows
+                // Usar previewOneFieldSettings (3 items) como valor inicial para evitar
+                // IndexOutOfBoundsException en globalIndex 1 y 2 antes de que carguen los settings reales.
                 val settings = context.streamOneFieldSettings()
                     .stateIn(
                         scope,
                         SharingStarted.WhileSubscribed(5000L), // Aumentado timeout
-                        listOf(OneFieldSettings())
+                        previewOneFieldSettings
                     )
 
                 val generalSettings = context.streamGeneralSettings()

@@ -127,7 +127,8 @@ abstract class CustomClimbTypeBase(
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         Timber.d("CLIMB StartView: field $extension index $globalIndex field $dataTypeId config: $config emitter: $emitter")
-        Timber.d("VIEWCONFIG [CLIMB/$dataTypeId]: viewSize=${config.viewSize} gridSize=${config.gridSize} textSize=${config.textSize}")
+        val effectiveFieldSize = getEffectiveFieldSize(config.gridSize.second, config.textSize)
+        Timber.d("VIEWCONFIG [CLIMB/$dataTypeId]: viewSize=${config.viewSize} gridSize=${config.gridSize} textSize=${config.textSize} effectiveFieldSize=$effectiveFieldSize")
 
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
@@ -420,29 +421,30 @@ abstract class CustomClimbTypeBase(
                                 if ( isCancelled) {
                                     return@withContext null
                                 }
-                                glance.compose(context, DpSize.Unspecified) {
-                                    ClimbScreenSelector(
-                                        firstvalue,
-                                        secondvalue,
-                                        thirdvalue,
-                                        fourthvalue,
-                                        climbvalue,
-                                        firstField(settings),
-                                        secondField(settings),
-                                        thirdField(settings),
-                                        fourthField(settings),
-                                        if(isOnClimb) climbOnField(settings) else climbField(settings),
-                                        firstIconcolor,
-                                        secondIconcolor,
-                                        thirdIconcolor,
-                                        fourthIconcolor,
-                                        climbIconcolor,
-                                        firstColorzone,
-                                        secondColorzone,
-                                        thirdColorzone,
-                                        fourthColorzone,
-                                        climbColorzone,
-                                        config.viewSize.first,
+                                 glance.compose(context, DpSize.Unspecified) {
+                                     ClimbScreenSelector(
+                                         firstvalue,
+                                         secondvalue,
+                                         thirdvalue,
+                                         fourthvalue,
+                                         climbvalue,
+                                         firstField(settings),
+                                         secondField(settings),
+                                         thirdField(settings),
+                                         fourthField(settings),
+                                         if(isOnClimb) climbOnField(settings) else climbField(settings),
+                                         firstIconcolor,
+                                         secondIconcolor,
+                                         thirdIconcolor,
+                                         fourthIconcolor,
+                                         climbIconcolor,
+                                         firstColorzone,
+                                         secondColorzone,
+                                         thirdColorzone,
+                                         fourthColorzone,
+                                         climbColorzone,
+                                         config.viewSize.first,
+                                         effectiveFieldSize,
                                         karooSystem.hardwareType == HardwareType.KAROO,
                                         clayout,
                                         windtext,
