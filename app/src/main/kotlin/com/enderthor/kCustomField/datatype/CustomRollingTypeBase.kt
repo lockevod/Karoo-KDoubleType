@@ -290,7 +290,7 @@ abstract class CustomRollingTypeBase(
                             val windData = (firstFieldState as? StreamHeadWindData)
                                 ?: (secondFieldState as? StreamHeadWindData)
                                 ?: (thirdFieldState as StreamHeadWindData)
-                            windData.diff to windData.windSpeed.roundToInt().toString()
+                            windData.diff to convertWindSpeed(windData.windSpeed, userProfile.preferredUnit.distance).roundToInt().toString()
                         } else 0.0 to ""
 
                         val selector: Boolean = valuestream is StreamState
@@ -394,7 +394,7 @@ abstract class CustomRollingTypeBase(
         emitter.setCancellable {
             try {
                 // Ignorar cancelación inmediata si estamos en modo preview (Profile)
-                Timber.d("CANCEL ROLLING and config.preview is = "+config.preview)
+                Timber.d("CANCEL ROLLING config.preview=%s", config.preview)
                 if (config.preview) {
                     Timber.w("Emitter.setCancellable ignored because config.preview=true (profile/preview). extension=$extension index=$index")
                     return@setCancellable

@@ -226,6 +226,19 @@ fun getFieldSize(size: Int): FieldSize {
     return fieldSizeRanges.first { size in it.min..it.max }.name
 }
 
+/**
+ * Convierte velocidad del viento de m/s (unidad nativa del stream karoo-headwind)
+ * a la unidad preferida del usuario.
+ * Factores idénticos a los de la extensión karoo-headwind (Conversion.kt):
+ *  - METRIC:   m/s × 3.6             → km/h
+ *  - IMPERIAL: m/s × 2.2369362920544 → mph
+ */
+fun convertWindSpeed(speedMs: Double, unitType: UserProfile.PreferredUnit.UnitType): Double =
+    when (unitType) {
+        UserProfile.PreferredUnit.UnitType.METRIC -> speedMs * 3.6
+        UserProfile.PreferredUnit.UnitType.IMPERIAL -> speedMs * 2.2369362920544
+    }
+
 @OptIn(FlowPreview::class)
 fun createHeadwindFlow(
     karooSystem: KarooSystemService,

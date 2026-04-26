@@ -222,7 +222,7 @@ abstract class CustomDoubleTypeBase(
                             val (winddiff, windtext) = if (firstFieldState !is StreamState || secondFieldState !is StreamState) {
                                 val windData = (firstFieldState as? StreamHeadWindData)
                                     ?: (secondFieldState as StreamHeadWindData)
-                                windData.diff to windData.windSpeed.roundToInt().toString()
+                                windData.diff to convertWindSpeed(windData.windSpeed, userProfile.preferredUnit.distance).roundToInt().toString()
                             } else 0.0 to ""
 
                             val fieldNumber = when {
