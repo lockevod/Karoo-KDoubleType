@@ -344,7 +344,7 @@ abstract class CustomSextupleTypeBase(
                                 fifthFieldState, sixthFieldState
                             ).firstOrNull { it is StreamHeadWindData }
                                 ?.let { it as StreamHeadWindData }
-                                ?.let { it.diff to convertWindSpeed(it.windSpeed, userProfile!!.preferredUnit.distance).roundToInt().toString() }
+                                ?.let { it.diff to convertWindSpeed(it.windSpeed, userProfile.preferredUnit.distance).roundToInt().toString() }
                                 ?: (0.0 to "")
 
                             val fieldNumber = 2
@@ -427,6 +427,8 @@ abstract class CustomSextupleTypeBase(
                                     }
                                 }
                             }
+
+                            delay(refreshTime)
                         }
                         .catch { e ->
                             when (e) {

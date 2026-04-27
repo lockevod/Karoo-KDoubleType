@@ -392,7 +392,7 @@ abstract class CustomClimbTypeBase(
                             climbStartFieldState, climbOnFieldState
                         ).firstOrNull { it is StreamHeadWindData }
                             ?.let { it as StreamHeadWindData }
-                            ?.let { it.diff to convertWindSpeed(it.windSpeed, userProfile!!.preferredUnit.distance).roundToInt().toString() }
+                            ?.let { it.diff to convertWindSpeed(it.windSpeed, userProfile.preferredUnit.distance).roundToInt().toString() }
                             ?: (0.0 to "")
 
 
@@ -471,9 +471,7 @@ abstract class CustomClimbTypeBase(
                                 if ( isCancelled) return@withContext
                                 emitter.updateView(newView)
                             }
-                            // Sin delay: el SDK Karoo limita los streams a 1Hz como máximo,
-                            // así que el tiempo de composición de Glance (~50-100ms) ya actúa
-                            // de throttle suficiente. conflate() actúa de red de seguridad.
+                            delay(refreshTime)
                         } catch (e: Exception) {
                             Timber.e(
                                 e,
@@ -562,7 +560,7 @@ abstract class CustomClimbTypeBase(
 
                 Timber.d("Cancelación de ClimbTypeBase completada")
 
-            } catch (e: CancellationException) {
+            } catch (_: CancellationException) {
 
             } catch (e: Exception) {
                 Timber.e(e, "Error durante la cancelación de CLIMB")
