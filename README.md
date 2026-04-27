@@ -88,7 +88,7 @@ Configure your W′ Balance parameters in the **W′BAL** tab:
 - Thanks to Hammerhead for the Karoo platform and SDK.
 - Thanks to DC Rainmaker for the sideloading guide.
 - Thanks to Boxicons and iconduck.com for icons.
-- KDouble does **not** save or share any personal data. It uses Firebase Crashlytics solely to capture crash reports. By installing the app you agree to [Firebase's terms](https://firebase.google.com/terms). If you do not agree, please do not install the app.
+- KDouble does **not** save or share any personal data.
 
 ## Links
 
