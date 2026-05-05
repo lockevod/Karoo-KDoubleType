@@ -75,6 +75,8 @@ abstract class CustomDoubleTypeBase(
 
     @Volatile private var isCancelled = false
 
+    private val isKaroo = karooSystem.hardwareType == HardwareType.KAROO
+
     private val refreshTime: Long
         get() = when (karooSystem.hardwareType) {
             HardwareType.K2 -> RefreshTime.MID.time
@@ -191,7 +193,7 @@ abstract class CustomDoubleTypeBase(
                             }
                     }.conflate().onEach { (firstFieldState, secondFieldState, globalConfig) ->
 
-                        if ( isCancelled) {
+                        if (isCancelled) {
                             Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
                         }
@@ -244,15 +246,13 @@ abstract class CustomDoubleTypeBase(
                             }
 
                             try {
-                                if ( isCancelled) {
+                                if (isCancelled) {
                                     Timber.d("DOUBLE Skipping composition, job cancelled: $extension $globalIndex")
                                     return@onEach
                                 }
-                                val newView = withContext(Dispatchers.Main) {
-                                    if ( isCancelled) {
-                                        return@withContext null
-                                    }
-                                    glance.compose(context, DpSize.Unspecified) {
+                                withContext(Dispatchers.Main) {
+                                    if (isCancelled) return@withContext
+                                    val newView = glance.compose(context, DpSize.Unspecified) {
                                         DoubleScreenSelector(
                                             fieldNumber,
                                             ishorizontal(settings),
@@ -265,7 +265,7 @@ abstract class CustomDoubleTypeBase(
                                             firstColorzone,
                                             secondColorzone,
                                             getEffectiveFieldSize(config.gridSize.second, config.textSize),
-                                            karooSystem.hardwareType == HardwareType.KAROO,
+                                            isKaroo,
                                             clayout,
                                             windtext,
                                             winddiff.roundToInt(),
@@ -279,13 +279,7 @@ abstract class CustomDoubleTypeBase(
                                             if (secondFieldState is StreamState) secondFieldState else null
                                         )
                                     }.remoteViews
-                                }
-                                if (newView == null) return@onEach
-
-                               // Timber.d("DOUBLE Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
-                                withContext(Dispatchers.Main) {
-                                    if ( isCancelled) return@withContext
-                                    emitter.updateView(newView)
+                                    if (!isCancelled) emitter.updateView(newView)
                                 }
                                 // Sin delay: SDK Karoo limita streams a 1Hz máximo.
                                 // El tiempo de composición Glance (~50-100ms) ya es throttle suficiente.

@@ -71,6 +71,8 @@ abstract class CustomRollingTypeBase(
 
     @Volatile private var isCancelled = false
 
+    private val isKaroo = karooSystem.hardwareType == HardwareType.KAROO
+
     private val refreshTime: Long
         get() = if (karooSystem.hardwareType == HardwareType.K2)
             RefreshTime.MID.time + RefreshTime.EXTRA_ROLLING.time else RefreshTime.HALF.time + RefreshTime.EXTRA_ROLLING.time
@@ -306,11 +308,9 @@ abstract class CustomRollingTypeBase(
                                 Timber.d("ROLLING Skipping composition, job cancelled: $extension $globalIndex")
                                 return@onEach
                             }
-                            val newView = withContext(Dispatchers.Main) {
-                                if ( isCancelled) {
-                                    return@withContext null
-                                }
-                                glance.compose(context, DpSize.Unspecified) {
+                            withContext(Dispatchers.Main) {
+                                if (isCancelled) return@withContext
+                                val newView = glance.compose(context, DpSize.Unspecified) {
                                     RollingFieldScreen(
                                         value,
                                         !(field(settings[globalIndex]).kaction.convert == "speed" ||
@@ -320,7 +320,7 @@ abstract class CustomRollingTypeBase(
                                         iconcolor,
                                         colorzone,
                                         getEffectiveFieldSize(config.gridSize.second, config.textSize),
-                                        karooSystem.hardwareType == HardwareType.KAROO,
+                                        isKaroo,
                                         generalSetting.iscenteralign,
                                         windtext,
                                         winddiff.roundToInt(),
@@ -332,13 +332,8 @@ abstract class CustomRollingTypeBase(
                                         valueSecond
                                     )
                                 }.remoteViews
-                            }
-                            //Timber.d("ROLLING Updating view: $extension $index cyclic: $cyclicIndex value: $value ")
-                            if (newView == null) return@onEach
-                            withContext(Dispatchers.Main) {
-                                if (isCancelled) return@withContext
-
-                                emitter.updateView(newView)
+                                //Timber.d("ROLLING Updating view: $extension $index cyclic: $cyclicIndex value: $value ")
+                                if (!isCancelled) emitter.updateView(newView)
                             }
                             // Sin delay: el SDK Karoo limita los streams a 1Hz como máximo,
                             // así que el tiempo de composición de Glance (~50-100ms) ya actúa
@@ -416,7 +411,7 @@ abstract class CustomRollingTypeBase(
                 scopeJob.cancel()
 
 
-            } catch (e: CancellationException) {
+            } catch (_: CancellationException) {
 
             } catch (e: Exception) {
                 Timber.e(e, "Error during view cancellation ")

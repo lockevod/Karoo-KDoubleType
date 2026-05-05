@@ -84,6 +84,8 @@ abstract class CustomClimbTypeBase(
     @Volatile private var isCancelled = false
     @Volatile private var isOnClimb = false
 
+    private val isKaroo = karooSystem.hardwareType == HardwareType.KAROO
+
     private val refreshTime: Long
         get() = when (karooSystem.hardwareType) {
             HardwareType.K2 -> RefreshTime.MID.time
@@ -317,7 +319,7 @@ abstract class CustomClimbTypeBase(
                     // Sin esto, los 6 streams producen más emisiones de las que se pueden renderizar
                     // (6 streams × 1Hz > 5 renders/seg con delay 200ms) → cola que crece 4-5s de lag.
                     }.conflate().onEach { result ->
-                        if ( isCancelled) {
+                        if (isCancelled) {
                             Timber.d("CLIMB Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
                         }
@@ -416,15 +418,13 @@ abstract class CustomClimbTypeBase(
 
                         //Timber.w("CLIMB field climbField: ${climbField(settings)}  isOnClimb: $isOnClimb isAlwaysclimbOnEnabled: $isAlwaysclimbOnEnabled")
                         try {
-                            if ( isCancelled) {
+                            if (isCancelled) {
                                 Timber.d("CLIMB Skipping composition, job cancelled: $extension $globalIndex")
                                 return@onEach
                             }
-                            val newView = withContext(Dispatchers.Main) {
-                                if ( isCancelled) {
-                                    return@withContext null
-                                }
-                                 glance.compose(context, DpSize.Unspecified) {
+                            withContext(Dispatchers.Main) {
+                                if (isCancelled) return@withContext
+                                val newView = glance.compose(context, DpSize.Unspecified) {
                                      ClimbScreenSelector(
                                          firstvalue,
                                          secondvalue,
@@ -448,7 +448,7 @@ abstract class CustomClimbTypeBase(
                                          climbColorzone,
                                          config.viewSize.first,
                                          effectiveFieldSize,
-                                        karooSystem.hardwareType == HardwareType.KAROO,
+                                        isKaroo,
                                         clayout,
                                         windtext,
                                         winddiff.roundToInt(),
@@ -464,12 +464,8 @@ abstract class CustomClimbTypeBase(
                                         isShowClimbField,
                                     )
                                 }.remoteViews
-                            }
-                            if (newView == null) return@onEach
-                            // Timber.d("CLIMB Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
-                            withContext(Dispatchers.Main) {
-                                if ( isCancelled) return@withContext
-                                emitter.updateView(newView)
+                                // Timber.d("CLIMB Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
+                                if (!isCancelled) emitter.updateView(newView)
                             }
                             delay(refreshTime)
                         } catch (e: Exception) {

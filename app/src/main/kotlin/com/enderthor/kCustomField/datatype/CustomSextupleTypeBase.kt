@@ -76,6 +76,8 @@ abstract class CustomSextupleTypeBase(
     private val fifthField = { settings: SextupleFieldSettings -> settings.fifthfield }
     private val sixthField = { settings: SextupleFieldSettings -> settings.sixthfield }
 
+    private val isKaroo = karooSystem.hardwareType == HardwareType.KAROO
+
     private val refreshTime: Long
         get() = when (karooSystem.hardwareType) {
             HardwareType.K2 -> RefreshTime.MID.time
@@ -102,7 +104,8 @@ abstract class CustomSextupleTypeBase(
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         Timber.d("SEXTUPLE StartView: field $extension index $globalIndex field $dataTypeId config: $config emitter: $emitter")
-        Timber.d("VIEWCONFIG [SEXTUPLE/$dataTypeId]: viewSize=${config.viewSize} gridSize=${config.gridSize} textSize=${config.textSize} effectiveFieldSize=${getEffectiveFieldSize(config.gridSize.second, config.textSize)}")
+        val effectiveFieldSize = getEffectiveFieldSize(config.gridSize.second, config.textSize)
+        Timber.d("VIEWCONFIG [SEXTUPLE/$dataTypeId]: viewSize=${config.viewSize} gridSize=${config.gridSize} textSize=${config.textSize} effectiveFieldSize=$effectiveFieldSize")
 
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
@@ -131,7 +134,7 @@ abstract class CustomSextupleTypeBase(
 
 
 
-        val configjob = CoroutineScope(Dispatchers.IO).launch {
+        val configjob = scope.launch {
             emitter.onNext(UpdateGraphicConfig(showHeader = false))
             emitter.onNext(ShowCustomStreamState(message = "", color = null))
             awaitCancellation()
@@ -274,7 +277,7 @@ abstract class CustomSextupleTypeBase(
                         }.conflate()
                         .onEach { result ->
 
-                        if ( isCancelled) {
+                        if (isCancelled) {
                             Timber.d("SEXTUPLE Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
                         }
@@ -359,15 +362,13 @@ abstract class CustomSextupleTypeBase(
                             }
 
                             try {
-                                if ( isCancelled) {
+                                if (isCancelled) {
                                     Timber.d("SEXTUPLE Skipping composition, job cancelled: $extension $globalIndex")
                                     return@onEach
                                 }
-                                val newView = withContext(Dispatchers.Main) {
-                                    if ( isCancelled) {
-                                        return@withContext null
-                                    }
-                                    glance.compose(context, DpSize.Unspecified) {
+                                withContext(Dispatchers.Main) {
+                                    if (isCancelled) return@withContext
+                                    val newView = glance.compose(context, DpSize.Unspecified) {
                                         SextupleScreenSelector(
                                             fieldNumber,
                                             false,
@@ -395,8 +396,8 @@ abstract class CustomSextupleTypeBase(
                                             fourthColorzone,
                                             fifthColorzone,
                                             sixthColorzone,
-                                            getEffectiveFieldSize(config.gridSize.second, config.textSize),
-                                            karooSystem.hardwareType == HardwareType.KAROO,
+                                            effectiveFieldSize,
+                                            isKaroo,
                                             clayout,
                                             windtext,
                                             winddiff.roundToInt(),
@@ -410,12 +411,7 @@ abstract class CustomSextupleTypeBase(
                                             sixthvalueRight
                                         )
                                     }.remoteViews
-                                }
-                                if (newView == null) return@onEach
-
-                                withContext(Dispatchers.Main) {
-                                    if ( isCancelled) return@withContext
-                                    emitter.updateView(newView)
+                                    if (!isCancelled) emitter.updateView(newView)
                                 }
                             } catch (e: Exception) {
                                 if (e is CancellationException) {
