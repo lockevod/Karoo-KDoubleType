@@ -1,7 +1,6 @@
 package com.enderthor.kCustomField.datatype
 
 import android.content.Context
-import android.graphics.BitmapFactory
 import android.os.DeadObjectException
 import androidx.compose.ui.unit.DpSize
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
@@ -34,7 +33,6 @@ import io.hammerhead.karooext.internal.ViewEmitter
 import com.enderthor.kCustomField.extensions.consumerFlow
 import com.enderthor.kCustomField.extensions.streamOneFieldSettings
 import com.enderthor.kCustomField.extensions.streamGeneralSettings
-import com.enderthor.kCustomField.R
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
 import io.hammerhead.karooext.models.HardwareType
@@ -71,6 +69,10 @@ abstract class CustomRollingTypeBase(
 
     @Volatile private var isCancelled = false
 
+    // Idempotencia: si Karoo re-invoca startView() sin dejarnos cancelar (preview),
+    // descartamos el scope previo en lugar de dejarlo huérfano.
+    @Volatile private var activeScopeJob: Job? = null
+
     private val isKaroo = karooSystem.hardwareType == HardwareType.KAROO
 
     private val refreshTime: Long
@@ -99,8 +101,13 @@ abstract class CustomRollingTypeBase(
         Timber.d("VIEWCONFIG [ROLLING/$dataTypeId]: viewSize=${config.viewSize} gridSize=${config.gridSize} textSize=${config.textSize} effectiveFieldSize=${getEffectiveFieldSize(config.gridSize.second, config.textSize)}")
 
 
+        activeScopeJob?.let {
+            Timber.d("ROLLING Cancelling previous scope on re-entry: $extension $index")
+            it.cancel()
+        }
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
+        activeScopeJob = scopeJob
         isCancelled = false
         ViewState.setCancelled(false)
 
@@ -114,7 +121,7 @@ abstract class CustomRollingTypeBase(
             awaitCancellation()
         }
 
-        val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
+        val baseBitmap = com.enderthor.kCustomField.extensions.KarooCustomFieldExtension.instance.circleBitmap
 
         val viewjob = scope.launch {
             try {

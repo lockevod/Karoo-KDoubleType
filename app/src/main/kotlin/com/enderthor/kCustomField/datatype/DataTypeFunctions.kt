@@ -48,6 +48,9 @@ import kotlin.math.exp
 class StickyStreamState private constructor() {
     companion object {
         private const val MAX_STATES = 20
+        // accessOrder=true: un get reordena la lista, así que TODA acceso (incluso lectura)
+        // muta la estructura. Sin sincronización, los flows concurrentes de Sextuple/Climb
+        // pueden corromper el mapa o lanzar ConcurrentModificationException.
         private val lastValidStates = object : LinkedHashMap<String, Pair<Any, Long>>(MAX_STATES, 0.75f, true) {
             override fun removeEldestEntry(eldest: Map.Entry<String, Pair<Any, Long>>) = size > MAX_STATES
         }
@@ -56,20 +59,21 @@ class StickyStreamState private constructor() {
         fun process(state: Any, actionName: String): Any {
             val currentTime = System.currentTimeMillis()
 
+            synchronized(lastValidStates) {
+                if (state is StreamState.Streaming) {
+                    lastValidStates[actionName] = Pair(state, currentTime)
+                    return state
+                }
 
-            if (state is StreamState.Streaming) {
-                lastValidStates[actionName] = Pair(state, currentTime)
+                val lastStatePair = lastValidStates[actionName] ?: return state
+                val (lastState, timestamp) = lastStatePair
+
+                if (currentTime - timestamp < STICKY_TIMEOUT_MS) {
+                    return lastState
+                }
+
                 return state
             }
-
-            val lastStatePair = lastValidStates[actionName] ?: return state
-            val (lastState, timestamp) = lastStatePair
-
-            if (currentTime - timestamp < STICKY_TIMEOUT_MS) {
-                return lastState
-            }
-
-            return state
         }
     }
 }
