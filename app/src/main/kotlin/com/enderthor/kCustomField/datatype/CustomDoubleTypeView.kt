@@ -20,7 +20,15 @@ import timber.log.Timber
 import java.text.DateFormat
 import java.util.Calendar
 import kotlin.math.roundToInt
-import java.util.Locale
+
+// ColorProviders compartidos para evitar instanciar uno por cada recomposición Glance.
+// Glance reevalúa parámetros de @Composable en cada update; sin estas constantes los
+// 12+ usos de TextDayNight crearían un objeto cada vez.
+internal val TextDayNight: ColorProvider = ColorProvider(day = Color.Black, night = Color.White)
+internal val TextNightDay: ColorProvider = ColorProvider(day = Color.White, night = Color.Black)
+internal val PlaceholderAllBlack: ColorProvider = ColorProvider(day = Color.Black, night = Color.Black)
+internal val OverlayBgDay: Color = Color(1f, 1f, 1f, 0.4f)
+internal val OverlayBgNight: Color = Color(0f, 0f, 0f, 0.4f)
 
 
 fun formatTimeRemaining(timeMs: Double): String {
@@ -28,10 +36,12 @@ fun formatTimeRemaining(timeMs: Double): String {
     val hours = totalMinutes / 60
     val minutes = totalMinutes % 60
 
+    // Sin Locale.US/String.format: evita alocar Formatter en cada tick.
+    // Locale-safe por construcción (no produce comas decimales en locales europeos).
     return if (hours > 0) {
-        String.format(Locale.US, "%02d:%02d", hours, minutes)
+        "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}"
     } else {
-        String.format(Locale.US, "%d", minutes)
+        minutes.toString()
     }
 }
 
@@ -62,14 +72,20 @@ fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivi
                 numValue < 10000 -> {
                     val intPart = numValue / 1000
                     val decPart = (numValue % 1000) / 10
-                    append(String.format("%d.%02d", intPart, decPart))
+                    // Sin String.format: bug latente con locales europeos (coma decimal).
+                    append(intPart)
+                    append('.')
+                    if (decPart < 10) append('0')
+                    append(decPart)
                 }
 
                 else -> {
                     // Para distancias >= 10 km, usar formato más compacto: "10.5" en lugar de "10.50"
                     val intPart = numValue / 1000
                     val decPart = (numValue % 1000) / 100
-                    append(String.format("%d.%d", intPart, decPart))
+                    append(intPart)
+                    append('.')
+                    append(decPart)
                 }
             }
         }
@@ -109,7 +125,7 @@ private fun VerticalDivider(isTopField: Boolean, fieldSize: FieldSize, isdivider
     Box(modifier = GlanceModifier.fillMaxWidth().height(height)) {
         Row(modifier = GlanceModifier.fillMaxSize()) {
             Column(modifier = GlanceModifier.defaultWeight()) {}
-            if (isdivider) Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(ColorProvider(Color.Black, Color.White)))
+            if (isdivider) Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(TextDayNight))
             Column(modifier = GlanceModifier.defaultWeight()) {}
         }
     }
@@ -177,7 +193,7 @@ private fun NumberRow(
                 fontWeight = FontWeight.Bold,
                 fontSize = fontSize,
                 fontFamily = FontFamily.Monospace,
-                color = if (iszone) textColor else ColorProvider(Color.Black, Color.White)
+                color = if (iszone) textColor else TextDayNight
             )
         )
         Spacer(
@@ -248,7 +264,7 @@ private fun OneIconRow(
                         fontWeight = FontWeight.Bold,
                         fontSize = adjustedFontSize,
                         fontFamily = FontFamily.Monospace,
-                        color = if (iszone) iconColor else ColorProvider(Color.Black, Color.White),
+                        color = if (iszone) iconColor else TextDayNight,
                         textAlign = TextAlign.End
                     )
                 )
@@ -304,7 +320,7 @@ private fun OneNumberRow(
                 fontWeight = FontWeight.Bold,
                 fontSize = adjustedTextSize.sp,
                 fontFamily = FontFamily.Monospace,
-                color = if (iszone) textColor else ColorProvider(Color.Black, Color.White)
+                color = if (iszone) textColor else TextDayNight
             ),
             modifier = GlanceModifier.padding(top = -padding)
         )
@@ -339,7 +355,7 @@ private fun HorizontalScreenContent(number: String, icon: Int, colorFilter: Colo
                 fontWeight = FontWeight.Bold,
                 fontSize = 38.sp,
                 fontFamily = FontFamily.Monospace,
-                color = if (iszone) colorFilter else ColorProvider(Color.Black, Color.White),
+                color = if (iszone) colorFilter else TextDayNight,
                 textAlign = when (layout.name) {
                     "CENTER" -> TextAlign.Center
                     "RIGHT" -> TextAlign.End
@@ -357,7 +373,7 @@ private fun HorizontalScreenContent(number: String, icon: Int, colorFilter: Colo
                 colorFilter = colorIcon
             )
         }
-        Spacer(modifier = GlanceModifier.height(1.dp).background(ColorProvider(Color.Black, Color.White)))
+        Spacer(modifier = GlanceModifier.height(1.dp).background(TextDayNight))
     }
 }
 
@@ -395,11 +411,11 @@ fun NotSupported(overlayText: String, fontSize: Int)
             overlayText,
             maxLines = 2,
             style = TextStyle(
-                ColorProvider(Color.Black, Color.White),
+                TextDayNight,
                 fontSize = (0.8 * fontSize).sp,
                 fontFamily = FontFamily.Monospace
             ),
-            modifier = GlanceModifier.background(ColorProvider(Color.White, Color.Black)
+            modifier = GlanceModifier.background(TextNightDay
             ).padding(1.dp)
         )
     }
@@ -567,22 +583,10 @@ fun DoubleScreenSelector(
 
     val icon1 = if (selector == 0 || selector == 3) leftIcon else 1
     val icon2 = if (selector == 1 || selector == 3) rightIcon else 1
-    val iconColor1 = if (selector == 0 || selector == 3) iconColorLeft else ColorProvider(
-        Color.Black,
-        Color.Black
-    )
-    val iconColor2 = if (selector == 1 || selector == 3) iconColorRight else ColorProvider(
-        Color.Black,
-        Color.Black
-    )
-    val zoneColor1 = if (selector == 0 || selector == 3) zoneColorLeft else ColorProvider(
-        Color.Black,
-        Color.Black
-    )
-    val zoneColor2 = if (selector == 1 || selector == 3) zoneColorRight else ColorProvider(
-        Color.Black,
-        Color.Black
-    )
+    val iconColor1 = if (selector == 0 || selector == 3) iconColorLeft else PlaceholderAllBlack
+    val iconColor2 = if (selector == 1 || selector == 3) iconColorRight else PlaceholderAllBlack
+    val zoneColor1 = if (selector == 0 || selector == 3) zoneColorLeft else PlaceholderAllBlack
+    val zoneColor2 = if (selector == 1 || selector == 3) zoneColorRight else PlaceholderAllBlack
 
 
   // Timber.w("newLeft: $newLeft  iconColorLeft: $iconColorLeft  zoneColorLeft: $zoneColorLeft  iszoneLeft: $iszoneLeft")
@@ -923,7 +927,7 @@ fun ClimbScreenSelector(
                 Spacer(
                     modifier = GlanceModifier.fillMaxHeight()
                         .width(1.dp)
-                        .background(ColorProvider(Color.Black, Color.White))
+                        .background(TextDayNight)
                 )
             }
 
@@ -989,7 +993,7 @@ fun ClimbScreenSelector(
                 Spacer(
                     modifier = GlanceModifier.fillMaxHeight()
                         .width(1.dp)
-                        .background(ColorProvider(Color.Black, Color.White))
+                        .background(TextDayNight)
                 )
             }
 
@@ -1021,7 +1025,7 @@ fun ClimbScreenSelector(
                 Spacer(
                     modifier = GlanceModifier.fillMaxHeight()
                         .width(1.dp)
-                        .background(ColorProvider(Color.Black, Color.White))
+                        .background(TextDayNight)
                 )
             }
 
@@ -1070,15 +1074,15 @@ private fun DoubleTypesScreenHorizontal(
     Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
 
         Row(modifier = GlanceModifier.fillMaxSize().let { if (isKaroo3) it.cornerRadius(8.dp) else it }) {
-            Column(modifier = GlanceModifier.defaultWeight().background(if (selector in 1..2) ColorProvider(Color.White, Color.Black) else zoneColor1)) {
+            Column(modifier = GlanceModifier.defaultWeight().background(if (selector in 1..2) TextNightDay else zoneColor1)) {
                 when (selector) {
                     1, 2 -> HeadwindDirectionDoubleType(baseBitmap, windDirection, 38, text)
                     0 -> SingleHorizontalField(leftIcon, iconColorLeft, layout, fieldSize, zoneColor1, leftNumber, true,iszoneLeft)
                     else -> SingleHorizontalField(leftIcon, iconColorLeft, layout, fieldSize, zoneColor1, leftNumber, false,iszoneLeft)
                 }
             }
-            if (isdivider) Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(ColorProvider(Color.Black, Color.White)))
-            Column(modifier = GlanceModifier.defaultWeight().background(if (selector in listOf(0, 2)) ColorProvider(Color.White, Color.Black) else zoneColor2)) {
+            if (isdivider) Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(TextDayNight))
+            Column(modifier = GlanceModifier.defaultWeight().background(if (selector in listOf(0, 2)) TextNightDay else zoneColor2)) {
                 when (selector) {
                     0, 2 -> HeadwindDirectionDoubleType(baseBitmap, windDirection, 38, text)
                     1 -> SingleHorizontalField(rightIcon, iconColorRight, layout, fieldSize, zoneColor2, rightNumber, true,iszoneRight)
@@ -1105,7 +1109,7 @@ private fun DoubleTypesVerticalScreenSmall(
                 Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(zoneColor1))
                 HorizontalScreenContent(leftNumber, leftIcon, iconColorLeft, layout,iszoneLeft)
             }
-            if (isdivider) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.Black, Color.White)))
+            if (isdivider) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(TextDayNight))
             Spacer(modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zoneColor2))
             Column(modifier = GlanceModifier.defaultWeight().background(zoneColor2)) {
                 HorizontalScreenContent(rightNumber, rightIcon, iconColorRight, layout,iszoneRight)
@@ -1128,7 +1132,7 @@ private fun DoubleTypesVerticalScreenBig(
                 Spacer(modifier = GlanceModifier.fillMaxWidth().height(2.dp).background(zoneColor1))
                 HorizontalScreenContent(leftNumber, leftIcon, iconColorLeft, layout,iszoneLeft)
             }
-            if (isdivider) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.Black, Color.White)))
+            if (isdivider) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(TextDayNight))
             Spacer(modifier = GlanceModifier.fillMaxWidth().height(7.dp).background(zoneColor2))
             Column(modifier = GlanceModifier.defaultWeight().background(zoneColor2)) {
                 HorizontalScreenContent(rightNumber, rightIcon, iconColorRight, layout,iszoneRight)
@@ -1151,7 +1155,7 @@ private fun SextupleTypesVerticalScreenSmall(
 ) {
     Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
         //cornerRadius(8.dp)
-        Column(modifier = if (isKaroo3) GlanceModifier.fillMaxSize().background(ColorProvider(Color.White, Color.Black)).cornerRadius(0.dp) else GlanceModifier.fillMaxSize().background(ColorProvider(Color.White, Color.Black))) {
+        Column(modifier = if (isKaroo3) GlanceModifier.fillMaxSize().background(TextNightDay).cornerRadius(0.dp) else GlanceModifier.fillMaxSize().background(TextNightDay)) {
             // row added
             Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor1)) {
@@ -1175,10 +1179,10 @@ private fun SextupleTypesVerticalScreenSmall(
             }
             if (isdivider) Spacer(
                 modifier = GlanceModifier.fillMaxWidth().height(1.dp)
-                    .background(ColorProvider(Color.Black, Color.White))
+                    .background(TextDayNight)
             ) else Spacer(
                 modifier = GlanceModifier.fillMaxWidth().height(1.dp)
-                    .background(ColorProvider(Color.White, Color.Black))
+                    .background(TextNightDay)
             )
 
             Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
@@ -1213,7 +1217,7 @@ private fun SextupleTypesVerticalScreenBig(
 ) {
     Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
         //cornerRadius(8.dp)
-        Column(modifier = if (isKaroo3) GlanceModifier.fillMaxSize().background(ColorProvider(Color.White, Color.Black)).cornerRadius(0.dp) else GlanceModifier.fillMaxSize().background(ColorProvider(Color.White, Color.Black))) {
+        Column(modifier = if (isKaroo3) GlanceModifier.fillMaxSize().background(TextNightDay).cornerRadius(0.dp) else GlanceModifier.fillMaxSize().background(TextNightDay)) {
             // row added
             //Spacer(modifier = GlanceModifier.fillMaxWidth().height(7.dp).background(zoneColor1))
             Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
@@ -1230,8 +1234,8 @@ private fun SextupleTypesVerticalScreenBig(
                     HorizontalScreenContent(trimNumberTo3Chars(thirdNumber), thirdIcon, iconColorThird, layout,iszoneThird)
                 }
             }
-            if (isdivider) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.Black, Color.White)))
-            else Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(ColorProvider(Color.White, Color.Black)))
+            if (isdivider) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(TextDayNight))
+            else Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(TextNightDay))
             // row added
             Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor4)) {
@@ -1265,13 +1269,13 @@ private fun HeadwindDirectionDoubleType(baseBitmap: Bitmap, bearing: Int, fontSi
             provider = ImageProvider(getArrowBitmapByBearing(baseBitmap, bearing)),
             contentDescription = "Relative wind direction indicator",
             contentScale = ContentScale.Fit,
-            colorFilter = ColorFilter.tint(ColorProvider(Color.Black, Color.White))
+            colorFilter = ColorFilter.tint(TextDayNight)
         )
         if (overlayText.isNotEmpty()) {
             Text(
                 overlayText,
-                style = TextStyle(ColorProvider(Color.Black, Color.White), fontSize = (0.6 * fontSize).sp, fontFamily = FontFamily.Monospace),
-                modifier = GlanceModifier.background(Color(1f, 1f, 1f, 0.4f), Color(0f, 0f, 0f, 0.4f)).padding(1.dp)
+                style = TextStyle(TextDayNight, fontSize = (0.6 * fontSize).sp, fontFamily = FontFamily.Monospace),
+                modifier = GlanceModifier.background(OverlayBgDay, OverlayBgNight).padding(1.dp)
             )
         }
     }

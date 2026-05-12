@@ -167,7 +167,9 @@ abstract class CustomSextupleTypeBase(
                         } catch (e: Exception) {
                             Timber.e(e, "SEXTUPLE Error en vista inicial: $extension $globalIndex ")
                         }
-                        delay(400L + (Random.nextInt(10) * 150L))
+                        // Jitter 400-700ms para desincronizar arranques entre fields sin
+                        // exponer al usuario a esperas largas viendo "Searching…" (antes 400-1900ms).
+                        delay(400L + (Random.nextInt(4) * 100L))
 
                     }
 

@@ -111,7 +111,7 @@ fun HeadwindDirection(baseBitmap: Bitmap, bearing: Int, fontSize: Int, overlayTe
                     overlayText,
                     maxLines = 1,
                     style = TextStyle(ColorProvider(dayColor, nightColor), fontSize = (0.6 * fontSize).sp, fontFamily = FontFamily.Monospace),
-                    modifier = GlanceModifier.background(Color(1f, 1f, 1f, 0.4f), Color(0f, 0f, 0f, 0.4f)).padding(1.dp)
+                    modifier = GlanceModifier.background(OverlayBgDay, OverlayBgNight).padding(1.dp)
                 )
             } else {
                 Row(modifier = GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
@@ -135,7 +135,7 @@ fun HeadwindDirection(baseBitmap: Bitmap, bearing: Int, fontSize: Int, overlayTe
                             overlayText,
                             maxLines = 1,
                             style = TextStyle(ColorProvider(dayColor, nightColor), fontSize = (0.7 * fontSize).sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold),
-                            modifier = GlanceModifier.background(Color(1f, 1f, 1f, 0.4f), Color(0f, 0f, 0f, 0.4f)).padding(1.dp)
+                            modifier = GlanceModifier.background(OverlayBgDay, OverlayBgNight).padding(1.dp)
                         )
 
                         Row{
@@ -143,7 +143,7 @@ fun HeadwindDirection(baseBitmap: Bitmap, bearing: Int, fontSize: Int, overlayTe
                                 overlaySubText,
                                 maxLines = 1,
                                 style = TextStyle(ColorProvider(dayColor, nightColor), fontSize = (0.4 * fontSize).sp, fontFamily = FontFamily.Monospace),
-                                modifier = GlanceModifier.background(Color(1f, 1f, 1f, 0.4f), Color(0f, 0f, 0f, 0.4f)).padding(1.dp)
+                                modifier = GlanceModifier.background(OverlayBgDay, OverlayBgNight).padding(1.dp)
                             )
                         }
                     }
