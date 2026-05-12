@@ -478,7 +478,8 @@ abstract class CustomClimbTypeBase(
                                 // Timber.d("CLIMB Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
                                 if (!isCancelled) emitter.updateView(newView)
                             }
-                            delay(refreshTime)
+                            // delay(refreshTime) eliminado: doble-limitación con sample(refreshTime)
+                            // aguas arriba — provocaba updates a ~0.6 Hz en K2. Coherente con Double/Rolling.
                         } catch (e: Exception) {
                             Timber.e(
                                 e,

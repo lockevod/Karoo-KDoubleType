@@ -80,7 +80,6 @@ abstract class CustomDoubleTypeBase(
     // cancelar y luego reabre la vista), cancelamos el scope anterior aquí en lugar
     // de dejarlo huérfano. NO toca el workaround de "ignorar cancellable en preview"
     // que evita campos en blanco en la pantalla de Profile.
-    @Volatile private var activeScope: CoroutineScope? = null
     @Volatile private var activeScopeJob: Job? = null
 
     private val isKaroo = karooSystem.hardwareType == HardwareType.KAROO
@@ -125,7 +124,6 @@ abstract class CustomDoubleTypeBase(
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
         activeScopeJob = scopeJob
-        activeScope = scope
         isCancelled = false
         ViewState.setCancelled(false)
 
