@@ -1,6 +1,7 @@
 package com.enderthor.kCustomField.datatype
 
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.os.DeadObjectException
 
 import androidx.compose.ui.unit.DpSize
@@ -28,6 +29,7 @@ import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.internal.ViewEmitter
 
 import com.enderthor.kCustomField.extensions.streamGeneralSettings
+import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.streamClimbFieldSettings
 import com.enderthor.kCustomField.extensions.streamDataFlow
 
@@ -82,10 +84,6 @@ abstract class CustomClimbTypeBase(
     @Volatile private var isCancelled = false
     @Volatile private var isOnClimb = false
 
-    // Idempotencia: si Karoo re-invoca startView() sin permitirnos cancelar (preview),
-    // descartamos el scope previo en lugar de dejarlo huérfano.
-    @Volatile private var activeScopeJob: Job? = null
-
     private val isKaroo = karooSystem.hardwareType == HardwareType.KAROO
 
     private val refreshTime: Long
@@ -134,13 +132,8 @@ abstract class CustomClimbTypeBase(
         val effectiveFieldSize = getEffectiveFieldSize(config.gridSize.second, config.textSize)
         Timber.d("VIEWCONFIG [CLIMB/$dataTypeId]: viewSize=${config.viewSize} gridSize=${config.gridSize} textSize=${config.textSize} effectiveFieldSize=$effectiveFieldSize")
 
-        activeScopeJob?.let {
-            Timber.d("CLIMB Cancelling previous scope on re-entry: $extension $globalIndex")
-            it.cancel()
-        }
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
-        activeScopeJob = scopeJob
 
         var isAlwaysclimbOnEnabled = true
         var isShowClimbField = true
@@ -150,8 +143,8 @@ abstract class CustomClimbTypeBase(
 
         checkClimbStatus(scope)
 
-        // Bitmap del círculo compartido entre todos los DataType de la extension.
-        val baseBitmap = com.enderthor.kCustomField.extensions.KarooCustomFieldExtension.instance.circleBitmap
+        // OPTIMIZACIÓN: reutilizar bitmap solo para el círculo base (no datos)
+        val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
 
         val dataflow = context.streamClimbFieldSettings()
             .onStart {

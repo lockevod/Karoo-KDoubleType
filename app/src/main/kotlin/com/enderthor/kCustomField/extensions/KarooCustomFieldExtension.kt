@@ -1,8 +1,6 @@
 package com.enderthor.kCustomField.extensions
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -12,7 +10,6 @@ import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
 
 import com.enderthor.kCustomField.BuildConfig
-import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.datatype.BellActionDataType
 import com.enderthor.kCustomField.datatype.CustomClimbType
 import com.enderthor.kCustomField.datatype.CustomDoubleType
@@ -28,13 +25,6 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "se
 class KarooCustomFieldExtension : KarooExtension("kcustomfield", BuildConfig.VERSION_NAME) {
 
     lateinit var karooSystem: KarooSystemService
-
-    // Bitmap del círculo compartido entre todos los DataType. Antes cada DataType
-    // decodificaba R.drawable.circle en cada startView() — 4 ficheros × N restarts
-    // por ride sumaba MBs no liberados. Se decodifica una vez por proceso de la extension.
-    val circleBitmap: Bitmap by lazy {
-        BitmapFactory.decodeResource(applicationContext.resources, R.drawable.circle)
-    }
 
     companion object {
         lateinit var instance: KarooCustomFieldExtension

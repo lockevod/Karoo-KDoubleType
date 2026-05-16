@@ -1,6 +1,7 @@
 package com.enderthor.kCustomField.datatype
 
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.os.DeadObjectException
 
 import androidx.compose.ui.unit.DpSize
@@ -29,6 +30,7 @@ import io.hammerhead.karooext.internal.ViewEmitter
 
 import com.enderthor.kCustomField.extensions.streamDoubleFieldSettings
 import com.enderthor.kCustomField.extensions.streamGeneralSettings
+import com.enderthor.kCustomField.R
 
 import com.enderthor.kCustomField.extensions.streamUserProfile
 import io.hammerhead.karooext.models.DataPoint
@@ -73,14 +75,6 @@ abstract class CustomDoubleTypeBase(
 
     @Volatile private var isCancelled = false
 
-    // Idempotencia: si Karoo invoca startView() de nuevo sobre esta misma instancia
-    // (típico en preview de configuración de perfiles, donde el SDK no nos deja
-    // cancelar y luego reabre la vista), cancelamos el scope anterior aquí en lugar
-    // de dejarlo huérfano. NO toca el workaround de "ignorar cancellable en preview"
-    // que evita campos en blanco en la pantalla de Profile.
-    @Volatile private var activeScope: CoroutineScope? = null
-    @Volatile private var activeScopeJob: Job? = null
-
     private val isKaroo = karooSystem.hardwareType == HardwareType.KAROO
 
     private val refreshTime: Long
@@ -109,18 +103,8 @@ abstract class CustomDoubleTypeBase(
         Timber.d("DOUBLE StartView: field $extension index $globalIndex field $dataTypeId config: $config emitter: $emitter")
         Timber.d("VIEWCONFIG [DOUBLE/$dataTypeId]: viewSize=${config.viewSize} gridSize=${config.gridSize} textSize=${config.textSize} effectiveFieldSize=${getEffectiveFieldSize(config.gridSize.second, config.textSize)}")
 
-        // Si había un scope anterior (re-entrada de startView sin que el SDK nos
-        // hubiera dejado cancelar — caso típico en preview), liberarlo antes de
-        // crear el nuevo. Evita la fuga de corutinas que se acumulaba en sesiones largas.
-        activeScopeJob?.let {
-            Timber.d("DOUBLE Cancelling previous scope on re-entry: $extension $globalIndex")
-            it.cancel()
-        }
-
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
-        activeScopeJob = scopeJob
-        activeScope = scope
         isCancelled = false
         ViewState.setCancelled(false)
 
@@ -152,7 +136,7 @@ abstract class CustomDoubleTypeBase(
             awaitCancellation()
         }
 
-        val baseBitmap = com.enderthor.kCustomField.extensions.KarooCustomFieldExtension.instance.circleBitmap
+        val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
         val viewjob = scope.launch {
             try {
                 Timber.d("DOUBLE Starting view: $extension $globalIndex ")

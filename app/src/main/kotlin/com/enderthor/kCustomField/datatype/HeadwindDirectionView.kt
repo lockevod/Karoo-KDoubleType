@@ -31,13 +31,7 @@ import kotlin.math.roundToInt
 // This file is from the KarooHeadwind project by Tim Kluge
 data class BitmapWithBearing(val bitmap: Bitmap, val bearing: Int)
 
-// Reducido de 36 a 18: cache cada 20° en lugar de 10°.
-// 18 entradas × 128×128 ARGB_8888 (64 KB) ≈ 1.15 MB en lugar de 2.3 MB.
-// La diferencia visual entre 10° y 20° de granularidad en una flecha de wind
-// direction no es perceptible en una pantalla de 480×800.
-private const val MAX_CACHED_BEARINGS = 18
-private const val BEARING_STEP = 20
-
+private const val MAX_CACHED_BEARINGS = 36
 val bitmapsByBearing = object : LinkedHashMap<BitmapWithBearing, Bitmap>(MAX_CACHED_BEARINGS, 0.75f, true) {
     override fun removeEldestEntry(eldest: Map.Entry<BitmapWithBearing, Bitmap>): Boolean {
         if (size > MAX_CACHED_BEARINGS) {
@@ -51,7 +45,7 @@ val bitmapsByBearing = object : LinkedHashMap<BitmapWithBearing, Bitmap>(MAX_CAC
 
 fun getArrowBitmapByBearing(baseBitmap: Bitmap, bearing: Int): Bitmap {
     synchronized(bitmapsByBearing) {
-        val bearingRounded = (((bearing + 360) / BEARING_STEP.toDouble()).roundToInt() * BEARING_STEP) % 360
+        val bearingRounded = (((bearing + 360) / 10.0).roundToInt() * 10) % 360
 
         val bitmapWithBearing = BitmapWithBearing(baseBitmap, bearingRounded)
         val storedBitmap = bitmapsByBearing[bitmapWithBearing]
@@ -63,15 +57,13 @@ fun getArrowBitmapByBearing(baseBitmap: Bitmap, bearing: Int): Bitmap {
         val paint = Paint().apply {
             color = android.graphics.Color.BLACK
             style = Paint.Style.STROKE
+//            strokeWidth = 15f
             isAntiAlias = true
         }
 
         canvas.save()
         canvas.scale((bitmap.width / baseBitmap.width.toFloat()), (bitmap.height / baseBitmap.height.toFloat()), (bitmap.width / 2).toFloat(), (bitmap.height / 2).toFloat())
-        // Rotar con el bearing redondeado (no el original) para que el bitmap cacheado
-        // sea coherente con la clave: antes, la primera vez que llegaba 23° se cacheaba
-        // bajo clave 20° con el bitmap dibujado a 23°.
-        canvas.rotate(bearingRounded.toFloat(), (bitmap.width / 2).toFloat(), (bitmap.height / 2).toFloat())
+        canvas.rotate(bearing.toFloat(), (bitmap.width / 2).toFloat(), (bitmap.height / 2).toFloat())
         canvas.drawBitmap(baseBitmap, ((bitmap.width - baseBitmap.width) / 2).toFloat(), ((bitmap.height - baseBitmap.height) / 2).toFloat(), paint)
         canvas.restore()
 
