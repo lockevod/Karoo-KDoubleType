@@ -439,10 +439,8 @@ abstract class CustomSextupleTypeBase(
                                     }
                                 }
                             }
-                            // delay(refreshTime) eliminado: era una doble-limitación con
-                            // el sample(refreshTime) aguas arriba — provocaba updates a
-                            // ~0.6 Hz en K2 (sample 800ms + delay 800ms = 1.6s/ciclo).
-                            // Double y Rolling ya no lo tenían; ahora coherente.
+
+                            delay(refreshTime)
                         }
                         .catch { e ->
                             when (e) {
