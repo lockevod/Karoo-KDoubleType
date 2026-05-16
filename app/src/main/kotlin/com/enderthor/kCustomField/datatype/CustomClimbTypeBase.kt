@@ -9,7 +9,6 @@ import androidx.glance.appwidget.GlanceRemoteViews
 
 import kotlinx.coroutines.CoroutineScope
 import kotlin.math.roundToInt
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
@@ -47,7 +46,6 @@ import kotlinx.coroutines.cancel
 
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.conflate
-import kotlinx.coroutines.flow.sample
 
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -99,7 +97,7 @@ abstract class CustomClimbTypeBase(
 
 
     private fun previewFlow(): Flow<StreamState> = flow {
-        while (currentCoroutineContext().isActive) {
+        while (true) {
             emit(StreamState.Streaming(
                 DataPoint(
                     dataTypeId,
@@ -326,10 +324,10 @@ abstract class CustomClimbTypeBase(
                             )
                         }
 
-                    // sample(refreshTime) cap de frecuencia upstream + conflate() red de
-                    // seguridad downstream. 6 streams a 1Hz pueden generar hasta 6 emisiones/seg
-                    // en bursts; sample limita y conflate descarta cualquier ráfaga restante.
-                    }.sample(refreshTime).conflate().onEach { result ->
+                    // conflate() descarta emisiones intermedias mientras el render está ocupado.
+                    // Sin esto, los 6 streams producen más emisiones de las que se pueden renderizar
+                    // (6 streams × 1Hz > 5 renders/seg con delay 200ms) → cola que crece 4-5s de lag.
+                    }.conflate().onEach { result ->
                         if (isCancelled) {
                             Timber.d("CLIMB Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach

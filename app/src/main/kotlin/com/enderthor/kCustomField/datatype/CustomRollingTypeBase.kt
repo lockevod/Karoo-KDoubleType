@@ -7,7 +7,6 @@ import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import androidx.glance.appwidget.GlanceRemoteViews
 import kotlinx.coroutines.CoroutineScope
 import kotlin.math.roundToInt
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
@@ -24,7 +23,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.conflate
-import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
@@ -85,7 +83,7 @@ abstract class CustomRollingTypeBase(
 
 
     private fun previewFlow(): Flow<StreamState> = flow {
-        while (currentCoroutineContext().isActive) {
+        while (true) {
             emit(StreamState.Streaming(
                 DataPoint(
                     dataTypeId,
@@ -171,7 +169,7 @@ abstract class CustomRollingTypeBase(
                         flow {
                             var cyclicindex = 0
                             val currentSetting = settings[globalIndex]
-                            while (currentCoroutineContext().isActive) {
+                            while (true) {
                                 emit(cyclicindex)
                                 val delayFactor = if (isextratime(currentSetting) && cyclicindex == 0) 3 else 1
 
@@ -262,9 +260,9 @@ abstract class CustomRollingTypeBase(
                             )
                         }
                     }
-                    // sample upstream + conflate downstream: cap de frecuencia + red de
-                    // seguridad ante bursts de los 3 streams combinados.
-                    .sample(refreshTime)
+                    // conflate() descarta emisiones intermedias mientras el render está ocupado.
+                    // El SDK Karoo limita los streams a 1Hz máximo, así que el tiempo de
+                    // composición de Glance (~50-100ms) ya actúa de throttle suficiente.
                     .conflate()
                     .onEach { (fieldStates, settingsData) ->
 

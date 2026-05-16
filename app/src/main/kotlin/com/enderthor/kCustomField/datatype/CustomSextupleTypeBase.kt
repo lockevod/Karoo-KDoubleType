@@ -9,7 +9,6 @@ import androidx.glance.appwidget.GlanceRemoteViews
 
 import kotlinx.coroutines.CoroutineScope
 import kotlin.math.roundToInt
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
@@ -50,7 +49,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.retryWhen
-import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
@@ -91,7 +89,7 @@ abstract class CustomSextupleTypeBase(
     @Volatile private var activeScopeJob: Job? = null
 
     private fun previewFlow(): Flow<StreamState> = flow {
-        while (currentCoroutineContext().isActive) {
+        while (true) {
             emit(StreamState.Streaming(
                 DataPoint(
                     dataTypeId,
@@ -283,14 +281,7 @@ abstract class CustomSextupleTypeBase(
                                     state
                                 )
                             }
-                        }
-                        // sample(refreshTime): cap de frecuencia. Con 6 streams a 1Hz, combine
-                        // puede emitir hasta 6 veces/seg en bursts. sample limita a 1/refreshTime
-                        // (~1.25 Hz en K2, ~5 Hz en K3 con coerceAtLeast=100ms — pero la
-                        // composición Glance toma 50-100ms, así que de facto ~2-3 Hz).
-                        // conflate(): si la composición sigue ocupada, descarta intermedios.
-                        .sample(refreshTime)
-                        .conflate()
+                        }.conflate()
                         .onEach { result ->
 
                         if (isCancelled) {

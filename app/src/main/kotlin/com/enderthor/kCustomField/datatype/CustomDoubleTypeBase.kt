@@ -9,7 +9,6 @@ import androidx.glance.appwidget.GlanceRemoteViews
 
 import kotlinx.coroutines.CoroutineScope
 import kotlin.math.roundToInt
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
@@ -46,7 +45,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.catch
 
 import kotlinx.coroutines.flow.conflate
-import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
@@ -94,10 +92,7 @@ abstract class CustomDoubleTypeBase(
 
 
     private fun previewFlow(): Flow<StreamState> = flow {
-        // Defensa adicional: si la corutina ya está cancelada al iniciar el flow,
-        // el delay/emit propagan CancellationException, pero ser explícitos protege
-        // de futuras modificaciones del cuerpo que añadan trabajo no-suspending.
-        while (currentCoroutineContext().isActive) {
+        while (true) {
             emit(StreamState.Streaming(
                 DataPoint(
                     dataTypeId,
@@ -214,9 +209,7 @@ abstract class CustomDoubleTypeBase(
                             combine(firstFieldFlow, secondFieldFlow) { firstState, secondState ->
                                 Triple(firstState, secondState, state)
                             }
-                    // sample upstream + conflate downstream: cap a 1/refreshTime y
-                    // descartes adicionales si el render se atasca.
-                    }.sample(refreshTime).conflate().onEach { (firstFieldState, secondFieldState, globalConfig) ->
+                    }.conflate().onEach { (firstFieldState, secondFieldState, globalConfig) ->
 
                         if (isCancelled) {
                             Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
