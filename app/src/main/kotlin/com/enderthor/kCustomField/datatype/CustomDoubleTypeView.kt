@@ -329,7 +329,7 @@ private fun OneNumberRow(
 
 
 @Composable
-private fun HorizontalScreenContent(number: String, icon: Int, colorFilter: ColorProvider, layout: FieldPosition, iszone: Boolean) {
+private fun HorizontalScreenContent(number: String, icon: Int, colorFilter: ColorProvider, layout: FieldPosition, iszone: Boolean, fontSize: Int = 38, iconSize: Int = 20) {
    val colorIcon= ColorFilter.tint(colorFilter)
     Row(
         modifier = GlanceModifier.fillMaxWidth(),
@@ -344,7 +344,7 @@ private fun HorizontalScreenContent(number: String, icon: Int, colorFilter: Colo
             Image(
                 provider = ImageProvider(icon),
                 contentDescription = "Icon",
-                modifier = GlanceModifier.size(20.dp),
+                modifier = GlanceModifier.size(iconSize.dp),
                 colorFilter = colorIcon
             )
             Spacer(modifier = GlanceModifier.width(6.dp))
@@ -353,7 +353,7 @@ private fun HorizontalScreenContent(number: String, icon: Int, colorFilter: Colo
             text = number,
             style = TextStyle(
                 fontWeight = FontWeight.Bold,
-                fontSize = 38.sp,
+                fontSize = fontSize.sp,
                 fontFamily = FontFamily.Monospace,
                 color = if (iszone) colorFilter else TextDayNight,
                 textAlign = when (layout.name) {
@@ -369,7 +369,7 @@ private fun HorizontalScreenContent(number: String, icon: Int, colorFilter: Colo
             Image(
                 provider = ImageProvider(icon),
                 contentDescription = "Icon",
-                modifier = GlanceModifier.size(20.dp),
+                modifier = GlanceModifier.size(iconSize.dp),
                 colorFilter = colorIcon
             )
         }
@@ -788,7 +788,7 @@ fun SextupleScreenSelector(
             isdivider
         )
 
-        FieldSize.MEDIUM, FieldSize.LARGE -> SextupleTypesVerticalScreenBig(
+        FieldSize.MEDIUM, FieldSize.LARGE, FieldSize.EXTRA_LARGE -> SextupleTypesVerticalScreenBig(
             newFirst,
             newSecond,
             newThird,
@@ -821,10 +821,9 @@ fun SextupleScreenSelector(
             iszoneFourth,
             iszoneFifth,
             iszoneSixth,
-            isdivider
+            isdivider,
+            fieldSize
         )
-
-        FieldSize.EXTRA_LARGE -> NotSupported("Size Not Supported", 24)
     }
 }
 
@@ -1213,8 +1212,13 @@ private fun SextupleTypesVerticalScreenBig(
     zoneColor1: ColorProvider, zoneColor2: ColorProvider, zoneColor3: ColorProvider, zoneColor4: ColorProvider, zoneColor5: ColorProvider, zoneColor6: ColorProvider,
     isKaroo3: Boolean, layout: FieldPosition,
     iszoneFirst: Boolean, iszoneSecond: Boolean, iszoneThird: Boolean, iszoneFourth: Boolean, iszoneFifth: Boolean, iszoneSixth: Boolean,
-    isdivider: Boolean
+    isdivider: Boolean, fieldSize: FieldSize = FieldSize.MEDIUM
 ) {
+    // EXTRA_LARGE reutiliza este layout (es 100% weight-based), pero con fuente e
+    // icono mayores para aprovechar el slot full-width; MEDIUM/LARGE mantienen 38sp/20dp.
+    val isExtraLarge = fieldSize == FieldSize.EXTRA_LARGE
+    val contentFontSize = if (isExtraLarge) 52 else 38
+    val contentIconSize = if (isExtraLarge) 26 else 20
     Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
         //cornerRadius(8.dp)
         Column(modifier = if (isKaroo3) GlanceModifier.fillMaxSize().background(TextNightDay).cornerRadius(0.dp) else GlanceModifier.fillMaxSize().background(TextNightDay)) {
@@ -1223,15 +1227,15 @@ private fun SextupleTypesVerticalScreenBig(
             Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor1)) {
                     Spacer(modifier = GlanceModifier.fillMaxWidth().height(8.dp).background(zoneColor1))
-                    HorizontalScreenContent(trimNumberTo3Chars(firstNumber), firstIcon, iconColorFirst, layout,iszoneFirst)
+                    HorizontalScreenContent(trimNumberTo3Chars(firstNumber), firstIcon, iconColorFirst, layout,iszoneFirst, contentFontSize, contentIconSize)
                 }
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor2)) {
                     Spacer(modifier = GlanceModifier.fillMaxWidth().height(8.dp).background(zoneColor2))
-                    HorizontalScreenContent(trimNumberTo3Chars(secondNumber), secondIcon, iconColorSecond, layout,iszoneSecond)
+                    HorizontalScreenContent(trimNumberTo3Chars(secondNumber), secondIcon, iconColorSecond, layout,iszoneSecond, contentFontSize, contentIconSize)
                 }
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor3)) {
                     Spacer(modifier = GlanceModifier.fillMaxWidth().height(8.dp).background(zoneColor3))
-                    HorizontalScreenContent(trimNumberTo3Chars(thirdNumber), thirdIcon, iconColorThird, layout,iszoneThird)
+                    HorizontalScreenContent(trimNumberTo3Chars(thirdNumber), thirdIcon, iconColorThird, layout,iszoneThird, contentFontSize, contentIconSize)
                 }
             }
             if (isdivider) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(TextDayNight))
@@ -1240,15 +1244,15 @@ private fun SextupleTypesVerticalScreenBig(
             Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor4)) {
                     Spacer(modifier = GlanceModifier.fillMaxWidth().height(7.dp).background(zoneColor4))
-                    HorizontalScreenContent(trimNumberTo3Chars(fourthNumber), fourthIcon, iconColorFourth, layout,iszoneFourth)
+                    HorizontalScreenContent(trimNumberTo3Chars(fourthNumber), fourthIcon, iconColorFourth, layout,iszoneFourth, contentFontSize, contentIconSize)
                 }
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor5)) {
                     Spacer(modifier = GlanceModifier.fillMaxWidth().height(7.dp).background(zoneColor5))
-                    HorizontalScreenContent(trimNumberTo3Chars(fifthNumber), fifthIcon, iconColorFifth, layout,iszoneFifth)
+                    HorizontalScreenContent(trimNumberTo3Chars(fifthNumber), fifthIcon, iconColorFifth, layout,iszoneFifth, contentFontSize, contentIconSize)
                 }
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor6)) {
                     Spacer(modifier = GlanceModifier.fillMaxWidth().height(7.dp).background(zoneColor6))
-                    HorizontalScreenContent(trimNumberTo3Chars(sixthNumber), sixthIcon, iconColorSixth, layout,iszoneSixth)
+                    HorizontalScreenContent(trimNumberTo3Chars(sixthNumber), sixthIcon, iconColorSixth, layout,iszoneSixth, contentFontSize, contentIconSize)
                 }
             }
         }
