@@ -119,6 +119,7 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     POWER20m(DataType.Type.SMOOTHED_20M_AVERAGE_POWER, "Power 20m", R.drawable.ic_power_20, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
     POWER_NORMALIZED(DataType.Type.NORMALIZED_POWER, "Power Normalized", R.drawable.ic_power_norm, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
     POWER_ZONE(DataType.Type.POWER_ZONE, "Power Zone", R.drawable.ic_power_zone, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    MAX_SPEED(DataType.Type.MAX_SPEED, "Max Speed", R.drawable.ic_speed_max, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "speed"),
     SPEED(DataType.Type.SPEED, "Speed", R.drawable.ic_speed, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "speed"),
     TEMPERATURE(DataType.Type.TEMPERATURE, "Temperature", R.drawable.ic_temperature, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     TIMETODEST(DataType.Type.TIME_TO_DESTINATION, "Time to Dest.", R.drawable.ic_time_to_dest, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
