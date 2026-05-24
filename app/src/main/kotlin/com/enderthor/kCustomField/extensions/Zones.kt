@@ -25,13 +25,13 @@ enum class Zone(val colorResource: Int, val colorZwift: Int) {
 
 
 val slopeZones = listOf(
-    zoneslope(min = 0.0, max = 4.6),
-    zoneslope(min = 4.601, max = 7.5),
-    zoneslope(min = 7.501, max = 12.5),
-    zoneslope(min = 12.501, max = 15.5),
-    zoneslope(min = 15.501, max = 19.5),
-    zoneslope(min = 19.501, max = 23.5),
-    zoneslope(min = 23.501, max = 99.5)
+    zoneslope(min = 0.0, max = 1.9),
+    zoneslope(min = 1.901, max = 4.9),
+    zoneslope(min = 4.901, max = 7.9),
+    zoneslope(min = 7.901, max = 10.9),
+    zoneslope(min = 10.901, max = 13.9),
+    zoneslope(min = 13.901, max = 19.9),
+    zoneslope(min = 19.901, max = 99.5)
 )
 
 // Zonas para W' Balance Prime (porcentaje de batería anaeróbica)
