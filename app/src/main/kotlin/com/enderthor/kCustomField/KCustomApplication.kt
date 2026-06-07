@@ -13,6 +13,7 @@ class KCustomApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         val test = false
+
         if (BuildConfig.DEBUG || test) {
             plant(object : DebugTree() {
                 override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {

@@ -34,7 +34,6 @@ import com.enderthor.kCustomField.extensions.streamClimbFieldSettings
 import com.enderthor.kCustomField.extensions.streamDataFlow
 
 import com.enderthor.kCustomField.extensions.streamUserProfile
-import com.enderthor.kCustomField.extensions.throttle
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
 import io.hammerhead.karooext.models.HardwareType
@@ -48,6 +47,7 @@ import kotlinx.coroutines.cancel
 
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -110,16 +110,13 @@ abstract class CustomClimbTypeBase(
     // MANTENER: este job es necesario para detectar isOnClimb
     private fun checkClimbStatus(scope: CoroutineScope): Job {
         return karooSystem.streamDataFlow(DataType.Type.ELEVATION_TO_TOP)
-            .throttle(2000L) // throttle ANTES del map para reducir carga de CPU
             .map { elevationState ->
-                val elevationValue = (elevationState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_TO_TOP_ID") ?: 0.0
-                val newIsOnClimb = elevationValue > 0.0
-
-                // Solo actualizar si cambia para reducir overhead
-                if (newIsOnClimb != isOnClimb) {
-                    isOnClimb = newIsOnClimb
-                    Timber.d("CLIMB isOnClimb changed to: $isOnClimb (elevation: $elevationValue)")
-                }
+                ((elevationState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_TO_TOP_ID") ?: 0.0) > 0.0
+            }
+            .distinctUntilChanged()
+            .onEach { newIsOnClimb ->
+                isOnClimb = newIsOnClimb
+                Timber.d("CLIMB isOnClimb changed to: $isOnClimb")
             }
             .flowOn(Dispatchers.IO)
             .launchIn(scope)  // usa el scope padre — se cancela automáticamente con él
@@ -464,6 +461,7 @@ abstract class CustomClimbTypeBase(
                                         isfirsthorizontal,
                                         issecondhorizontal,
                                         isShowClimbField,
+                                        generalSettings.distanceWithDecimals,
                                     )
                                 }.remoteViews
                                 // Timber.d("CLIMB Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")

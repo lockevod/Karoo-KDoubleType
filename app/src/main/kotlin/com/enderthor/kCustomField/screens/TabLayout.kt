@@ -980,6 +980,7 @@ fun ConfGeneral() {
     var iscenterkaroo by remember { mutableStateOf(false) }
     var isheadwindenabled by remember { mutableStateOf(false) }
     var isdivider by remember { mutableStateOf(true) }
+    var distanceWithDecimals by remember { mutableStateOf(false) }
     var bellsong by remember {mutableStateOf(KarooKey.BELL4) }
 
     var powerLoss by remember { mutableStateOf("2.2") }
@@ -1000,6 +1001,7 @@ fun ConfGeneral() {
             iscenterkaroo = settings.iscenterkaroo
             isheadwindenabled = settings.isheadwindenabled
             isdivider = settings.isdivider
+            distanceWithDecimals = settings.distanceWithDecimals
             bellsong = settings.bellBeepKey
         }
         ctx.streamStoredPowerSettings().collect { settings ->
@@ -1020,6 +1022,7 @@ fun ConfGeneral() {
                 iscenterkaroo = gs.iscenterkaroo
                 isheadwindenabled = gs.isheadwindenabled
                 isdivider = gs.isdivider
+                distanceWithDecimals = gs.distanceWithDecimals
                 bellsong = gs.bellBeepKey
 
                 val ps = ctx.streamStoredPowerSettings().first()
@@ -1115,6 +1118,17 @@ fun ConfGeneral() {
                 })
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(stringResource(R.string.divider_enabled_question))
+            }
+
+            Spacer(modifier = Modifier.height(2.dp))
+            TopAppBar(title = { Text(stringResource(R.string.distance_decimals_title)) })
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = distanceWithDecimals, onCheckedChange = {
+                    distanceWithDecimals = it
+                })
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(stringResource(R.string.distance_decimals_question))
             }
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -1277,7 +1291,8 @@ fun ConfGeneral() {
                      iscenterkaroo = iscenterkaroo,
                      isheadwindenabled = isheadwindenabled,
                      isdivider = isdivider,
-                     bellBeepKey = bellsong
+                     bellBeepKey = bellsong,
+                     distanceWithDecimals = distanceWithDecimals
 
                  )
 

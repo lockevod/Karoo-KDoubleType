@@ -278,7 +278,8 @@ abstract class CustomDoubleTypeBase(
                                             false,
                                             false,
                                             if (firstFieldState is StreamState) firstFieldState else null,
-                                            if (secondFieldState is StreamState) secondFieldState else null
+                                            if (secondFieldState is StreamState) secondFieldState else null,
+                                            generalSettings.distanceWithDecimals
                                         )
                                     }.remoteViews
                                     if (!isCancelled) emitter.updateView(newView)

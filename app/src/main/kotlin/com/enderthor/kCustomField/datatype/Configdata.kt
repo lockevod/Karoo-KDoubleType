@@ -276,6 +276,7 @@ data class GeneralSettings(
     val refreshRolling: RefreshTime = RefreshTime.HALF,
     val isdivider: Boolean = true,
     val bellBeepKey: KarooKey = KarooKey.BELL4,
+    val distanceWithDecimals: Boolean = false,
 )
 //############################## CHECK
 data class GlobalConfigState(

@@ -103,6 +103,16 @@ fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivi
 }
 
 
+// Decide si un campo se muestra como entero o con 1 decimal.
+// Regla base (igual que antes): es entero salvo velocidad / slopeZones / IF.
+// power y climb fuerzan entero. Si el usuario activa "distancia con decimales"
+// (ajuste global), los campos de distancia (convert=="distance") pasan a decimal.
+fun isIntField(kaction: KarooAction, isPower: Boolean, isClimb: Boolean, distanceWithDecimals: Boolean): Boolean {
+    val base = !(kaction.convert == "speed" || kaction.zone == "slopeZones" || kaction.label == "IF")
+    val adjusted = if (distanceWithDecimals && kaction.convert == "distance") false else base
+    return adjusted || isPower || isClimb
+}
+
 fun trimNumberTo3Chars(x: String): String {
     val hasDecimal = x.contains('.')
     if (!hasDecimal) return x
@@ -329,7 +339,7 @@ private fun OneNumberRow(
 
 
 @Composable
-private fun HorizontalScreenContent(number: String, icon: Int, colorFilter: ColorProvider, layout: FieldPosition, iszone: Boolean, fontSize: Int = 38, iconSize: Int = 20) {
+private fun HorizontalScreenContent(number: String, icon: Int, colorFilter: ColorProvider, layout: FieldPosition, iszone: Boolean, fontSize: Int = 38, iconSize: Int = 20, maxLines: Int = Int.MAX_VALUE, iconGap: Int = 5) {
    val colorIcon= ColorFilter.tint(colorFilter)
     Row(
         modifier = GlanceModifier.fillMaxWidth(),
@@ -362,10 +372,11 @@ private fun HorizontalScreenContent(number: String, icon: Int, colorFilter: Colo
                     else -> TextAlign.Start
                 }
             ),
+            maxLines = maxLines,
             modifier = GlanceModifier.defaultWeight()
         )
         if (layout.name != "LEFT") {
-            Spacer(modifier = GlanceModifier.width(5.dp).fillMaxHeight())
+            Spacer(modifier = GlanceModifier.width(iconGap.dp).fillMaxHeight())
             Image(
                 provider = ImageProvider(icon),
                 contentDescription = "Icon",
@@ -374,6 +385,36 @@ private fun HorizontalScreenContent(number: String, icon: Int, colorFilter: Colo
             )
         }
         Spacer(modifier = GlanceModifier.height(1.dp).background(TextDayNight))
+    }
+}
+
+// Variante para el sextuple en slots grandes: el icono va en la esquina superior
+// derecha (no en línea con el número), así el dígito dispone de TODO el ancho de la
+// columna y cabe mucho más grande. El número se centra; maxLines=1 evita el salto.
+@Composable
+private fun SextupleBigCellContent(number: String, icon: Int, colorFilter: ColorProvider, iszone: Boolean, fontSize: Int, iconSize: Int) {
+    Box(modifier = GlanceModifier.fillMaxSize()) {
+        Box(modifier = GlanceModifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                text = number,
+                style = TextStyle(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = fontSize.sp,
+                    fontFamily = FontFamily.Monospace,
+                    color = if (iszone) colorFilter else TextDayNight,
+                    textAlign = TextAlign.Center
+                ),
+                maxLines = 1
+            )
+        }
+        Box(modifier = GlanceModifier.fillMaxSize().padding(end = 2.dp, top = 1.dp), contentAlignment = Alignment.TopEnd) {
+            Image(
+                provider = ImageProvider(icon),
+                contentDescription = "Icon",
+                modifier = GlanceModifier.size(iconSize.dp),
+                colorFilter = ColorFilter.tint(colorFilter)
+            )
+        }
     }
 }
 
@@ -524,7 +565,7 @@ fun DoubleScreenSelector(
     iconColorLeft: ColorProvider, iconColorRight: ColorProvider,
     zoneColorLeft: ColorProvider, zoneColorRight: ColorProvider, fieldSize: FieldSize,
     isKaroo3: Boolean, layout: FieldPosition, text: String, windDirection: Int, baseBitmap: Bitmap, isdivider:Boolean, leftNumberSecond:Double = 0.0, rightNumberSecond:Double = 0.0, isClimb: Boolean = false, isClimbField: Boolean = false,
-    leftFieldState: StreamState? = null, rightFieldState: StreamState? = null){
+    leftFieldState: StreamState? = null, rightFieldState: StreamState? = null, distanceWithDecimals: Boolean = false){
 
 
     val leftIcon= leftField.kaction.icon
@@ -539,8 +580,8 @@ fun DoubleScreenSelector(
     val isLeftFA = leftField.kaction.name.startsWith("FA_")
     val isRightFA = rightField.kaction.name.startsWith("FA_")
     
-    val isLeftInt= (!(leftField.kaction.convert == "speed" || leftField.kaction.zone == "slopeZones" || leftField.kaction.label == "IF")) || (ispowerLeft) || (isClimb)
-    val isRightInt= !(rightField.kaction.convert == "speed" || rightField.kaction.zone == "slopeZones" || rightField.kaction.label == "IF")  || (ispowerRight) || (isClimb)
+    val isLeftInt= isIntField(leftField.kaction, ispowerLeft, isClimb, distanceWithDecimals)
+    val isRightInt= isIntField(rightField.kaction, ispowerRight, isClimb, distanceWithDecimals)
     val leftCivil=leftField.kaction.action==KarooAction.CIVIL_DUSK.action ||  leftField.kaction.action==KarooAction.CIVIL_DAWN.action
     val rightCivil=rightField.kaction.action==KarooAction.CIVIL_DUSK.action ||  rightField.kaction.action==KarooAction.CIVIL_DAWN.action
     val leftTime=leftField.kaction.action==KarooAction.TIMETODEST.action
@@ -878,7 +919,8 @@ fun ClimbScreenSelector(
     climbValueRight: Double,
     isFirsthorizontal: Boolean,
     isSecondhorizontal: Boolean,
-    isClimbEnabled: Boolean
+    isClimbEnabled: Boolean,
+    distanceWithDecimals: Boolean = false
 ) {
     if (fieldSize < 400) {
         NotSupported("Size Not Supported", 24)
@@ -917,7 +959,8 @@ fun ClimbScreenSelector(
                     leftNumberSecond = firstValueRight,
                     rightNumberSecond = secondValueRight,
                     isClimb = false,
-                    isClimbField = true
+                    isClimbField = true,
+                    distanceWithDecimals = distanceWithDecimals
                 )
             }
 
@@ -953,7 +996,8 @@ fun ClimbScreenSelector(
                     leftNumberSecond = thirdValueRight,
                     rightNumberSecond = fourthValueRight,
                     isClimb = false,
-                    isClimbField = true
+                    isClimbField = true,
+                    distanceWithDecimals = distanceWithDecimals
                 )
             }
         }
@@ -1152,6 +1196,21 @@ private fun SextupleTypesVerticalScreenSmall(
     iszoneFirst: Boolean, iszoneSecond: Boolean, iszoneThird: Boolean, iszoneFourth: Boolean, iszoneFifth: Boolean, iszoneSixth: Boolean,
     isdivider: Boolean
 ) {
+    // Escalado de fuente por longitud del valor más largo (ya recortado a 3-4 chars),
+    // igual que SextupleTypesVerticalScreenBig: aquí el icono va EN LÍNEA con el número
+    // (HorizontalScreenContent), así que un valor de 4+ chars no cabe a 38sp. maxLines=1
+    // evita el salto de línea. trimNumberTo3Chars solo recorta decimales, por eso un
+    // entero de 4 dígitos (o un power "123-456") llega entero y necesita la fuente menor.
+    val maxLen = listOf(firstNumber, secondNumber, thirdNumber, fourthNumber, fifthNumber, sixthNumber)
+        .maxOf { trimNumberTo3Chars(it).length }
+    val (cellFontSize, cellIconSize) = when {
+        maxLen <= 3 -> 38 to 20
+        maxLen == 4 -> 30 to 18
+        else -> 24 to 16
+    }
+    // Hueco número↔icono solo para el sextuple pequeño (los dobles usan el default 5dp).
+    // Súbelo/bájalo aquí en un único sitio para afinar la separación.
+    val cellIconGap = 12
     Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
         //cornerRadius(8.dp)
         Column(modifier = if (isKaroo3) GlanceModifier.fillMaxSize().background(TextNightDay).cornerRadius(0.dp) else GlanceModifier.fillMaxSize().background(TextNightDay)) {
@@ -1161,19 +1220,19 @@ private fun SextupleTypesVerticalScreenSmall(
                     //Spacer(
                     //    modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zoneColor1)
                     //)
-                    HorizontalScreenContent(trimNumberTo3Chars(firstNumber), firstIcon, iconColorFirst, layout,iszoneFirst)
+                    HorizontalScreenContent(trimNumberTo3Chars(firstNumber), firstIcon, iconColorFirst, layout,iszoneFirst, cellFontSize, cellIconSize, 1, cellIconGap)
                 }
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor2)) {
                     //Spacer(
                     //    modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zoneColor2)
                     //)
-                    HorizontalScreenContent(trimNumberTo3Chars(secondNumber), secondIcon, iconColorSecond, layout,iszoneSecond)
+                    HorizontalScreenContent(trimNumberTo3Chars(secondNumber), secondIcon, iconColorSecond, layout,iszoneSecond, cellFontSize, cellIconSize, 1, cellIconGap)
                 }
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor3)) {
                     //Spacer(
                     //    modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zoneColor3)
                     //)
-                    HorizontalScreenContent(trimNumberTo3Chars(thirdNumber), thirdIcon, iconColorThird, layout,iszoneThird)
+                    HorizontalScreenContent(trimNumberTo3Chars(thirdNumber), thirdIcon, iconColorThird, layout,iszoneThird, cellFontSize, cellIconSize, 1, cellIconGap)
                 }
             }
             if (isdivider) Spacer(
@@ -1187,15 +1246,15 @@ private fun SextupleTypesVerticalScreenSmall(
             Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor4)) {
                     //Spacer(modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zoneColor4))
-                    HorizontalScreenContent(trimNumberTo3Chars(fourthNumber), fourthIcon, iconColorFourth, layout,iszoneFourth)
+                    HorizontalScreenContent(trimNumberTo3Chars(fourthNumber), fourthIcon, iconColorFourth, layout,iszoneFourth, cellFontSize, cellIconSize, 1, cellIconGap)
                 }
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor5)) {
                     //Spacer(modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zoneColor5))
-                    HorizontalScreenContent(trimNumberTo3Chars(fifthNumber), fifthIcon, iconColorFifth, layout,iszoneFifth)
+                    HorizontalScreenContent(trimNumberTo3Chars(fifthNumber), fifthIcon, iconColorFifth, layout,iszoneFifth, cellFontSize, cellIconSize, 1, cellIconGap)
                 }
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor6)) {
                     //Spacer(modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(zoneColor6))
-                    HorizontalScreenContent(trimNumberTo3Chars(sixthNumber), sixthIcon, iconColorSixth, layout,iszoneSixth)
+                    HorizontalScreenContent(trimNumberTo3Chars(sixthNumber), sixthIcon, iconColorSixth, layout,iszoneSixth, cellFontSize, cellIconSize, 1, cellIconGap)
                 }
             }
         }
@@ -1217,8 +1276,24 @@ private fun SextupleTypesVerticalScreenBig(
     // EXTRA_LARGE reutiliza este layout (es 100% weight-based), pero con fuente e
     // icono mayores para aprovechar el slot full-width; MEDIUM/LARGE mantienen 38sp/20dp.
     val isExtraLarge = fieldSize == FieldSize.EXTRA_LARGE
-    val contentFontSize = if (isExtraLarge) 52 else 38
-    val contentIconSize = if (isExtraLarge) 26 else 20
+    // El icono va en la esquina superior derecha (SextupleBigCellContent), así que el
+    // número dispone de TODO el ancho de la columna (1/3 del slot). Aun así escalamos la
+    // fuente al nº de caracteres del valor más largo (ya recortado a 3-4) para que un
+    // número de 3-4 dígitos no se recorte; maxLines=1 evita el salto de línea.
+    val maxLen = listOf(firstNumber, secondNumber, thirdNumber, fourthNumber, fifthNumber, sixthNumber)
+        .maxOf { trimNumberTo3Chars(it).length }
+    val (contentFontSize, contentIconSize) = if (isExtraLarge) {
+        when {
+            maxLen <= 2 -> 58 to 22
+            maxLen == 3 -> 48 to 20
+            else -> 40 to 18   // 4 chars (p.ej. "-1.2")
+        }
+    } else {
+        when {
+            maxLen <= 3 -> 42 to 18
+            else -> 34 to 16
+        }
+    }
     Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
         //cornerRadius(8.dp)
         Column(modifier = if (isKaroo3) GlanceModifier.fillMaxSize().background(TextNightDay).cornerRadius(0.dp) else GlanceModifier.fillMaxSize().background(TextNightDay)) {
@@ -1227,15 +1302,15 @@ private fun SextupleTypesVerticalScreenBig(
             Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor1)) {
                     Spacer(modifier = GlanceModifier.fillMaxWidth().height(8.dp).background(zoneColor1))
-                    HorizontalScreenContent(trimNumberTo3Chars(firstNumber), firstIcon, iconColorFirst, layout,iszoneFirst, contentFontSize, contentIconSize)
+                    SextupleBigCellContent(trimNumberTo3Chars(firstNumber), firstIcon, iconColorFirst, iszoneFirst, contentFontSize, contentIconSize)
                 }
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor2)) {
                     Spacer(modifier = GlanceModifier.fillMaxWidth().height(8.dp).background(zoneColor2))
-                    HorizontalScreenContent(trimNumberTo3Chars(secondNumber), secondIcon, iconColorSecond, layout,iszoneSecond, contentFontSize, contentIconSize)
+                    SextupleBigCellContent(trimNumberTo3Chars(secondNumber), secondIcon, iconColorSecond, iszoneSecond, contentFontSize, contentIconSize)
                 }
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor3)) {
                     Spacer(modifier = GlanceModifier.fillMaxWidth().height(8.dp).background(zoneColor3))
-                    HorizontalScreenContent(trimNumberTo3Chars(thirdNumber), thirdIcon, iconColorThird, layout,iszoneThird, contentFontSize, contentIconSize)
+                    SextupleBigCellContent(trimNumberTo3Chars(thirdNumber), thirdIcon, iconColorThird, iszoneThird, contentFontSize, contentIconSize)
                 }
             }
             if (isdivider) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(TextDayNight))
@@ -1244,15 +1319,15 @@ private fun SextupleTypesVerticalScreenBig(
             Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor4)) {
                     Spacer(modifier = GlanceModifier.fillMaxWidth().height(7.dp).background(zoneColor4))
-                    HorizontalScreenContent(trimNumberTo3Chars(fourthNumber), fourthIcon, iconColorFourth, layout,iszoneFourth, contentFontSize, contentIconSize)
+                    SextupleBigCellContent(trimNumberTo3Chars(fourthNumber), fourthIcon, iconColorFourth, iszoneFourth, contentFontSize, contentIconSize)
                 }
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor5)) {
                     Spacer(modifier = GlanceModifier.fillMaxWidth().height(7.dp).background(zoneColor5))
-                    HorizontalScreenContent(trimNumberTo3Chars(fifthNumber), fifthIcon, iconColorFifth, layout,iszoneFifth, contentFontSize, contentIconSize)
+                    SextupleBigCellContent(trimNumberTo3Chars(fifthNumber), fifthIcon, iconColorFifth, iszoneFifth, contentFontSize, contentIconSize)
                 }
                 Column(modifier = GlanceModifier.defaultWeight().background(zoneColor6)) {
                     Spacer(modifier = GlanceModifier.fillMaxWidth().height(7.dp).background(zoneColor6))
-                    HorizontalScreenContent(trimNumberTo3Chars(sixthNumber), sixthIcon, iconColorSixth, layout,iszoneSixth, contentFontSize, contentIconSize)
+                    SextupleBigCellContent(trimNumberTo3Chars(sixthNumber), sixthIcon, iconColorSixth, iszoneSixth, contentFontSize, contentIconSize)
                 }
             }
         }

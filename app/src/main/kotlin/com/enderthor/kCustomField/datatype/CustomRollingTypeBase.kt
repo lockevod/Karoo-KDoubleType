@@ -313,9 +313,7 @@ abstract class CustomRollingTypeBase(
                                 val newView = glance.compose(context, DpSize.Unspecified) {
                                     RollingFieldScreen(
                                         value,
-                                        !(field(settings[globalIndex]).kaction.convert == "speed" ||
-                                                field(settings[globalIndex]).kaction.zone == "slopeZones" ||
-                                                field(settings[globalIndex]).kaction.label == "IF"),
+                                        isIntField(field(settings[globalIndex]).kaction, false, false, generalSetting.distanceWithDecimals),
                                         field(settings[globalIndex]).kaction,
                                         iconcolor,
                                         colorzone,

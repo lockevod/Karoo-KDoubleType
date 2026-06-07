@@ -67,6 +67,8 @@
     <string name="zwift_color_palette_question">Zwift Color palette?</string>
     <string name="divider_enabled_title">Divider Enabled</string>
     <string name="divider_enabled_question">Divider Enabled?</string>
+    <string name="distance_decimals_title">Distance Decimals</string>
+    <string name="distance_decimals_question">Show distance with 1 decimal?</string>
     <string name="bell_sound_title">Bell Sound</string>
     <string name="save_general">Save General</string>
 

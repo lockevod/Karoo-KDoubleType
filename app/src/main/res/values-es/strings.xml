@@ -61,6 +61,8 @@
     <string name="zwift_color_palette_question">¿Paleta de colores de Zwift?</string>
     <string name="divider_enabled_title">Divisor Habilitado</string>
     <string name="divider_enabled_question">¿Divisor Habilitado?</string>
+    <string name="distance_decimals_title">Decimales en Distancia</string>
+    <string name="distance_decimals_question">¿Mostrar distancia con 1 decimal?</string>
     <string name="bell_sound_title">Sonido de Campana</string>
     <string name="save_general">Guardar General</string>
 
