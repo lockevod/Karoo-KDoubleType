@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Silueta de fantasma (campo Ghost Gap de KGhost). Monocroma: los campos la tintan
+  en runtime vía ColorFilter.tint, así que los ojos van como huecos (fillType
+  evenOdd) para que se lean como cutouts del color del campo, no como otra forma.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M12,2 C7.85,2 4.5,5.35 4.5,9.5 v11.5 l2.5,-2 2.5,2 2.5,-2 2.5,2 2.5,-2 2.5,2 V9.5 C19.5,5.35 16.15,2 12,2 Z M9.5,9 m-1.25,0 a1.25,1.25 0 1,0 2.5,0 a1.25,1.25 0 1,0 -2.5,0 Z M14.5,9 m-1.25,0 a1.25,1.25 0 1,0 2.5,0 a1.25,1.25 0 1,0 -2.5,0 Z" />
+</vector>

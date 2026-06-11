@@ -118,6 +118,12 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     GEARS(DataType.dataTypeId("GEARS", "GEARS"), "Gears", R.drawable.ic_front_gear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     GEARS_FRONT(DataType.Type.SHIFTING_FRONT_GEAR, "Gears Front", R.drawable.ic_front_gear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     GEARS_REAR(DataType.Type.SHIFTING_REAR_GEAR, "Gears Rear", R.drawable.ic_rear_gear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    // Streams publicados por KGhost (inter-extension, como karoo-headwind): gap respecto
+    // al "fantasma" (tu yo pasado o un ritmo fijo). Con signo: + por delante, − por detrás.
+    // Emiten a ~1Hz y solo Streaming/Searching (no Idle), así que van por el camino normal,
+    // sin el timeout/sticky extendido de KSafe. Valores nativos: segundos y metros crudos.
+    GHOST_GAP_DIST(DataType.dataTypeId("kghost", "kghost-gap-dist"), "Ghost Gap m", R.drawable.ic_ghost_gap, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    GHOST_GAP_TIME(DataType.dataTypeId("kghost", "kghost-gap-time"), "Ghost Gap s", R.drawable.ic_ghost_gap, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     SLOPE(DataType.Type.ELEVATION_GRADE, "Grade", R.drawable.ic_slope, R.color.hh_success_green_700, R.color.hh_success_green_400, "slopeZones", "none"),
     HEADWIND(DataType.dataTypeId("karoo-headwind", "headwind"), "Headwind", R.drawable.ic_no, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     HR(DataType.Type.HEART_RATE, "Heart Rate", R.drawable.ic_hr, R.color.hh_success_green_700, R.color.hh_success_green_400, "heartRateZones", "none"),

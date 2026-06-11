@@ -148,6 +148,14 @@ private val COMPACT_K = Regex("^-?\\d+(\\.\\d)?[kL]$")
 fun thousandsSuffixFor(action: KarooAction): Char =
     if (action == KarooAction.HYDRATION_DEFICIT) 'L' else 'k'
 
+// KGhost marca cada gap como medido o estimado (GPS perdido / fuera de ruta) en el campo
+// "estimated" del DataPoint. No podemos colorear solo el número, pero sí anteponer un "~"
+// para que sea evidente que el valor es una estimación, no una medición firme.
+fun estimateMarker(action: KarooAction, state: StreamState?): String =
+    if ((action == KarooAction.GHOST_GAP_TIME || action == KarooAction.GHOST_GAP_DIST) &&
+        (state as? StreamState.Streaming)?.dataPoint?.values?.get("estimated") == 1.0
+    ) "~" else ""
+
 // Ajusta un valor a maxChars SIN truncar dígitos: recortar "12345" a "1234" o "-1500" a
 // "-150" es un error 10x silencioso. Enteros que no caben pasan a notación compacta de
 // miles ("12.3k", y si tampoco cabe "12k"; la hidratación usa sufijo 'L' = litros).
@@ -155,6 +163,11 @@ fun thousandsSuffixFor(action: KarooAction): Char =
 // rides muy largos. Strings no enteros (etiquetas FA "Close", tiempos "01:23")
 // mantienen el recorte clásico.
 fun fitNumberToChars(value: String, maxChars: Int, thousandsSuffix: Char = 'k'): String {
+    // Marcador de estimación de KGhost ("~125"): se conserva y se compactan los dígitos
+    // en el espacio restante, nunca se recorta para hacerle sitio al "~".
+    if (value.startsWith('~')) {
+        return "~" + fitNumberToChars(value.drop(1), (maxChars - 1).coerceAtLeast(1), thousandsSuffix)
+    }
     if (value.length <= maxChars) return value
     val negative = value.startsWith('-')
     val body = if (negative) value.drop(1) else value
@@ -502,7 +515,10 @@ private fun SingleHorizontalField(icon: Int, iconColor: ColorProvider, layout: F
     Spacer(modifier = GlanceModifier.height(5.dp))
     // Presupuesto con signo ("-1500" necesita 5) y compactación honesta: un valor que
     // no cabe pasa a "12k"/"12L" en vez de perder dígitos por la derecha (error 10x).
-    val maxChars = if (number.startsWith('-')) 5 else 4
+    // El presupuesto se mide sobre el núcleo sin el marcador "~" de estimación (KGhost),
+    // que fitNumberToChars conserva aparte; +1 al budget cuando está presente.
+    val core = number.removePrefix("~")
+    val maxChars = (if (core.startsWith('-')) 5 else 4) + (number.length - core.length)
     val fitted = fitNumberToChars(number, maxChars, thousandsSuffix)
     if (isheadwind && fieldSize == FieldSize.MEDIUM) NumberRow(fitted, zoneColor, layout, fieldSize, false,true,iszone,iconColor)
     else NumberRow(fitted, zoneColor, layout, fieldSize, false,false,iszone,iconColor)
@@ -579,7 +595,7 @@ fun RollingFieldScreen(
         // Campos FA: formatear el enum a etiqueta ("Open", "Lock"...) como en los dobles.
         val isFA = action.name.startsWith("FA_")
         val number = if (isFA && fieldState != null) formatFAValue(fieldState, action.name)
-        else formatNumber(dNumber, newInt, isTime, isCivil, isClimb, thousandsSuffixFor(action))
+        else estimateMarker(action, fieldState) + formatNumber(dNumber, newInt, isTime, isCivil, isClimb, thousandsSuffixFor(action))
         val numberSecond = formatNumber(secondValue, isInt, isTime, isCivil, isClimb)
 
 
@@ -603,10 +619,15 @@ fun RollingFieldScreen(
                     )
                     else {
                         OneIconRow(icon, iconColor, label.uppercase(), isRealZone, fieldsize, isClimb)
+                        // El presupuesto se mide sobre el núcleo SIN el marcador "~" (que
+                        // fitNumberToChars conserva aparte): si no, "~-125" se tomaría como
+                        // positivo y se recortaría el último dígito.
+                        val core = number.removePrefix("~")
+                        val markerBudget = number.length - core.length
                         OneNumberRow(
                             // Presupuesto con signo y compactación honesta (ver fitNumberToChars)
-                            if (isClimb && !isFA) fitNumberToChars(number, if (number.startsWith('-')) 5 else 4, thousandsSuffixFor(action))
-                            else fitNumberToChars(number, 6, thousandsSuffixFor(action)),
+                            if (isClimb && !isFA) fitNumberToChars(number, (if (core.startsWith('-')) 5 else 4) + markerBudget, thousandsSuffixFor(action))
+                            else fitNumberToChars(number, 6 + markerBudget, thousandsSuffixFor(action)),
                             clayout,
                             fieldsize,
                             (textSize * (if (ispreview) 0.8 else if (isClimb) 1.1 else 1.0)).roundToInt(),
@@ -664,8 +685,9 @@ fun DoubleScreenSelector(
     val iszoneLeft= if (checkRealZone(leftField.kaction,leftField.iszone,leftNumber,leftNumberSecond)) leftField.iszone else false
     val iszoneRight= if (checkRealZone(rightField.kaction,rightField.iszone,rightNumber,rightNumberSecond)) rightField.iszone else false
 
-    // Formateo especial para campos FA
-    val newLeft = when {
+    // Formateo especial para campos FA; el marcador "~" de estimación (KGhost) se
+    // antepone al valor real (devuelve "" salvo en gap estimado, así no afecta al resto).
+    val newLeft = estimateMarker(leftField.kaction, leftFieldState) + when {
         isLeftFA && leftFieldState != null -> formatFAValue(leftFieldState, leftField.kaction.name)
         ispowerLeft -> (formatNumber(leftNumber, true) + "-" + formatNumber(
             leftNumberSecond,
@@ -680,7 +702,7 @@ fun DoubleScreenSelector(
     }
 
 
-    val newRight = when {
+    val newRight = estimateMarker(rightField.kaction, rightFieldState) + when {
         isRightFA && rightFieldState != null -> formatFAValue(rightFieldState, rightField.kaction.name)
         ispowerRight -> (formatNumber(rightNumber, true) + "-" + formatNumber(
             rightNumberSecond,
@@ -827,7 +849,7 @@ fun SextupleScreenSelector(
 
     // Campos FA (Flight Attendant): formateo de los valores enum a etiquetas ("Open",
     // "Lock"...) igual que en DoubleScreenSelector; sin el StreamState mostraban el crudo.
-    val newFirst = when {
+    val newFirst = estimateMarker(firstField.kaction, firstFieldState) + when {
         firstField.kaction.name.startsWith("FA_") && firstFieldState != null ->
             formatFAValue(firstFieldState, firstField.kaction.name)
         ispowerFirst -> (formatNumber(firstNumber, true) + "-" + formatNumber(
@@ -838,7 +860,7 @@ fun SextupleScreenSelector(
     }
 
 
-    val newSecond = when {
+    val newSecond = estimateMarker(secondField.kaction, secondFieldState) + when {
         secondField.kaction.name.startsWith("FA_") && secondFieldState != null ->
             formatFAValue(secondFieldState, secondField.kaction.name)
         ispowerSecond -> (formatNumber(secondNumber, true) + "-" + formatNumber(
@@ -849,7 +871,7 @@ fun SextupleScreenSelector(
     }
 
 
-    val newThird = when {
+    val newThird = estimateMarker(thirdField.kaction, thirdFieldState) + when {
         thirdField.kaction.name.startsWith("FA_") && thirdFieldState != null ->
             formatFAValue(thirdFieldState, thirdField.kaction.name)
         ispowerThird -> (formatNumber(thirdNumber, true) + "-" + formatNumber(
@@ -860,7 +882,7 @@ fun SextupleScreenSelector(
     }
 
 
-    val newFourth = when {
+    val newFourth = estimateMarker(fourthField.kaction, fourthFieldState) + when {
         fourthField.kaction.name.startsWith("FA_") && fourthFieldState != null ->
             formatFAValue(fourthFieldState, fourthField.kaction.name)
         ispowerFourth -> (formatNumber(fourthNumber, true) + "-" + formatNumber(
@@ -871,7 +893,7 @@ fun SextupleScreenSelector(
     }
 
 
-    val newFifth = when {
+    val newFifth = estimateMarker(fifthField.kaction, fifthFieldState) + when {
         fifthField.kaction.name.startsWith("FA_") && fifthFieldState != null ->
             formatFAValue(fifthFieldState, fifthField.kaction.name)
         ispowerFifth -> (formatNumber(fifthNumber, true) + "-" + formatNumber(
@@ -882,7 +904,7 @@ fun SextupleScreenSelector(
     }
 
 
-    val newSixth = when {
+    val newSixth = estimateMarker(sixthField.kaction, sixthFieldState) + when {
         sixthField.kaction.name.startsWith("FA_") && sixthFieldState != null ->
             formatFAValue(sixthFieldState, sixthField.kaction.name)
         ispowerSixth -> (formatNumber(sixthNumber, true) + "-" + formatNumber(

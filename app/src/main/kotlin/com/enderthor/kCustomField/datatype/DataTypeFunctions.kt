@@ -73,6 +73,13 @@ class StickyStreamState private constructor() {
 
             return state
         }
+
+        // Olvida el último Streaming guardado para una acción. Se usa cuando el productor
+        // emite un estado "sin dato" deliberado (KSafe Idle/NotAvailable): así el Searching
+        // transitorio de la siguiente re-suscripción no resucita el valor del ride anterior.
+        fun invalidate(actionName: String) = synchronized(lastValidStates) {
+            lastValidStates.remove(actionName)
+        }
     }
 }
 
@@ -138,6 +145,11 @@ fun convertValue(
         "TIRE_PRESSURE_FRONT","TIRE_PRESSURE_REAR" -> ((streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_TIRE_PRESSURE_ID"))
         "TYPE_ELEVATION_TO_TOP" -> ((streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_TO_TOP_ID"))
         "TYPE_ELEVATION_FROM_BOTTOM" -> ((streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_FROM_BOTTOM_ID"))
+        // KGhost emite 2 valores en el DataPoint (SINGLE = gap, "estimated" = flag). El
+        // getter singleValue del SDK devuelve values.firstOrNull(), que solo acierta porque
+        // KGhost pone SINGLE primero; leemos la clave explícita para no depender de ese orden.
+        "TYPE_EXT::kghost::kghost-gap-time", "TYPE_EXT::kghost::kghost-gap-dist" ->
+            (streamState as? StreamState.Streaming)?.dataPoint?.values?.get(DataType.Field.SINGLE)
         else -> (streamState as? StreamState.Streaming)?.dataPoint?.singleValue
     } ?: 0.0
 
@@ -484,7 +496,13 @@ fun KarooSystemService.getFieldFlow(
                     // pasan tal cual, sin sticky. El sticky extendido solo puentea el
                     // Searching transitorio de la re-suscripción tras timeout.
                     val processedState = when {
-                        isKSafeStream && (state is StreamState.Idle || state is StreamState.NotAvailable) -> state
+                        isKSafeStream && (state is StreamState.Idle || state is StreamState.NotAvailable) -> {
+                            // Estado "sin dato" deliberado: limpia el sticky para que el
+                            // Searching de la re-suscripción tras el timeout no muestre el
+                            // valor del ride anterior un frame antes de que llegue el Idle.
+                            StickyStreamState.invalidate(action.name)
+                            state
+                        }
                         isKSafeStream -> StickyStreamState.process(state, action.name, STICKY_TIMEOUT_KSAFE)
                         else -> StickyStreamState.process(state, action.name)
                     }

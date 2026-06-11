@@ -3,10 +3,10 @@
   "packageName": "com.enderthor.kCustomField",
   "latestApkUrl": "https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.apk",
   "iconUrl": "https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.png",
-  "latestVersion": "4.3.0",
-  "latestVersionCode": 202606111,
+  "latestVersion": "4.4.0",
+  "latestVersionCode": 202606120,
   "developer": "github.com/lockevod",
   "description": "This extension for Karoo allows to use custom fields with double types (HR,Power,etc). Includes vertical and horizontal layout, smart fields, rolling fields, W prime, FTP and bell option",
-  "releaseNotes": "Fix sextuple. Added extra decimal value. Added max speed. New karoo grade colours. Fix gridsize in climber screen. If you're app is < 3.4.0 you need to uninstall and install again. Please, write your current conf. ",
+  "releaseNotes": "New fields from KSafe (carbs, hydration, calories) and KGhost (ghost gap in seconds/metres) when those extensions are installed. Hydration shows in litres; estimated ghost gap is marked with ~. Several display fixes. If you're app is < 3.4.0 you need to uninstall and install again. Please, write your current conf. ",
   "tags": ["entertainment","health","performance"]
 }
