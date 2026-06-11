@@ -1,6 +1,7 @@
 package com.enderthor.kCustomField.datatype
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.DeadObjectException
 import androidx.compose.ui.unit.DpSize
@@ -12,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
@@ -70,6 +72,9 @@ abstract class CustomRollingTypeBase(
     private val isextratime = { settings: OneFieldSettings -> settings.isextratime }
 
     @Volatile private var isCancelled = false
+    // Decodificado una vez por instancia: startView() se re-entra muy rápido en cambios
+    // de página/perfil y re-decodificar el recurso en cada entrada es trabajo inútil.
+    @Volatile private var cachedBaseBitmap: Bitmap? = null
 
     private val isKaroo = karooSystem.hardwareType == HardwareType.KAROO
 
@@ -114,11 +119,26 @@ abstract class CustomRollingTypeBase(
             awaitCancellation()
         }
 
-        val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
+        val baseBitmap = cachedBaseBitmap
+            ?: BitmapFactory.decodeResource(context.resources, R.drawable.circle).also { cachedBaseBitmap = it }
 
         val viewjob = scope.launch {
             try {
-                val userProfile = karooSystem.consumerFlow<UserProfile>().first()
+                // Perfil reactivo: antes se leía UNA vez con first() y un cambio de perfil
+                // (unidades, zonas, FTP) a mitad de ruta no se reflejaba hasta recrear la
+                // vista. Se mantiene la espera inicial (el arranque no cambia) y un colector
+                // en el mismo scope actualiza el valor; se lee .value en cada render.
+                val userProfileFlow = MutableStateFlow(karooSystem.consumerFlow<UserProfile>().first())
+                if (!config.preview) {
+                    // catch obligatorio: el scope no tiene SupervisorJob, y una excepción
+                    // binder aquí (DeadObjectException) cancelaría TODO el scope de la vista.
+                    // En preview no se lanza: setCancellable se ignora y el consumer IPC
+                    // quedaría registrado para siempre en cada re-entrada del editor.
+                    karooSystem.consumerFlow<UserProfile>()
+                        .catch { e -> Timber.e(e, "ROLLING profile collector error: $extension $globalIndex") }
+                        .onEach { userProfileFlow.value = it }
+                        .launchIn(scope)
+                }
 
                 // Optimización: usar stateIn con timeout más largo para evitar recrear flows
                 // Usar previewOneFieldSettings (3 items) como valor inicial para evitar
@@ -271,6 +291,7 @@ abstract class CustomRollingTypeBase(
 
                         val (firstFieldState, secondFieldState, thirdFieldState) = fieldStates
                         val (settings, generalSetting, cyclicIndex) = settingsData
+                        val userProfile = userProfileFlow.value
 
                         val field = when (cyclicIndex) {
                             0 -> firstField
@@ -327,7 +348,8 @@ abstract class CustomRollingTypeBase(
                                         config.textSize,
                                         iszone,
                                         config.preview,
-                                        valueSecond
+                                        valueSecond,
+                                        fieldState = valuestream as? StreamState
                                     )
                                 }.remoteViews
                                 //Timber.d("ROLLING Updating view: $extension $index cyclic: $cyclicIndex value: $value ")

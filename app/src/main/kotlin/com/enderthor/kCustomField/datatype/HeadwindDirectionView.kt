@@ -63,7 +63,10 @@ fun getArrowBitmapByBearing(baseBitmap: Bitmap, bearing: Int): Bitmap {
 
         canvas.save()
         canvas.scale((bitmap.width / baseBitmap.width.toFloat()), (bitmap.height / baseBitmap.height.toFloat()), (bitmap.width / 2).toFloat(), (bitmap.height / 2).toFloat())
-        canvas.rotate(bearing.toFloat(), (bitmap.width / 2).toFloat(), (bitmap.height / 2).toFloat())
+        // Rotar por el bearing REDONDEADO (la clave de la caché): si se rota por el valor
+        // sin redondear, se cachea para siempre un bitmap desviado hasta ±5° respecto a
+        // lo que la clave promete, y se reutiliza para cualquier bearing que redondee igual.
+        canvas.rotate(bearingRounded.toFloat(), (bitmap.width / 2).toFloat(), (bitmap.height / 2).toFloat())
         canvas.drawBitmap(baseBitmap, ((bitmap.width - baseBitmap.width) / 2).toFloat(), ((bitmap.height - baseBitmap.height) / 2).toFloat(), paint)
         canvas.restore()
 

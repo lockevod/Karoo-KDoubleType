@@ -59,7 +59,20 @@ import timber.log.Timber
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.milliseconds
 
-val jsonWithUnknownKeys = Json { ignoreUnknownKeys = true }
+// coerceInputValues: si en una versión futura se elimina o renombra un valor de KarooAction
+// (u otro enum), el valor desconocido se sustituye por el default de la propiedad en vez de
+// lanzar SerializationException — que el catch convertía en "resetear TODA la configuración
+// del usuario a los defaults". Requiere que las propiedades enum tengan default (lo tienen:
+// DoubleFieldType/OneFieldType en Configdata.kt) y la regla ProGuard de enums (ya presente).
+val jsonWithUnknownKeys = Json {
+    ignoreUnknownKeys = true
+    coerceInputValues = true
+}
+
+// Para PERSISTIR: con defaults en las propiedades, el Json por defecto (encodeDefaults=false)
+// omitiría los campos que coincidan con el default y una versión anterior de la app no
+// sabría decodificarlos (MissingFieldException → reset de config en un downgrade).
+val jsonPersist = Json { encodeDefaults = true }
 val generalsettingsKey = stringPreferencesKey("generalsettings")
 val doublefieldKey = stringPreferencesKey("doublefieldsettings")
 val sextuplefieldKey = stringPreferencesKey("sextuplefieldsettings")
@@ -74,7 +87,7 @@ val rollingTimesKey = stringPreferencesKey("rollingtimes")
 suspend fun savePowerSettings(context: Context, settings: powerSettings) {
 
     context.dataStore.edit { t ->
-        t[powerKey] = Json.encodeToString(settings)
+        t[powerKey] = jsonPersist.encodeToString(settings)
     }
 }
 fun Context.streamStoredPowerSettings(): Flow<powerSettings> {
@@ -101,7 +114,7 @@ fun KarooSystemService.streamPowerSettings(context: Context): Flow<Pair<powerSet
 suspend fun saveGeneralSettings(context: Context, settings: GeneralSettings) {
 
     context.dataStore.edit { t ->
-        t[generalsettingsKey] = Json.encodeToString(settings)
+        t[generalsettingsKey] = jsonPersist.encodeToString(settings)
     }
 }
 
@@ -122,7 +135,7 @@ fun Context.streamGeneralSettings(): Flow<GeneralSettings> {
 suspend fun saveDoubleFieldSettings(context: Context, settings: List<DoubleFieldSettings>) {
     // Timber.d("saveSettings IN $settings")
     context.dataStore.edit { t ->
-        t[doublefieldKey] = Json.encodeToString(settings)
+        t[doublefieldKey] = jsonPersist.encodeToString(settings)
     }
 }
 fun Context.streamDoubleFieldSettings(): Flow<List<DoubleFieldSettings>> {
@@ -153,7 +166,7 @@ fun Context.streamDoubleFieldSettings(): Flow<List<DoubleFieldSettings>> {
 suspend fun saveSextupleFieldSettings(context: Context, settings: List<SextupleFieldSettings>) {
     // Timber.d("saveSettings IN $settings")
     context.dataStore.edit { t ->
-        t[sextuplefieldKey] = Json.encodeToString(settings)
+        t[sextuplefieldKey] = jsonPersist.encodeToString(settings)
     }
 }
 fun Context.streamSextupleFieldSettings(): Flow<List<SextupleFieldSettings>> {
@@ -179,7 +192,7 @@ fun Context.streamSextupleFieldSettings(): Flow<List<SextupleFieldSettings>> {
 suspend fun saveClimbFieldSettings(context: Context, settings: List<ClimbFieldSettings>) {
     // Timber.d("saveSettings IN $settings")
     context.dataStore.edit { t ->
-        t[climbfieldKey] = Json.encodeToString(settings)
+        t[climbfieldKey] = jsonPersist.encodeToString(settings)
     }
 }
 fun Context.streamClimbFieldSettings(): Flow<List<ClimbFieldSettings>> {
@@ -201,7 +214,7 @@ fun Context.streamClimbFieldSettings(): Flow<List<ClimbFieldSettings>> {
 }
 suspend fun saveWPrimeBalanceSettings(context: Context, settings: WPrimeBalanceSettings) {
     context.dataStore.edit { t ->
-        t[wprimeBalanceKey] = Json.encodeToString(settings)
+        t[wprimeBalanceKey] = jsonPersist.encodeToString(settings)
     }
 }
 
@@ -220,7 +233,7 @@ fun Context.streamWPrimeBalanceSettings(): Flow<WPrimeBalanceSettings> {
 suspend fun saveOneFieldSettings(context: Context, settings: List<OneFieldSettings>) {
     // Timber.d("saveSettings IN $settings")
     context.dataStore.edit { t ->
-        t[onefieldKey] = Json.encodeToString(settings)
+        t[onefieldKey] = jsonPersist.encodeToString(settings)
     }
 }
 
@@ -253,7 +266,7 @@ fun Context.streamOneFieldSettings(): Flow<List<OneFieldSettings>> {
 suspend fun saveSmartFieldSettings(context: Context, settings: List<SmartFieldSettings>) {
     // Timber.d("saveSettings IN $settings")
     context.dataStore.edit { t ->
-        t[smartfieldKey] = Json.encodeToString(settings)
+        t[smartfieldKey] = jsonPersist.encodeToString(settings)
     }
 }
 
@@ -403,7 +416,7 @@ inline fun <reified T : KarooEvent> KarooSystemService.consumerFlow(): Flow<T> {
 // Persistencia para rollingTimes
 suspend fun saveRollingTimes(context: Context, times: List<RollingTime>) {
     context.dataStore.edit { t ->
-        t[rollingTimesKey] = Json.encodeToString(times)
+        t[rollingTimesKey] = jsonPersist.encodeToString(times)
     }
 }
 

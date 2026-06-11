@@ -1,6 +1,7 @@
 package com.enderthor.kCustomField.datatype
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.DeadObjectException
 
@@ -74,6 +75,9 @@ abstract class CustomDoubleTypeBase(
     private val ishorizontal = { settings: DoubleFieldSettings -> settings.ishorizontal }
 
     @Volatile private var isCancelled = false
+    // Decodificado una vez por instancia: startView() se re-entra muy rápido en cambios
+    // de página/perfil y re-decodificar el recurso en cada entrada es trabajo inútil.
+    @Volatile private var cachedBaseBitmap: Bitmap? = null
 
     private val isKaroo = karooSystem.hardwareType == HardwareType.KAROO
 
@@ -136,7 +140,8 @@ abstract class CustomDoubleTypeBase(
             awaitCancellation()
         }
 
-        val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
+        val baseBitmap = cachedBaseBitmap
+            ?: BitmapFactory.decodeResource(context.resources, R.drawable.circle).also { cachedBaseBitmap = it }
         val viewjob = scope.launch {
             try {
                 Timber.d("DOUBLE Starting view: $extension $globalIndex ")

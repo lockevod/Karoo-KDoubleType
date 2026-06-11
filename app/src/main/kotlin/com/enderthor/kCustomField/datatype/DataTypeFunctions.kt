@@ -53,7 +53,9 @@ class StickyStreamState private constructor() {
         }
         private const val STICKY_TIMEOUT_MS = 7000L
 
-        fun process(state: Any, actionName: String): Any {
+        // synchronized: con accessOrder=true hasta un get() muta el LinkedHashMap, y este
+        // mapa se comparte entre los colectores concurrentes de todos los campos (IO pool).
+        fun process(state: Any, actionName: String, stickyTimeoutMs: Long = STICKY_TIMEOUT_MS): Any = synchronized(lastValidStates) {
             val currentTime = System.currentTimeMillis()
 
 
@@ -65,7 +67,7 @@ class StickyStreamState private constructor() {
             val lastStatePair = lastValidStates[actionName] ?: return state
             val (lastState, timestamp) = lastStatePair
 
-            if (currentTime - timestamp < STICKY_TIMEOUT_MS) {
+            if (currentTime - timestamp < stickyTimeoutMs) {
                 return lastState
             }
 
@@ -316,6 +318,11 @@ fun KarooSystemService.getFieldFlow(
             emit(StreamState.Searching)
         }
 
+        // Streams publicados por KSafe (TYPE_EXT::ksafe::…): emiten solo al cambiar el valor
+        // y su tracker publica cada 15s, así que necesitan timeout y sticky más largos
+        // (ver STREAM_TIMEOUT_KSAFE en Configdata.kt).
+        val isKSafeStream = action.action.contains("::ksafe::")
+
         while (currentCoroutineContext().isActive) {
             try {
                 val streamFlow = when {
@@ -466,12 +473,21 @@ fun KarooSystemService.getFieldFlow(
                                 }
                             }
                         }
-                        .timeout(STREAM_TIMEOUT.milliseconds)
+                        .timeout((if (isKSafeStream) STREAM_TIMEOUT_KSAFE else STREAM_TIMEOUT).milliseconds)
                 }
 
                 // OPTIMIZACIÓN: aplicar distinctUntilChanged antes del collect
                 streamFlow.distinctUntilChanged().collect { state ->
-                    val processedState = StickyStreamState.process(state, action.name)
+                    // KSafe: Streaming es el ÚNICO estado "con dato". Idle (fin de ride:
+                    // el productor lo emite a propósito para que no se muestren los
+                    // totales del ride anterior como vivos) y NotAvailable (toggle off)
+                    // pasan tal cual, sin sticky. El sticky extendido solo puentea el
+                    // Searching transitorio de la re-suscripción tras timeout.
+                    val processedState = when {
+                        isKSafeStream && (state is StreamState.Idle || state is StreamState.NotAvailable) -> state
+                        isKSafeStream -> StickyStreamState.process(state, action.name, STICKY_TIMEOUT_KSAFE)
+                        else -> StickyStreamState.process(state, action.name)
+                    }
                     emit(processedState)
                 }
 

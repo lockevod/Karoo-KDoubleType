@@ -724,7 +724,7 @@ fun Conf6Fields(ctx: Context) {
                         val updatedZone =
                             if (sextupleFieldSettings.sixthfield.kaction.zone == "none") false else newZone
                         sextupleFieldSettingsList[index] = sextupleFieldSettings.copy(
-                            secondfield = sextupleFieldSettings.sixthfield.copy(iszone = updatedZone)
+                            sixthfield = sextupleFieldSettings.sixthfield.copy(iszone = updatedZone)
                         )
                     }
 
@@ -1186,7 +1186,7 @@ fun ConfGeneral() {
                         val cfg = ImportExportManager.buildExportConfig(ctx)
                         val text = ImportExportManager.exportConfigToText(cfg)
                         // human-readable timestamp
-                        val timestamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                        val timestamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
                         val filenameTimestamp = "kcustomfield-config-$timestamp.json"
                         // write timestamped file only (no fixed 'latest' file)
                         val written = BackupStorage.writeBackupAtomic(ctx, filenameTimestamp, text, writeMeta = false)
@@ -1245,7 +1245,7 @@ fun ConfGeneral() {
                                 try {
                                     val preCfg = ImportExportManager.buildExportConfig(ctx)
                                     val preText = ImportExportManager.exportConfigToText(preCfg)
-                                    val timestamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                                    val timestamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
                                     val preName = "preapply-backup-$timestamp.json"
                                     // delete any existing preapply backups and their meta files
                                     try {

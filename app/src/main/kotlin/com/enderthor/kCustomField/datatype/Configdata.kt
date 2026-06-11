@@ -19,6 +19,12 @@ const val RETRY_CHECK_STREAMS = 4
 const val WAIT_STREAMS_SHORT = 1000L // 1 seconds
 const val WAIT_STREAMS_NORMAL = 60000L // 1 minute
 const val STREAM_TIMEOUT = 15000L // 15 seconds
+// Streams de KSafe: el productor publica como mucho cada 15s (MONITOR_TICK_MS de sus
+// trackers) vía StateFlow conflado, así que con el timeout genérico de 15s la suscripción
+// caducaría en cada ciclo (churn de IPC + parpadeo a 0 al re-suscribir). El sticky debe
+// cubrir timeout + delay de re-suscripción para puentear el Searching inicial del productor.
+const val STREAM_TIMEOUT_KSAFE = 40000L
+const val STICKY_TIMEOUT_KSAFE = 45000L
 const val WAIT_STREAMS_LONG = 120000L // 120 seconds
 const val WAIT_STREAMS_MEDIUM = 10000L // 10 seconds
 const val DEFAULT_CP = 248.0         // W, fuente única de CP por defecto
@@ -85,6 +91,14 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     ELEV_GAIN(DataType.Type.ELEVATION_GAIN, "Ascent", R.drawable.ic_ascent, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "elevation"),
     ELEV_REMAIN(DataType.Type.ELEVATION_REMAINING, "Ascent Remain", R.drawable.ic_elevation, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "elevation"),
     CADENCE(DataType.Type.CADENCE, "Cadence",R.drawable.ic_cadence,R.color.hh_success_green_700,R.color.hh_success_green_400,"none","none"),
+    // Streams publicados por la extensión KSafe (inter-extension composition, igual que
+    // karoo-headwind): si KSafe no está instalado o el fueling está OFF, el campo queda
+    // en Searching/0 como cualquier sensor ausente. Valores enteros (g, g/h, ml, kcal);
+    // los déficits (Carb Deficit / Hydration) son con signo: + falta, − sobra.
+    CARBS_AVG_RATE(DataType.dataTypeId("ksafe", "carb-avg-burn-rate"), "Carb Avg g/h", R.drawable.ic_carbs, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    CARBS_DEFICIT(DataType.dataTypeId("ksafe", "carb-status"), "Carb Deficit", R.drawable.ic_carbs, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    CARBS_RATE(DataType.dataTypeId("ksafe", "carb-burn-rate"), "Carb g/h", R.drawable.ic_carbs, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    CARBS_BURNED(DataType.dataTypeId("ksafe", "carbs-burned"), "Carbs Burned", R.drawable.ic_carbs, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     CIVIL_DAWN(DataType.Type.CIVIL_DAWN, "Civil Dawn", R.drawable.ic_sunrise, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     CIVIL_DUSK(DataType.Type.CIVIL_DUSK, "Civil Dusk", R.drawable.ic_sunset, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     ELEV_LOSS(DataType.Type.ELEVATION_LOSS, "Descent", R.drawable.ic_descent, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "elevation"),
@@ -99,7 +113,7 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     FA_SUSPENSION_STATE_REAR(DataType.Type.SUSPENSION_STATE_REAR, "FA Suspension Rear", R.drawable.ic_suspension_rear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     FA_SUSPENSION_STATE_COUNT_FRONT(DataType.Type.SUSPENSION_STATE_COUNT_FRONT, "FA Suspension Count Front", R.drawable.ic_suspension_count_front, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     FA_SUSPENSION_STATE_COUNT_REAR(DataType.Type.SUSPENSION_STATE_COUNT_REAR, "FA Suspension Count Rear", R.drawable.ic_suspension_count_rear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    FA_SUSPENSION_BIAS(DataType.Type.SUSPENSION_BIAS, "FA Suspension Count Rear", R.drawable.ic_suspension_bias, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    FA_SUSPENSION_BIAS(DataType.Type.SUSPENSION_BIAS, "FA Suspension Bias", R.drawable.ic_suspension_bias, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     FTPG(DataType.dataTypeId("FTPG", "FTPG"), "FTP", R.drawable.ic_ftp, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     GEARS(DataType.dataTypeId("GEARS", "GEARS"), "Gears", R.drawable.ic_front_gear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     GEARS_FRONT(DataType.Type.SHIFTING_FRONT_GEAR, "Gears Front", R.drawable.ic_front_gear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
@@ -109,7 +123,10 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     HR(DataType.Type.HEART_RATE, "Heart Rate", R.drawable.ic_hr, R.color.hh_success_green_700, R.color.hh_success_green_400, "heartRateZones", "none"),
     HRPERCENT(DataType.Type.PERCENT_MAX_HR, "HR %", R.drawable.ic_hr_per, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     HR_ZONE(DataType.Type.HR_ZONE, "HR Zone", R.drawable.ic_hr_zone, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    HYDRATION_DEFICIT(DataType.dataTypeId("ksafe", "hyd-status"), "Hydration", R.drawable.ic_hydration, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     IF(DataType.Type.INTENSITY_FACTOR, "IF", R.drawable.ic_if, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    KCAL_RATE(DataType.dataTypeId("ksafe", "calories-rate"), "Kcal Rate", R.drawable.ic_calories, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    KCAL_TOTAL(DataType.dataTypeId("ksafe", "calories-total"), "Kcal Total", R.drawable.ic_calories, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     MAX_SPEED(DataType.Type.MAX_SPEED, "Max Speed", R.drawable.ic_speed_max, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "speed"),
     PEDAL(DataType.Type.PEDAL_SMOOTHNESS, "Pedal Smooth", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
     PEDAL_BALANCE(DataType.Type.PEDAL_POWER_BALANCE, "Pedal Balance", R.drawable.ic_pedal_balance, R.color.hh_success_green_700, R.color.hh_success_green_400, "pedal", "none", true),
@@ -171,8 +188,10 @@ enum class FieldPosition {
 @Serializable
 data class RollingTime(val id : String, val name: String, var time: Long)
 
+// Los defaults de kaction permiten que coerceInputValues (Extensions.kt) sustituya un valor
+// de KarooAction eliminado/renombrado por el default en vez de tirar toda la configuración.
 @Serializable
-data class OneFieldType(val kaction: KarooAction, val iszone: Boolean, val isactive: Boolean )
+data class OneFieldType(val kaction: KarooAction = KarooAction.HR, val iszone: Boolean = false, val isactive: Boolean = false)
 
 @Serializable
 data class OneFieldSettings(
@@ -200,7 +219,7 @@ data class SmartFieldSettings(
 )
 
 @Serializable
-data class DoubleFieldType(val kaction: KarooAction,  val iszone: Boolean)
+data class DoubleFieldType(val kaction: KarooAction = KarooAction.SPEED,  val iszone: Boolean = false)
 
 @Serializable
 data class DoubleFieldSettings(

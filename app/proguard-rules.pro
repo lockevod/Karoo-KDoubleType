@@ -26,11 +26,11 @@
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.AnnotationsKt
 # Keep serializable data classes and their generated $$serializer companions
--keep @kotlinx.serialization.Serializable class com.enderthor.kSafe.** {
+-keep @kotlinx.serialization.Serializable class com.enderthor.kCustomField.** {
     <fields>;
     *** Companion;
 }
--keep class com.enderthor.kSafe.**$$serializer { *; }
+-keep class com.enderthor.kCustomField.**$$serializer { *; }
 -dontwarn kotlinx.serialization.**
 
 # ─── Hammerhead karoo-ext — AIDL stubs (IPC with Karoo system) ───────────────

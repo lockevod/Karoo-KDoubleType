@@ -1,6 +1,7 @@
 package com.enderthor.kCustomField.datatype
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.DeadObjectException
 
@@ -83,6 +84,9 @@ abstract class CustomClimbTypeBase(
     private val issecondhorizontal = { settings: ClimbFieldSettings -> settings.issecondhorizontal }
     @Volatile private var isCancelled = false
     @Volatile private var isOnClimb = false
+    // Decodificado una vez por instancia: startView() se re-entra muy rápido en cambios
+    // de página/perfil y re-decodificar el recurso en cada entrada es trabajo inútil.
+    @Volatile private var cachedBaseBitmap: Bitmap? = null
 
     private val isKaroo = karooSystem.hardwareType == HardwareType.KAROO
 
@@ -141,7 +145,8 @@ abstract class CustomClimbTypeBase(
         checkClimbStatus(scope)
 
         // OPTIMIZACIÓN: reutilizar bitmap solo para el círculo base (no datos)
-        val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
+        val baseBitmap = cachedBaseBitmap
+            ?: BitmapFactory.decodeResource(context.resources, R.drawable.circle).also { cachedBaseBitmap = it }
 
         val dataflow = context.streamClimbFieldSettings()
             .onStart {
@@ -462,6 +467,11 @@ abstract class CustomClimbTypeBase(
                                         issecondhorizontal,
                                         isShowClimbField,
                                         generalSettings.distanceWithDecimals,
+                                        firstFieldState = firstFieldState as? StreamState,
+                                        secondFieldState = secondFieldState as? StreamState,
+                                        thirdFieldState = thirdFieldState as? StreamState,
+                                        fourthFieldState = fourthFieldState as? StreamState,
+                                        climbFieldState = climbFieldState as? StreamState,
                                     )
                                 }.remoteViews
                                 // Timber.d("CLIMB Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")

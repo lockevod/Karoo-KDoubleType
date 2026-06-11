@@ -16,7 +16,6 @@ import androidx.glance.preview.Preview
 import androidx.glance.text.*
 import androidx.glance.unit.ColorProvider
 import io.hammerhead.karooext.models.StreamState
-import timber.log.Timber
 import java.text.DateFormat
 import java.util.Calendar
 import kotlin.math.roundToInt
@@ -45,16 +44,24 @@ fun formatTimeRemaining(timeMs: Double): String {
     }
 }
 
+// Formatter cacheado: DateFormat.getTimeInstance aloca en cada render y esto se llama
+// en cada tick de los campos Civil Dawn/Dusk. DateFormat no es thread-safe, pero la
+// composición Glance siempre corre en Main (withContext(Dispatchers.Main) en las bases).
+private val timeOfDayFormat: DateFormat by lazy { DateFormat.getTimeInstance(DateFormat.SHORT) }
+
 private fun epochToTimeOfDay(epochMillis: Double): String {
     val calendar = Calendar.getInstance()
     calendar.timeInMillis = epochMillis.toLong()
-    return DateFormat.getTimeInstance(DateFormat.SHORT).format(calendar.time)
+    return timeOfDayFormat.format(calendar.time)
 }
 
 
-fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivil: Boolean = false, isClimb: Boolean = false): String = buildString {
+fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivil: Boolean = false, isClimb: Boolean = false, thousandsSuffix: Char = 'k'): String = buildString {
 
-    if (isClimb) {
+    // La hidratación (sufijo 'L') NUNCA usa el formato de distancia del climb: en el campo
+    // central del climb debe mostrar "3.5L" igual que los paneles laterales, no "3.50"
+    // sin unidad (ni "-3500" crudo, que la rama climb no compacta para negativos).
+    if (isClimb && thousandsSuffix != 'L') {
         if (isCivil) {
             val timeStr = epochToTimeOfDay(number)
             append(timeStr.split(':').firstOrNull() ?: "")
@@ -95,8 +102,28 @@ fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivi
         } else if (isTime) {
             append(formatTimeRemaining(number))
         } else {
-            if (isInt) append(number.roundToInt().toString().take(5))
-            else append(((number * 10.0).roundToInt() / 10.0).toString().take(5))
+            if (isInt) {
+                val raw = number.roundToInt()
+                // Long: abs(Int.MIN_VALUE) y absV+50 desbordan Int con ±Infinity de un
+                // stream corrupto (roundToInt satura a Int.MAX/MIN) y saldría basura con
+                // el signo cambiado.
+                val absV = kotlin.math.abs(raw.toLong())
+                if (thousandsSuffix == 'L' && absV >= 1000) {
+                    // Hidratación: a partir de 1000 ml SIEMPRE en litros ("3.5L"), no solo
+                    // cuando no cabe — 3500 ml son 3,5 litros. Redondeo a décimas de litro.
+                    // Clamp a 999.9L: con datos basura la forma degradada ("999L") sigue
+                    // cabiendo en cualquier presupuesto sin perder la unidad.
+                    val sign = if (raw < 0) "-" else ""
+                    val tenths = ((absV + 50) / 100).coerceAtMost(9999L)
+                    append(fitNumberToChars("$sign${tenths / 10}.${tenths % 10}L", 5))
+                } else {
+                    // fitNumberToChars: un entero de 6+ dígitos (o negativo de 5) pasa a
+                    // "123k" en vez de perder dígitos por la derecha
+                    append(fitNumberToChars(raw.toString(), 5, thousandsSuffix))
+                }
+            }
+            // trimEnd('.'): take(5) puede dejar un punto colgando ("1234." en vez de "1234")
+            else append(((number * 10.0).roundToInt() / 10.0).toString().take(5).trimEnd('.'))
         }
 
     }
@@ -113,9 +140,49 @@ fun isIntField(kaction: KarooAction, isPower: Boolean, isClimb: Boolean, distanc
     return adjusted || isPower || isClimb
 }
 
+// Forma compacta ya generada por fitNumberToChars: "12k", "-12.3k", "12.5L"
+private val COMPACT_K = Regex("^-?\\d+(\\.\\d)?[kL]$")
+
+// Sufijo de compactación de miles según el campo: la hidratación de KSafe va en ml,
+// así que sus miles son litros ("12.5L" lee mejor que "12.5k").
+fun thousandsSuffixFor(action: KarooAction): Char =
+    if (action == KarooAction.HYDRATION_DEFICIT) 'L' else 'k'
+
+// Ajusta un valor a maxChars SIN truncar dígitos: recortar "12345" a "1234" o "-1500" a
+// "-150" es un error 10x silencioso. Enteros que no caben pasan a notación compacta de
+// miles ("12.3k", y si tampoco cabe "12k"; la hidratación usa sufijo 'L' = litros).
+// Valores extremos reales: déficit de hidratación KSafe >9999 ml, kcal acumuladas en
+// rides muy largos. Strings no enteros (etiquetas FA "Close", tiempos "01:23")
+// mantienen el recorte clásico.
+fun fitNumberToChars(value: String, maxChars: Int, thousandsSuffix: Char = 'k'): String {
+    if (value.length <= maxChars) return value
+    val negative = value.startsWith('-')
+    val body = if (negative) value.drop(1) else value
+    val sign = if (negative) "-" else ""
+
+    if (body.isNotEmpty() && body.all { it.isDigit() }) {
+        val n = body.toLongOrNull() ?: return value.take(maxChars)
+        val thousands = n / 1000
+        if (thousands == 0L) return value.take(maxChars)
+        val withDecimal = "$sign$thousands.${(n % 1000) / 100}$thousandsSuffix"
+        if (withDecimal.length <= maxChars) return withDecimal
+        val plain = "$sign$thousands$thousandsSuffix"
+        return if (plain.length <= maxChars) plain else plain.take(maxChars)
+    }
+    // Ya compactado en un paso anterior ("12.3k"/"12.5L"): degradar quitando el decimal
+    // y conservando el sufijo original, nunca recortando por la derecha (take daría
+    // "12.3", que parece otro número).
+    if (COMPACT_K.matches(value)) {
+        val plain = "$sign${body.substringBefore('.')}${value.last()}"
+        if (plain.length <= maxChars) return plain
+    }
+    return value.take(maxChars)
+}
+
 fun trimNumberTo3Chars(x: String): String {
     val hasDecimal = x.contains('.')
-    if (!hasDecimal) return x
+    // Los valores compactados ("12.3k"/"12.5L") no se recortan: quitarles la cola cambia el número.
+    if (!hasDecimal || x.endsWith('k') || x.endsWith('L')) return x
 
     val limit = if (x.startsWith('-')) 4 else 3
     val cut = x.take(limit)
@@ -303,8 +370,9 @@ private fun OneNumberRow(
         "${number.take(3)}-${secondValue.take(3)}"
     }
 
-    // Ajustar el tamaño de fuente para el campo de subida cuando tiene 4 caracteres
-    val adjustedTextSize = if (isClimb && displayNumber.length == 4) {
+    // Ajustar el tamaño de fuente para el campo de subida cuando tiene 4+ caracteres
+    // (4 dígitos, negativos "-1500" o etiquetas FA "Close")
+    val adjustedTextSize = if (isClimb && displayNumber.length >= 4) {
         // Reducir el tamaño de fuente 25% para que 4 caracteres ocupen el mismo ancho que 3
         (textSize * 0.8).roundToInt()
     } else {
@@ -420,7 +488,7 @@ private fun SextupleBigCellContent(number: String, icon: Int, colorFilter: Color
 
 
 @Composable
-private fun SingleHorizontalField(icon: Int, iconColor: ColorProvider, layout: FieldPosition, fieldSize: FieldSize, zoneColor: ColorProvider, number: String, isheadwind: Boolean, iszone: Boolean) {
+private fun SingleHorizontalField(icon: Int, iconColor: ColorProvider, layout: FieldPosition, fieldSize: FieldSize, zoneColor: ColorProvider, number: String, isheadwind: Boolean, iszone: Boolean, thousandsSuffix: Char = 'k') {
     val height = when (fieldSize) {
         FieldSize.LARGE -> 12.dp
         FieldSize.SMALL -> 6.dp
@@ -432,8 +500,12 @@ private fun SingleHorizontalField(icon: Int, iconColor: ColorProvider, layout: F
     Spacer(modifier = GlanceModifier.height(height))
     IconRow(icon, ColorFilter.tint(iconColor), layout)
     Spacer(modifier = GlanceModifier.height(5.dp))
-    if (isheadwind && fieldSize == FieldSize.MEDIUM) NumberRow(number.take(4), zoneColor, layout, fieldSize, false,true,iszone,iconColor)
-    else NumberRow(number.take(4), zoneColor, layout, fieldSize, false,false,iszone,iconColor)
+    // Presupuesto con signo ("-1500" necesita 5) y compactación honesta: un valor que
+    // no cabe pasa a "12k"/"12L" en vez de perder dígitos por la derecha (error 10x).
+    val maxChars = if (number.startsWith('-')) 5 else 4
+    val fitted = fitNumberToChars(number, maxChars, thousandsSuffix)
+    if (isheadwind && fieldSize == FieldSize.MEDIUM) NumberRow(fitted, zoneColor, layout, fieldSize, false,true,iszone,iconColor)
+    else NumberRow(fitted, zoneColor, layout, fieldSize, false,false,iszone,iconColor)
 
 }
 
@@ -484,7 +556,8 @@ fun RollingFieldScreen(
     iszone: Boolean,
     ispreview: Boolean,
     secondValue: Double,
-    isClimb: Boolean = false
+    isClimb: Boolean = false,
+    fieldState: StreamState? = null
 ) {
 
     val icon = action.icon
@@ -494,21 +567,19 @@ fun RollingFieldScreen(
     val isCivil =
         action.action == KarooAction.CIVIL_DUSK.action || action.action == KarooAction.CIVIL_DAWN.action
 
-    val isRealZone =
-        if( (action.name =="AVERAGE_PEDAL_BALANCE" || action.name =="PEDAL_BALANCE") && iszone && action.powerField) {
-            if (dNumber > secondValue * 0.85 && dNumber < secondValue * 1.07) {
-                Timber.d("isRealZone: $dNumber")
-                false
-            } else true
-        }
-        else iszone
+    // Misma regla que en los campos dobles/séxtuples (checkRealZone): pedal balance solo
+    // colorea fuera de la banda 85%-107% y nunca con valor 0 (sin datos).
+    val isRealZone = if (checkRealZone(action, iszone, dNumber, secondValue)) iszone else false
 
 
 
     if (selector) {
         val newInt = if (isClimb) true else isInt
 
-        val number = formatNumber(dNumber, newInt, isTime, isCivil, isClimb)
+        // Campos FA: formatear el enum a etiqueta ("Open", "Lock"...) como en los dobles.
+        val isFA = action.name.startsWith("FA_")
+        val number = if (isFA && fieldState != null) formatFAValue(fieldState, action.name)
+        else formatNumber(dNumber, newInt, isTime, isCivil, isClimb, thousandsSuffixFor(action))
         val numberSecond = formatNumber(secondValue, isInt, isTime, isCivil, isClimb)
 
 
@@ -533,7 +604,9 @@ fun RollingFieldScreen(
                     else {
                         OneIconRow(icon, iconColor, label.uppercase(), isRealZone, fieldsize, isClimb)
                         OneNumberRow(
-                            if (isClimb) number.take(4) else number.take(6),
+                            // Presupuesto con signo y compactación honesta (ver fitNumberToChars)
+                            if (isClimb && !isFA) fitNumberToChars(number, if (number.startsWith('-')) 5 else 4, thousandsSuffixFor(action))
+                            else fitNumberToChars(number, 6, thousandsSuffixFor(action)),
                             clayout,
                             fieldsize,
                             (textSize * (if (ispreview) 0.8 else if (isClimb) 1.1 else 1.0)).roundToInt(),
@@ -598,10 +671,10 @@ fun DoubleScreenSelector(
             leftNumberSecond,
             true
         ))
-        !showH -> formatNumber(leftNumber, isLeftInt, leftTime, leftCivil)
+        !showH -> formatNumber(leftNumber, isLeftInt, leftTime, leftCivil, thousandsSuffix = thousandsSuffixFor(leftField.kaction))
         else -> when (selector) {
             0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString()
-                .take(3) else formatNumber(leftNumber, true, leftTime, leftCivil)
+                .take(3) else formatNumber(leftNumber, true, leftTime, leftCivil, thousandsSuffix = thousandsSuffixFor(leftField.kaction))
             else -> "0.0"
         }
     }
@@ -613,10 +686,10 @@ fun DoubleScreenSelector(
             rightNumberSecond,
             true
         ))
-        !showH -> formatNumber(rightNumber, isRightInt, rightTime, rightCivil)
+        !showH -> formatNumber(rightNumber, isRightInt, rightTime, rightCivil, thousandsSuffix = thousandsSuffixFor(rightField.kaction))
         else -> when (selector) {
             1, 3 -> if (rightLabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString()
-                .take(3) else formatNumber(rightNumber, true, rightTime, rightCivil)
+                .take(3) else formatNumber(rightNumber, true, rightTime, rightCivil, thousandsSuffix = thousandsSuffixFor(rightField.kaction))
             else -> "0.0"
         }
     }
@@ -687,7 +760,9 @@ fun DoubleScreenSelector(
             iszoneLeft,
             iszoneRight,
             isdivider,
-            isClimbField
+            isClimbField,
+            thousandsSuffixFor(leftField.kaction),
+            thousandsSuffixFor(rightField.kaction)
         )
     }
 }
@@ -700,7 +775,8 @@ fun SextupleScreenSelector(
     firstField: DoubleFieldType, secondField: DoubleFieldType, thirdField: DoubleFieldType, fourthField: DoubleFieldType, fifthField: DoubleFieldType, sixthField: DoubleFieldType,
     iconColorFirst: ColorProvider, iconColorSecond: ColorProvider, iconColorThird: ColorProvider, iconColorFourth: ColorProvider, iconColorFifth: ColorProvider, iconColorSixth: ColorProvider,
     zoneColorFirst: ColorProvider, zoneColorSecond: ColorProvider, zoneColorThird: ColorProvider, zoneColorFourth: ColorProvider, zoneColorFifth: ColorProvider, zoneColorSixth: ColorProvider, fieldSize: FieldSize,
-    isKaroo3: Boolean, layout: FieldPosition, text: String, windDirection: Int, baseBitmap: Bitmap, isdivider:Boolean,  firstNumberSecond:Double = 0.0, secondNumberSecond:Double = 0.0, thirdNumberSecond:Double = 0.0, fourthNumberSecond:Double = 0.0, fifthNumberSecond:Double = 0.0, sixthNumberSecond:Double = 0.0, isClimb: Boolean = false,isClimbField: Boolean = false){
+    isKaroo3: Boolean, layout: FieldPosition, text: String, windDirection: Int, baseBitmap: Bitmap, isdivider:Boolean,  firstNumberSecond:Double = 0.0, secondNumberSecond:Double = 0.0, thirdNumberSecond:Double = 0.0, fourthNumberSecond:Double = 0.0, fifthNumberSecond:Double = 0.0, sixthNumberSecond:Double = 0.0, isClimb: Boolean = false,isClimbField: Boolean = false,
+    firstFieldState: StreamState? = null, secondFieldState: StreamState? = null, thirdFieldState: StreamState? = null, fourthFieldState: StreamState? = null, fifthFieldState: StreamState? = null, sixthFieldState: StreamState? = null){
 
 
     val firstIcon= firstField.kaction.icon
@@ -749,46 +825,72 @@ fun SextupleScreenSelector(
     val iszoneFifth= if (checkRealZone(fifthField.kaction,fifthField.iszone,fifthNumber,fifthNumberSecond)) fifthField.iszone else false
     val iszoneSixth= if (checkRealZone(sixthField.kaction,sixthField.iszone,sixthNumber,sixthNumberSecond)) sixthField.iszone else false
 
-    val newFirst = if (ispowerFirst) (formatNumber(firstNumber, true) + "-" + formatNumber(
-        firstNumberSecond,
-        true
-    ))
-    else formatNumber(firstNumber, isFirstInt, firstTime, firstCivil)
+    // Campos FA (Flight Attendant): formateo de los valores enum a etiquetas ("Open",
+    // "Lock"...) igual que en DoubleScreenSelector; sin el StreamState mostraban el crudo.
+    val newFirst = when {
+        firstField.kaction.name.startsWith("FA_") && firstFieldState != null ->
+            formatFAValue(firstFieldState, firstField.kaction.name)
+        ispowerFirst -> (formatNumber(firstNumber, true) + "-" + formatNumber(
+            firstNumberSecond,
+            true
+        ))
+        else -> formatNumber(firstNumber, isFirstInt, firstTime, firstCivil, thousandsSuffix = thousandsSuffixFor(firstField.kaction))
+    }
 
 
-    val newSecond = if (ispowerSecond) (formatNumber(secondNumber, true) + "-" + formatNumber(
-        secondNumberSecond,
-        true
-    ))
-    else formatNumber(secondNumber, isSecondInt, secondTime, secondCivil)
+    val newSecond = when {
+        secondField.kaction.name.startsWith("FA_") && secondFieldState != null ->
+            formatFAValue(secondFieldState, secondField.kaction.name)
+        ispowerSecond -> (formatNumber(secondNumber, true) + "-" + formatNumber(
+            secondNumberSecond,
+            true
+        ))
+        else -> formatNumber(secondNumber, isSecondInt, secondTime, secondCivil, thousandsSuffix = thousandsSuffixFor(secondField.kaction))
+    }
 
 
-    val newThird = if (ispowerThird) (formatNumber(thirdNumber, true) + "-" + formatNumber(
-        thirdNumberSecond,
-        true
-    ))
-    else formatNumber(thirdNumber, isThirdInt, thirdTime, thirdCivil)
+    val newThird = when {
+        thirdField.kaction.name.startsWith("FA_") && thirdFieldState != null ->
+            formatFAValue(thirdFieldState, thirdField.kaction.name)
+        ispowerThird -> (formatNumber(thirdNumber, true) + "-" + formatNumber(
+            thirdNumberSecond,
+            true
+        ))
+        else -> formatNumber(thirdNumber, isThirdInt, thirdTime, thirdCivil, thousandsSuffix = thousandsSuffixFor(thirdField.kaction))
+    }
 
 
-    val newFourth = if (ispowerFourth) (formatNumber(fourthNumber, true) + "-" + formatNumber(
-        fourthNumberSecond,
-        true
-    ))
-    else formatNumber(fourthNumber, isFourthInt, fourthTime, fourthCivil)
+    val newFourth = when {
+        fourthField.kaction.name.startsWith("FA_") && fourthFieldState != null ->
+            formatFAValue(fourthFieldState, fourthField.kaction.name)
+        ispowerFourth -> (formatNumber(fourthNumber, true) + "-" + formatNumber(
+            fourthNumberSecond,
+            true
+        ))
+        else -> formatNumber(fourthNumber, isFourthInt, fourthTime, fourthCivil, thousandsSuffix = thousandsSuffixFor(fourthField.kaction))
+    }
 
 
-    val newFifth = if (ispowerFifth) (formatNumber(fifthNumber, true) + "-" + formatNumber(
-        fifthNumberSecond,
-        true
-    ))
-    else formatNumber(fifthNumber, isFifthInt, fifthTime, fifthCivil)
+    val newFifth = when {
+        fifthField.kaction.name.startsWith("FA_") && fifthFieldState != null ->
+            formatFAValue(fifthFieldState, fifthField.kaction.name)
+        ispowerFifth -> (formatNumber(fifthNumber, true) + "-" + formatNumber(
+            fifthNumberSecond,
+            true
+        ))
+        else -> formatNumber(fifthNumber, isFifthInt, fifthTime, fifthCivil, thousandsSuffix = thousandsSuffixFor(fifthField.kaction))
+    }
 
 
-    val newSixth = if (ispowerSixth) (formatNumber(sixthNumber, true) + "-" + formatNumber(
-        sixthNumberSecond,
-        true
-    ))
-    else formatNumber(sixthNumber, isSixthInt, sixthTime, sixthCivil)
+    val newSixth = when {
+        sixthField.kaction.name.startsWith("FA_") && sixthFieldState != null ->
+            formatFAValue(sixthFieldState, sixthField.kaction.name)
+        ispowerSixth -> (formatNumber(sixthNumber, true) + "-" + formatNumber(
+            sixthNumberSecond,
+            true
+        ))
+        else -> formatNumber(sixthNumber, isSixthInt, sixthTime, sixthCivil, thousandsSuffix = thousandsSuffixFor(sixthField.kaction))
+    }
 
 
     // Timber.w("newLeft: $newLeft  iconColorLeft: $iconColorLeft  zoneColorLeft: $zoneColorLeft  iszoneLeft: $iszoneLeft")
@@ -920,7 +1022,12 @@ fun ClimbScreenSelector(
     isFirsthorizontal: Boolean,
     isSecondhorizontal: Boolean,
     isClimbEnabled: Boolean,
-    distanceWithDecimals: Boolean = false
+    distanceWithDecimals: Boolean = false,
+    firstFieldState: StreamState? = null,
+    secondFieldState: StreamState? = null,
+    thirdFieldState: StreamState? = null,
+    fourthFieldState: StreamState? = null,
+    climbFieldState: StreamState? = null
 ) {
     if (fieldSize < 400) {
         NotSupported("Size Not Supported", 24)
@@ -960,6 +1067,8 @@ fun ClimbScreenSelector(
                     rightNumberSecond = secondValueRight,
                     isClimb = false,
                     isClimbField = true,
+                    leftFieldState = firstFieldState,
+                    rightFieldState = secondFieldState,
                     distanceWithDecimals = distanceWithDecimals
                 )
             }
@@ -997,6 +1106,8 @@ fun ClimbScreenSelector(
                     rightNumberSecond = fourthValueRight,
                     isClimb = false,
                     isClimbField = true,
+                    leftFieldState = thirdFieldState,
+                    rightFieldState = fourthFieldState,
                     distanceWithDecimals = distanceWithDecimals
                 )
             }
@@ -1027,7 +1138,9 @@ fun ClimbScreenSelector(
                     leftNumberSecond = firstValueRight,
                     rightNumberSecond = secondValueRight,
                     isClimb = true,
-                    isClimbField = true
+                    isClimbField = true,
+                    leftFieldState = firstFieldState,
+                    rightFieldState = secondFieldState
                 )
             }
 
@@ -1060,6 +1173,7 @@ fun ClimbScreenSelector(
                     ispreview = false,
                     secondValue = climbValueRight,
                     isClimb = true,
+                    fieldState = climbFieldState,
                 )
             }
 
@@ -1095,7 +1209,9 @@ fun ClimbScreenSelector(
                     leftNumberSecond = thirdValueRight,
                     rightNumberSecond = fourthValueRight,
                     isClimb = true,
-                    isClimbField = true
+                    isClimbField = true,
+                    leftFieldState = thirdFieldState,
+                    rightFieldState = fourthFieldState
                 )
             }
         }
@@ -1109,7 +1225,8 @@ private fun DoubleTypesScreenHorizontal(
     leftNumber: String, rightNumber: String, leftIcon: Int, rightIcon: Int,
     iconColorLeft: ColorProvider, iconColorRight: ColorProvider,
     zoneColor1: ColorProvider, zoneColor2: ColorProvider, fieldSize: FieldSize,
-    isKaroo3: Boolean, layout: FieldPosition, selector: Int, text: String, windDirection: Int, baseBitmap: Bitmap,iszoneLeft: Boolean,iszoneRight: Boolean,isdivider:Boolean,isClimbField: Boolean = false
+    isKaroo3: Boolean, layout: FieldPosition, selector: Int, text: String, windDirection: Int, baseBitmap: Bitmap,iszoneLeft: Boolean,iszoneRight: Boolean,isdivider:Boolean,isClimbField: Boolean = false,
+    leftThousandsSuffix: Char = 'k', rightThousandsSuffix: Char = 'k'
 ) {
 
 
@@ -1120,16 +1237,16 @@ private fun DoubleTypesScreenHorizontal(
             Column(modifier = GlanceModifier.defaultWeight().background(if (selector in 1..2) TextNightDay else zoneColor1)) {
                 when (selector) {
                     1, 2 -> HeadwindDirectionDoubleType(baseBitmap, windDirection, 38, text)
-                    0 -> SingleHorizontalField(leftIcon, iconColorLeft, layout, fieldSize, zoneColor1, leftNumber, true,iszoneLeft)
-                    else -> SingleHorizontalField(leftIcon, iconColorLeft, layout, fieldSize, zoneColor1, leftNumber, false,iszoneLeft)
+                    0 -> SingleHorizontalField(leftIcon, iconColorLeft, layout, fieldSize, zoneColor1, leftNumber, true,iszoneLeft, leftThousandsSuffix)
+                    else -> SingleHorizontalField(leftIcon, iconColorLeft, layout, fieldSize, zoneColor1, leftNumber, false,iszoneLeft, leftThousandsSuffix)
                 }
             }
             if (isdivider) Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(TextDayNight))
             Column(modifier = GlanceModifier.defaultWeight().background(if (selector in listOf(0, 2)) TextNightDay else zoneColor2)) {
                 when (selector) {
                     0, 2 -> HeadwindDirectionDoubleType(baseBitmap, windDirection, 38, text)
-                    1 -> SingleHorizontalField(rightIcon, iconColorRight, layout, fieldSize, zoneColor2, rightNumber, true,iszoneRight)
-                    else -> SingleHorizontalField(rightIcon, iconColorRight, layout, fieldSize, zoneColor2, rightNumber, false,iszoneRight)
+                    1 -> SingleHorizontalField(rightIcon, iconColorRight, layout, fieldSize, zoneColor2, rightNumber, true,iszoneRight, rightThousandsSuffix)
+                    else -> SingleHorizontalField(rightIcon, iconColorRight, layout, fieldSize, zoneColor2, rightNumber, false,iszoneRight, rightThousandsSuffix)
                 }
             }
         }
@@ -1286,12 +1403,15 @@ private fun SextupleTypesVerticalScreenBig(
         when {
             maxLen <= 2 -> 58 to 22
             maxLen == 3 -> 48 to 20
-            else -> 40 to 18   // 4 chars (p.ej. "-1.2")
+            maxLen <= 5 -> 40 to 18   // 4-5 chars ("-1.2", "12.5L", "Close", "12500")
+            else -> 32 to 16          // 6+ chars (power "123-456", "-99.9L")
         }
     } else {
         when {
             maxLen <= 3 -> 42 to 18
-            else -> 34 to 16
+            maxLen <= 5 -> 34 to 16   // 4-5 chars: mismo tamaño que antes (un "12500" de
+                                      // ascenso imperial no debe encoger las 6 celdas)
+            else -> 28 to 14          // 6+ chars (power "123-456")
         }
     }
     Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {

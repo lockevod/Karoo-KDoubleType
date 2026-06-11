@@ -1,6 +1,7 @@
 package com.enderthor.kCustomField.datatype
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.DeadObjectException
 
@@ -85,6 +86,9 @@ abstract class CustomSextupleTypeBase(
         }.coerceAtLeast(100L)
 
     @Volatile private var isCancelled = false
+    // Decodificado una vez por instancia: startView() se re-entra muy rápido en cambios
+    // de página/perfil y re-decodificar el recurso en cada entrada es trabajo inútil.
+    @Volatile private var cachedBaseBitmap: Bitmap? = null
 
 
 
@@ -140,7 +144,8 @@ abstract class CustomSextupleTypeBase(
             awaitCancellation()
         }
 
-        val baseBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.circle)
+        val baseBitmap = cachedBaseBitmap
+            ?: BitmapFactory.decodeResource(context.resources, R.drawable.circle).also { cachedBaseBitmap = it }
         val viewjob = scope.launch {
             try {
                 Timber.d("SEXTUPLE Starting view: $extension $globalIndex ")
@@ -410,7 +415,13 @@ abstract class CustomSextupleTypeBase(
                                             thirdvalueRight,
                                             fourthvalueRight,
                                             fifthvalueRight,
-                                            sixthvalueRight
+                                            sixthvalueRight,
+                                            firstFieldState = firstFieldState as? StreamState,
+                                            secondFieldState = secondFieldState as? StreamState,
+                                            thirdFieldState = thirdFieldState as? StreamState,
+                                            fourthFieldState = fourthFieldState as? StreamState,
+                                            fifthFieldState = fifthFieldState as? StreamState,
+                                            sixthFieldState = sixthFieldState as? StreamState
                                         )
                                     }.remoteViews
                                     if (!isCancelled) emitter.updateView(newView)
