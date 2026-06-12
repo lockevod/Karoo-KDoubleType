@@ -71,6 +71,42 @@ Configure your W′ Balance parameters in the **W′BAL** tab:
 - Perform 3-minute and 12-minute all-out efforts on separate days and use the calculators above.
 - A 20-minute FTP test result can be used as an approximation for CP.
 
+## Fields from other extensions (KSafe & KGhost)
+
+If you also have **KSafe** or **KGhost** installed, their live data shows up as extra
+metrics you can pick in any KDouble field (Double, Rolling, Sextuple, Smart Climb). Nothing
+to configure here — just select them like any other metric. If the source extension isn't
+installed (or its data isn't available yet) the metric simply stays blank (`---`).
+
+### KSafe — fueling (carbs, hydration, calories)
+
+Requires the [KSafe](https://github.com/lockevod/Karoo-KSafe) extension with fueling enabled. These
+update **only while you are recording a ride**:
+
+| Metric | Shows |
+|--------|-------|
+| **Carb g/h** | Current carbohydrate burn rate (g/h) |
+| **Carb Avg g/h** | Session-average carb burn rate (g/h) |
+| **Carbs Burned** | Total carbohydrates burned so far (g) |
+| **Carb Deficit** | Carb balance — **positive = you need to eat**, negative = surplus |
+| **Hydration** | Fluid deficit — **positive = you need to drink**. Shown in millilitres, switching to **litres** from 1 L (e.g. `3.5L`) |
+| **Kcal Rate** | Energy expenditure (kcal/h) |
+| **Kcal Total** | Total calories burned so far (kcal) |
+
+### KGhost — gap to your ghost
+
+Requires the [KGhost](https://github.com/lockevod/KGhost) extension with a ghost/target set.
+The gap is **signed: positive = you are ahead of the ghost, negative = behind**:
+
+| Metric | Shows |
+|--------|-------|
+| **Ghost Gap s** | Gap to the ghost in seconds |
+| **Ghost Gap m** | Gap to the ghost in metres |
+
+When your position is briefly uncertain (a GPS dropout, or while you are off-route) KGhost
+reports the gap as an **estimate**. Because the field can't recolour just the number, an
+estimated value is prefixed with a tilde — e.g. `~-12` means *about 12 s behind, estimated*.
+
 ## Known Bugs / Limitations
 
 - The maximum number of digits in a horizontal field is 3 — avoid combining two metrics that both need 3 digits.
