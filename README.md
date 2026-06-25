@@ -71,9 +71,9 @@ Configure your W′ Balance parameters in the **W′BAL** tab:
 - Perform 3-minute and 12-minute all-out efforts on separate days and use the calculators above.
 - A 20-minute FTP test result can be used as an approximation for CP.
 
-## Fields from other extensions (KSafe & KGhost)
+## Fields from other extensions (KSafe, KGhost & KPower)
 
-If you also have **KSafe** or **KGhost** installed, their live data shows up as extra
+If you also have **KSafe**, **KGhost** or **KPower** installed, their live data shows up as extra
 metrics you can pick in any KDouble field (Double, Rolling, Sextuple, Smart Climb). Nothing
 to configure here — just select them like any other metric. If the source extension isn't
 installed (or its data isn't available yet) the metric simply stays blank (`---`).
@@ -106,6 +106,33 @@ The gap is **signed: positive = you are ahead of the ghost, negative = behind**:
 When your position is briefly uncertain (a GPS dropout, or while you are off-route) KGhost
 reports the gap as an **estimate**. Because the field can't recolour just the number, an
 estimated value is prefixed with a tilde — e.g. `~-12` means *about 12 s behind, estimated*.
+
+### KPower — power, cadence & cycling dynamics
+
+Requires the [KPower](https://github.com/lockevod/Karoo-Power_Extension) extension. The
+**estimated** fields work without any meter (KPower's physical model). The **real** and
+**dynamics** fields only update while a power meter is enabled in KPower **and** you are
+recording a ride. Power fields are coloured by your Karoo power zones.
+
+| Metric | Shows |
+|--------|-------|
+| **Est. Power** | Estimated power, instant (W) |
+| **Est. Power 3s** | Estimated power, 3 s smoothed (W) |
+| **Est. NP** | Estimated normalized power (W) |
+| **Est. Avg Power** | Estimated session-average power (W) |
+| **Real Power** | Real meter power, instant (W) |
+| **Real Power 3s / 10s** | Real meter power, 3 s / 10 s smoothed (W) |
+| **Real NP** | Real meter normalized power (W) |
+| **Real Avg Power** | Real meter session-average power (W) |
+| **Real Max Power** | Real meter session maximum power (W) |
+| **Real Cadence** | Real meter cadence (rpm) |
+| **Real Torque** | Real meter torque (Nm) |
+| **Power Phase L / R** | Power phase angle, left / right (°) |
+| **Peak PP L / R** | Peak power phase angle, left / right (°) |
+
+> KPower's L/R **balance**, **torque effectiveness** and **pedal smoothness** are not listed:
+> KPower publishes those only as graphical "L/R" fields (no numeric stream), so they can't be
+> shown inside a KDouble field. Use them directly as KPower fields instead.
 
 ## Known Bugs / Limitations
 

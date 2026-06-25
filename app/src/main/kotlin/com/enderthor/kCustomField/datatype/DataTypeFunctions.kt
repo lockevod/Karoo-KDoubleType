@@ -330,10 +330,16 @@ fun KarooSystemService.getFieldFlow(
             emit(StreamState.Searching)
         }
 
-        // Streams publicados por KSafe (TYPE_EXT::ksafe::…): emiten solo al cambiar el valor
-        // y su tracker publica cada 15s, así que necesitan timeout y sticky más largos
-        // (ver STREAM_TIMEOUT_KSAFE en Configdata.kt).
-        val isKSafeStream = action.action.contains("::ksafe::")
+        // Streams de otras extensiones que NO re-emiten en cada tick:
+        //  - KSafe (TYPE_EXT::ksafe::…): su tracker publica como mucho cada 15s.
+        //  - KPower (TYPE_EXT::kpower::…): muestrea a 1Hz pero con distinctUntilChanged, así
+        //    que un valor estable (avg/NP/max, o potencia 0 parado) deja de re-emitir.
+        // En ambos casos el timeout genérico de 15s caducaría la suscripción (parpadeo a
+        // Searching), por eso usan timeout y sticky más largos (ver STREAM_TIMEOUT_KSAFE).
+        // El productor emite NotAvailable/Idle de forma deliberada cuando no hay dato (KSafe
+        // fin de ride / fueling off; KPower sin medidor) → ese estado limpia el sticky.
+        val isStickyExtStream = action.action.contains("::ksafe::") ||
+                action.action.contains("::kpower::")
 
         while (currentCoroutineContext().isActive) {
             try {
@@ -485,7 +491,7 @@ fun KarooSystemService.getFieldFlow(
                                 }
                             }
                         }
-                        .timeout((if (isKSafeStream) STREAM_TIMEOUT_KSAFE else STREAM_TIMEOUT).milliseconds)
+                        .timeout((if (isStickyExtStream) STREAM_TIMEOUT_KSAFE else STREAM_TIMEOUT).milliseconds)
                 }
 
                 // OPTIMIZACIÓN: aplicar distinctUntilChanged antes del collect
@@ -496,14 +502,14 @@ fun KarooSystemService.getFieldFlow(
                     // pasan tal cual, sin sticky. El sticky extendido solo puentea el
                     // Searching transitorio de la re-suscripción tras timeout.
                     val processedState = when {
-                        isKSafeStream && (state is StreamState.Idle || state is StreamState.NotAvailable) -> {
+                        isStickyExtStream && (state is StreamState.Idle || state is StreamState.NotAvailable) -> {
                             // Estado "sin dato" deliberado: limpia el sticky para que el
                             // Searching de la re-suscripción tras el timeout no muestre el
                             // valor del ride anterior un frame antes de que llegue el Idle.
                             StickyStreamState.invalidate(action.name)
                             state
                         }
-                        isKSafeStream -> StickyStreamState.process(state, action.name, STICKY_TIMEOUT_KSAFE)
+                        isStickyExtStream -> StickyStreamState.process(state, action.name, STICKY_TIMEOUT_KSAFE)
                         else -> StickyStreamState.process(state, action.name)
                     }
                     emit(processedState)

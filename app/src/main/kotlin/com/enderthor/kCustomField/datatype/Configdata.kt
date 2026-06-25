@@ -153,6 +153,36 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     VAM(DataType.Type.VERTICAL_SPEED, "VAM3s", R.drawable.ic_vam, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     VO2MAX(DataType.dataTypeId("vo2", "VO2max"), "VO2max", R.drawable.ic_vo2max, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     WPRIME_BALANCE(DataType.dataTypeId("WPRIME_BALANCE", "WPRIME_BALANCE"), "W Bal %", R.drawable.ic_battery_charging_60, R.color.hh_success_green_700, R.color.hh_success_green_400, "wprimeZones", "none"),
+    // Streams publicados por la extensión KPower (inter-extension, como KSafe/KGhost): si
+    // KPower no está instalado, o no hay medidor habilitado / no se está grabando, el campo
+    // queda en Searching/blank como cualquier sensor ausente. Cada DataPoint trae un único
+    // valor en Field.SINGLE (camino singleValue normal). Muestrean a 1Hz con
+    // distinctUntilChanged, así que un valor estable (avg/NP/max, o potencia 0 parado) puede
+    // dejar de re-emitir > timeout genérico: van por el camino con timeout/sticky extendido
+    // (ver isStickyExtStream / STREAM_TIMEOUT_KSAFE en DataTypeFunctions.kt).
+    // Potencia estimada (modelo físico de KPower, sin medidor):
+    KP_EST_POWER(DataType.dataTypeId("kpower", "estimated-power-instant"), "Est. Power", R.drawable.ic_power, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    KP_EST_POWER_3S(DataType.dataTypeId("kpower", "estimated-power-3s"), "Est. Power 3s", R.drawable.ic_power_3, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    KP_EST_NP(DataType.dataTypeId("kpower", "estimated-power-np"), "Est. NP", R.drawable.ic_power_norm, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    KP_EST_AVG(DataType.dataTypeId("kpower", "estimated-power-avg"), "Est. Avg Power", R.drawable.ic_power_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    // Medidor real ANT+ gestionado por KPower:
+    KP_REAL_POWER(DataType.dataTypeId("kpower", "real-power-0"), "Real Power", R.drawable.ic_power, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    KP_REAL_POWER_3S(DataType.dataTypeId("kpower", "real-3s-0"), "Real Power 3s", R.drawable.ic_power_3, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    KP_REAL_POWER_10S(DataType.dataTypeId("kpower", "real-10s-0"), "Real Power 10s", R.drawable.ic_power_3, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    KP_REAL_NP(DataType.dataTypeId("kpower", "real-np-0"), "Real NP", R.drawable.ic_power_norm, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    KP_REAL_AVG(DataType.dataTypeId("kpower", "real-avg-0"), "Real Avg Power", R.drawable.ic_power_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    KP_REAL_MAX(DataType.dataTypeId("kpower", "real-max-0"), "Real Max Power", R.drawable.ic_power, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    KP_REAL_CADENCE(DataType.dataTypeId("kpower", "real-cadence-0"), "Real Cadence", R.drawable.ic_cadence, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    KP_REAL_TORQUE(DataType.dataTypeId("kpower", "real-torque-0"), "Real Torque", R.drawable.ic_torque, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    // Cycling Dynamics expuestas por KPower como stream de valor único (ángulos en grados).
+    // NOTA: balance / torque-effectiveness / pedal-smoothness (dyn-balance/te/ps-0) NO se
+    // incluyen: en KPower son DataTypes SOLO gráficos (DualValueDataType, solo startView para
+    // pintar el par "L/R"), no implementan startStream, así que no exponen un valor numérico
+    // consumible desde otra extensión — un campo KDouble sobre ellos se quedaría en blanco.
+    KP_DYN_PP_LEFT(DataType.dataTypeId("kpower", "dyn-pp-left-0"), "Power Phase L", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    KP_DYN_PP_RIGHT(DataType.dataTypeId("kpower", "dyn-pp-right-0"), "Power Phase R", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    KP_DYN_PEAKPP_LEFT(DataType.dataTypeId("kpower", "dyn-peakpp-left-0"), "Peak PP L", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    KP_DYN_PEAKPP_RIGHT(DataType.dataTypeId("kpower", "dyn-peakpp-right-0"), "Peak PP R", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
 }
 
 @Serializable
