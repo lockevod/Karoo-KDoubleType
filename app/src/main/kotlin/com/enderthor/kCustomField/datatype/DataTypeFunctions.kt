@@ -331,15 +331,23 @@ fun KarooSystemService.getFieldFlow(
         }
 
         // Streams de otras extensiones que NO re-emiten en cada tick:
-        //  - KSafe (TYPE_EXT::ksafe::…): su tracker publica como mucho cada 15s.
-        //  - KPower (TYPE_EXT::kpower::…): muestrea a 1Hz pero con distinctUntilChanged, así
-        //    que un valor estable (avg/NP/max, o potencia 0 parado) deja de re-emitir.
-        // En ambos casos el timeout genérico de 15s caducaría la suscripción (parpadeo a
-        // Searching), por eso usan timeout y sticky más largos (ver STREAM_TIMEOUT_KSAFE).
-        // El productor emite NotAvailable/Idle de forma deliberada cuando no hay dato (KSafe
-        // fin de ride / fueling off; KPower sin medidor) → ese estado limpia el sticky.
-        val isStickyExtStream = action.action.contains("::ksafe::") ||
-                action.action.contains("::kpower::")
+        //  - KSafe (TYPE_EXT::ksafe::…): su tracker publica como mucho cada 15s → timeout/sticky
+        //    largos (40/45s); un total de fueling congelado unos segundos no molesta.
+        //  - KPower (TYPE_EXT::kpower::…): muestrea a 1Hz pero con distinctUntilChanged, así que
+        //    un valor estable deja de re-emitir. Su dato es POTENCIA: un valor congelado se nota
+        //    mucho, así que el sticky es corto (~15s) → cuando KPower blanquea a Searching (dejas
+        //    de pedalear) el último valor se suelta pronto, no a los 45s.
+        // En ambos casos el productor emite NotAvailable/Idle deliberadamente cuando no hay dato
+        // (KSafe fin de ride / fueling off; KPower sin medidor) → ese estado limpia el sticky.
+        val isKSafeStream = action.action.contains("::ksafe::")
+        val isKPowerStream = action.action.contains("::kpower::")
+        val isStickyExtStream = isKSafeStream || isKPowerStream
+        val extStreamTimeout = when {
+            isKSafeStream -> STREAM_TIMEOUT_KSAFE
+            isKPowerStream -> STREAM_TIMEOUT_KPOWER
+            else -> STREAM_TIMEOUT
+        }
+        val extStickyTimeout = if (isKPowerStream) STICKY_TIMEOUT_KPOWER else STICKY_TIMEOUT_KSAFE
 
         while (currentCoroutineContext().isActive) {
             try {
@@ -491,7 +499,7 @@ fun KarooSystemService.getFieldFlow(
                                 }
                             }
                         }
-                        .timeout((if (isStickyExtStream) STREAM_TIMEOUT_KSAFE else STREAM_TIMEOUT).milliseconds)
+                        .timeout(extStreamTimeout.milliseconds)
                 }
 
                 // OPTIMIZACIÓN: aplicar distinctUntilChanged antes del collect
@@ -509,7 +517,7 @@ fun KarooSystemService.getFieldFlow(
                             StickyStreamState.invalidate(action.name)
                             state
                         }
-                        isStickyExtStream -> StickyStreamState.process(state, action.name, STICKY_TIMEOUT_KSAFE)
+                        isStickyExtStream -> StickyStreamState.process(state, action.name, extStickyTimeout)
                         else -> StickyStreamState.process(state, action.name)
                     }
                     emit(processedState)

@@ -25,6 +25,14 @@ const val STREAM_TIMEOUT = 15000L // 15 seconds
 // cubrir timeout + delay de re-suscripción para puentear el Searching inicial del productor.
 const val STREAM_TIMEOUT_KSAFE = 40000L
 const val STICKY_TIMEOUT_KSAFE = 45000L
+// KPower también re-emite a baja frecuencia (distinctUntilChanged sobre muestreo 1Hz), pero su
+// dato es potencia: un valor congelado se nota mucho más que un total de fueling. Cuando el
+// medidor deja de mandar (dejas de pedalear), KPower blanquea a NaN→Searching; aquí solo
+// retenemos el último valor ~15s (sticky) para puentear el Searching transitorio de la
+// re-suscripción, no 45s. El timeout va por debajo del sticky para que la re-suscripción
+// entregue el valor actual antes de que el sticky caduque (sin parpadeo en valores estables).
+const val STREAM_TIMEOUT_KPOWER = 12000L
+const val STICKY_TIMEOUT_KPOWER = 15000L
 const val WAIT_STREAMS_LONG = 120000L // 120 seconds
 const val WAIT_STREAMS_MEDIUM = 10000L // 10 seconds
 const val DEFAULT_CP = 248.0         // W, fuente única de CP por defecto
