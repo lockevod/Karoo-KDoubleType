@@ -63,6 +63,10 @@
     <string name="vertical_alignment_question">Vertical Fields alignment (icon/text)?</string>
     <string name="use_headwind_datafield_title">Use Headwind DataField</string>
     <string name="enable_headwind_question">Enable Headwind Datafield (you need to have Headwind extension installed)?</string>
+    <string name="use_kpower_datafield_title">Show KPower Fields</string>
+    <string name="enable_kpower_question">Show KPower fields (KPW…) in the field pickers?</string>
+    <string name="use_kghost_datafield_title">Show KGhost Fields</string>
+    <string name="enable_kghost_question">Show KGhost fields (Ghost…) in the field pickers?</string>
     <string name="color_palette_title">Color Palette</string>
     <string name="zwift_color_palette_question">Zwift Color palette?</string>
     <string name="divider_enabled_title">Divider Enabled</string>

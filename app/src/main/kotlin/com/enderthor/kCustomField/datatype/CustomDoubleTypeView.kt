@@ -156,6 +156,39 @@ fun estimateMarker(action: KarooAction, state: StreamState?): String =
         (state as? StreamState.Streaming)?.dataPoint?.values?.get("estimated") == 1.0
     ) "~" else ""
 
+// KGhost: el gap llega en segundos (time) o metros (dist) CRUDOS y CON SIGNO (+ delante, − detrás).
+// Sin formatear no se distingue la unidad. Lo normalizamos para que se lea de un vistazo:
+//  - tiempo → "M:SS"  (90 s → "1:30", −90 s → "-1:30")
+//  - distancia → metros con "m" hasta 1 km ("850m") y kilómetros con "k" a partir de ahí ("1.2k",
+//    y sin decimal desde 10 km → "12k") para no sacar un número larguísimo de metros.
+// Distancia en métrico (el gap es relativo); devuelve null si la acción no es un gap de KGhost.
+fun formatGhostGap(action: KarooAction, value: Double): String? = when (action) {
+    KarooAction.GHOST_GAP_TIME -> {
+        val total = value.roundToInt()
+        val sign = if (total < 0) "-" else ""
+        val a = kotlin.math.abs(total)
+        "$sign${a / 60}:${(a % 60).toString().padStart(2, '0')}"
+    }
+    KarooAction.GHOST_GAP_DIST -> {
+        val m = value.roundToInt()
+        val sign = if (m < 0) "-" else ""
+        val a = kotlin.math.abs(m)
+        if (a < 1000) "$sign${a}m"
+        else {
+            val tenthsKm = (a + 50) / 100 // décimas de km redondeadas
+            if (a >= 10000) "$sign${tenthsKm / 10}k" else "$sign${tenthsKm / 10}.${tenthsKm % 10}k"
+        }
+    }
+    else -> null
+}
+
+// Atajo: formato de KGhost si aplica, si no el formato numérico normal. Misma firma que
+// formatNumber con la acción delante, para sustituir las llamadas de render de campos.
+fun ghostOrNumber(
+    action: KarooAction, value: Double, isInt: Boolean, isTime: Boolean = false,
+    isCivil: Boolean = false, isClimb: Boolean = false, thousandsSuffix: Char = 'k'
+): String = formatGhostGap(action, value) ?: formatNumber(value, isInt, isTime, isCivil, isClimb, thousandsSuffix)
+
 // Ajusta un valor a maxChars SIN truncar dígitos: recortar "12345" a "1234" o "-1500" a
 // "-150" es un error 10x silencioso. Enteros que no caben pasan a notación compacta de
 // miles ("12.3k", y si tampoco cabe "12k"; la hidratación usa sufijo 'L' = litros).
@@ -168,6 +201,9 @@ fun fitNumberToChars(value: String, maxChars: Int, thousandsSuffix: Char = 'k'):
     if (value.startsWith('~')) {
         return "~" + fitNumberToChars(value.drop(1), (maxChars - 1).coerceAtLeast(1), thousandsSuffix)
     }
+    // Gaps de KGhost en formato "M:SS": NUNCA recortar por la derecha (un take() daría
+    // "10:00" → "10:0", segundos perdidos y parece "10.0"). Mejor desbordar que mentir.
+    if (':' in value) return value
     if (value.length <= maxChars) return value
     val negative = value.startsWith('-')
     val body = if (negative) value.drop(1) else value
@@ -363,6 +399,13 @@ private fun OneIconRow(
     }
 }
 
+// Par de potencia "L/R": si el stream no está activo (sin medidor / tras expirar el sticky)
+// muestra "--/--" en vez de un engañoso "0/0". El sticky aún sostiene el último Streaming,
+// así que solo cae a "--/--" cuando de verdad no hay dato.
+private fun powerPair(state: StreamState?, left: Double, right: Double): String =
+    if (state is StreamState.Streaming) formatNumber(left, true) + "/" + formatNumber(right, true)
+    else "--/--"
+
 @Composable
 private fun OneNumberRow(
     number: String,
@@ -380,7 +423,7 @@ private fun OneNumberRow(
         if (!ispower) {
         number
     } else {
-        "${number.take(3)}-${secondValue.take(3)}"
+        "${number.take(3)}/${secondValue.take(3)}"
     }
 
     // Ajustar el tamaño de fuente para el campo de subida cuando tiene 4+ caracteres
@@ -594,9 +637,12 @@ fun RollingFieldScreen(
 
         // Campos FA: formatear el enum a etiqueta ("Open", "Lock"...) como en los dobles.
         val isFA = action.name.startsWith("FA_")
+        // Par de potencia sin dato (stream inactivo / tras sticky) → "--/--" en vez de "0/0".
+        val noPowerData = ispower && fieldState !is StreamState.Streaming
         val number = if (isFA && fieldState != null) formatFAValue(fieldState, action.name)
-        else estimateMarker(action, fieldState) + formatNumber(dNumber, newInt, isTime, isCivil, isClimb, thousandsSuffixFor(action))
-        val numberSecond = formatNumber(secondValue, isInt, isTime, isCivil, isClimb)
+        else if (noPowerData) "--"
+        else estimateMarker(action, fieldState) + ghostOrNumber(action, dNumber, newInt, isTime, isCivil, isClimb, thousandsSuffixFor(action))
+        val numberSecond = if (noPowerData) "--" else formatNumber(secondValue, isInt, isTime, isCivil, isClimb)
 
 
         Box(modifier = GlanceModifier.fillMaxSize()) {
@@ -646,7 +692,7 @@ fun RollingFieldScreen(
 
 fun checkRealZone(action: KarooAction, iszone: Boolean, dNumber: Double, secondValue: Double): Boolean {
 
-    return if( (action.name =="AVERAGE_PEDAL_BALANCE" || action.name =="PEDAL_BALANCE") && iszone && action.powerField)
+    return if( isPedalBalanceAction(action.name) && iszone && action.powerField)
             !((dNumber > secondValue * 0.85 && dNumber < secondValue * 1.07) || (dNumber == 0.0))
         else true
 }
@@ -689,14 +735,11 @@ fun DoubleScreenSelector(
     // antepone al valor real (devuelve "" salvo en gap estimado, así no afecta al resto).
     val newLeft = estimateMarker(leftField.kaction, leftFieldState) + when {
         isLeftFA && leftFieldState != null -> formatFAValue(leftFieldState, leftField.kaction.name)
-        ispowerLeft -> (formatNumber(leftNumber, true) + "-" + formatNumber(
-            leftNumberSecond,
-            true
-        ))
-        !showH -> formatNumber(leftNumber, isLeftInt, leftTime, leftCivil, thousandsSuffix = thousandsSuffixFor(leftField.kaction))
+        ispowerLeft -> powerPair(leftFieldState, leftNumber, leftNumberSecond)
+        !showH -> ghostOrNumber(leftField.kaction, leftNumber, isLeftInt, leftTime, leftCivil, thousandsSuffix = thousandsSuffixFor(leftField.kaction))
         else -> when (selector) {
             0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString()
-                .take(3) else formatNumber(leftNumber, true, leftTime, leftCivil, thousandsSuffix = thousandsSuffixFor(leftField.kaction))
+                .take(3) else ghostOrNumber(leftField.kaction, leftNumber, true, leftTime, leftCivil, thousandsSuffix = thousandsSuffixFor(leftField.kaction))
             else -> "0.0"
         }
     }
@@ -704,14 +747,11 @@ fun DoubleScreenSelector(
 
     val newRight = estimateMarker(rightField.kaction, rightFieldState) + when {
         isRightFA && rightFieldState != null -> formatFAValue(rightFieldState, rightField.kaction.name)
-        ispowerRight -> (formatNumber(rightNumber, true) + "-" + formatNumber(
-            rightNumberSecond,
-            true
-        ))
-        !showH -> formatNumber(rightNumber, isRightInt, rightTime, rightCivil, thousandsSuffix = thousandsSuffixFor(rightField.kaction))
+        ispowerRight -> powerPair(rightFieldState, rightNumber, rightNumberSecond)
+        !showH -> ghostOrNumber(rightField.kaction, rightNumber, isRightInt, rightTime, rightCivil, thousandsSuffix = thousandsSuffixFor(rightField.kaction))
         else -> when (selector) {
             1, 3 -> if (rightLabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString()
-                .take(3) else formatNumber(rightNumber, true, rightTime, rightCivil, thousandsSuffix = thousandsSuffixFor(rightField.kaction))
+                .take(3) else ghostOrNumber(rightField.kaction, rightNumber, true, rightTime, rightCivil, thousandsSuffix = thousandsSuffixFor(rightField.kaction))
             else -> "0.0"
         }
     }
@@ -852,66 +892,48 @@ fun SextupleScreenSelector(
     val newFirst = estimateMarker(firstField.kaction, firstFieldState) + when {
         firstField.kaction.name.startsWith("FA_") && firstFieldState != null ->
             formatFAValue(firstFieldState, firstField.kaction.name)
-        ispowerFirst -> (formatNumber(firstNumber, true) + "-" + formatNumber(
-            firstNumberSecond,
-            true
-        ))
-        else -> formatNumber(firstNumber, isFirstInt, firstTime, firstCivil, thousandsSuffix = thousandsSuffixFor(firstField.kaction))
+        ispowerFirst -> powerPair(firstFieldState, firstNumber, firstNumberSecond)
+        else -> ghostOrNumber(firstField.kaction, firstNumber, isFirstInt, firstTime, firstCivil, thousandsSuffix = thousandsSuffixFor(firstField.kaction))
     }
 
 
     val newSecond = estimateMarker(secondField.kaction, secondFieldState) + when {
         secondField.kaction.name.startsWith("FA_") && secondFieldState != null ->
             formatFAValue(secondFieldState, secondField.kaction.name)
-        ispowerSecond -> (formatNumber(secondNumber, true) + "-" + formatNumber(
-            secondNumberSecond,
-            true
-        ))
-        else -> formatNumber(secondNumber, isSecondInt, secondTime, secondCivil, thousandsSuffix = thousandsSuffixFor(secondField.kaction))
+        ispowerSecond -> powerPair(secondFieldState, secondNumber, secondNumberSecond)
+        else -> ghostOrNumber(secondField.kaction, secondNumber, isSecondInt, secondTime, secondCivil, thousandsSuffix = thousandsSuffixFor(secondField.kaction))
     }
 
 
     val newThird = estimateMarker(thirdField.kaction, thirdFieldState) + when {
         thirdField.kaction.name.startsWith("FA_") && thirdFieldState != null ->
             formatFAValue(thirdFieldState, thirdField.kaction.name)
-        ispowerThird -> (formatNumber(thirdNumber, true) + "-" + formatNumber(
-            thirdNumberSecond,
-            true
-        ))
-        else -> formatNumber(thirdNumber, isThirdInt, thirdTime, thirdCivil, thousandsSuffix = thousandsSuffixFor(thirdField.kaction))
+        ispowerThird -> powerPair(thirdFieldState, thirdNumber, thirdNumberSecond)
+        else -> ghostOrNumber(thirdField.kaction, thirdNumber, isThirdInt, thirdTime, thirdCivil, thousandsSuffix = thousandsSuffixFor(thirdField.kaction))
     }
 
 
     val newFourth = estimateMarker(fourthField.kaction, fourthFieldState) + when {
         fourthField.kaction.name.startsWith("FA_") && fourthFieldState != null ->
             formatFAValue(fourthFieldState, fourthField.kaction.name)
-        ispowerFourth -> (formatNumber(fourthNumber, true) + "-" + formatNumber(
-            fourthNumberSecond,
-            true
-        ))
-        else -> formatNumber(fourthNumber, isFourthInt, fourthTime, fourthCivil, thousandsSuffix = thousandsSuffixFor(fourthField.kaction))
+        ispowerFourth -> powerPair(fourthFieldState, fourthNumber, fourthNumberSecond)
+        else -> ghostOrNumber(fourthField.kaction, fourthNumber, isFourthInt, fourthTime, fourthCivil, thousandsSuffix = thousandsSuffixFor(fourthField.kaction))
     }
 
 
     val newFifth = estimateMarker(fifthField.kaction, fifthFieldState) + when {
         fifthField.kaction.name.startsWith("FA_") && fifthFieldState != null ->
             formatFAValue(fifthFieldState, fifthField.kaction.name)
-        ispowerFifth -> (formatNumber(fifthNumber, true) + "-" + formatNumber(
-            fifthNumberSecond,
-            true
-        ))
-        else -> formatNumber(fifthNumber, isFifthInt, fifthTime, fifthCivil, thousandsSuffix = thousandsSuffixFor(fifthField.kaction))
+        ispowerFifth -> powerPair(fifthFieldState, fifthNumber, fifthNumberSecond)
+        else -> ghostOrNumber(fifthField.kaction, fifthNumber, isFifthInt, fifthTime, fifthCivil, thousandsSuffix = thousandsSuffixFor(fifthField.kaction))
     }
 
 
     val newSixth = estimateMarker(sixthField.kaction, sixthFieldState) + when {
         sixthField.kaction.name.startsWith("FA_") && sixthFieldState != null ->
             formatFAValue(sixthFieldState, sixthField.kaction.name)
-        ispowerSixth -> (formatNumber(sixthNumber, true) + "-" + formatNumber(
-            sixthNumberSecond,
-            true
-        ))
-        else -> formatNumber(sixthNumber, isSixthInt, sixthTime, sixthCivil, thousandsSuffix = thousandsSuffixFor(sixthField.kaction))
+        ispowerSixth -> powerPair(sixthFieldState, sixthNumber, sixthNumberSecond)
+        else -> ghostOrNumber(sixthField.kaction, sixthNumber, isSixthInt, sixthTime, sixthCivil, thousandsSuffix = thousandsSuffixFor(sixthField.kaction))
     }
 
 

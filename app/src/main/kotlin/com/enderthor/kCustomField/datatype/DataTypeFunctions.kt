@@ -333,12 +333,16 @@ fun KarooSystemService.getFieldFlow(
         // Streams de otras extensiones que NO re-emiten en cada tick:
         //  - KSafe (TYPE_EXT::ksafe::…): su tracker publica como mucho cada 15s → timeout/sticky
         //    largos (40/45s); un total de fueling congelado unos segundos no molesta.
-        //  - KPower (TYPE_EXT::kpower::…): muestrea a 1Hz pero con distinctUntilChanged, así que
-        //    un valor estable deja de re-emitir. Su dato es POTENCIA: un valor congelado se nota
-        //    mucho, así que el sticky es corto (~15s) → cuando KPower blanquea a Searching (dejas
-        //    de pedalear) el último valor se suelta pronto, no a los 45s.
+        //  - KPower (TYPE_EXT::kpower::…): muestrea a 1Hz pero con distinctUntilChanged, así que un
+        //    valor ESTABLE deja de re-emitir (no por staleness). Eso dispara nuestro timeout (12s) →
+        //    re-suscripción → KPower re-siembra el valor vivo (~1s, lo guarda en StateFlow). El sticky
+        //    (15s > 12s) tapa ese hueco de re-suscripción para que el campo no parpadee a `---`
+        //    pedaleando a ritmo. OJO: parar de pedalear NO lleva a Searching — KPower emite
+        //    Streaming(0) (estimada: vel→0; real: coast-to-zero a los 3s), así que el campo muestra 0
+        //    al momento, NO retiene el último vatio. El sticky de 15s solo aguanta el último valor en
+        //    un dropout REAL de radio del medidor (>5s sin frame → NaN → Searching), que es lo deseado.
         // En ambos casos el productor emite NotAvailable/Idle deliberadamente cuando no hay dato
-        // (KSafe fin de ride / fueling off; KPower sin medidor) → ese estado limpia el sticky.
+        // (KSafe fin de ride / fueling off; KPower sin medidor activo) → ese estado limpia el sticky.
         val isKSafeStream = action.action.contains("::ksafe::")
         val isKPowerStream = action.action.contains("::kpower::")
         val isStickyExtStream = isKSafeStream || isKPowerStream
@@ -466,22 +470,28 @@ fun KarooSystemService.getFieldFlow(
 
                     action.name == "WPRIME_BALANCE" -> {
                         combine(
-                            streamDataFlow(DataType.Type.POWER),
+                            // onStart: sin medidor el stream de POWER puede no emitir nunca y el
+                            // combine no arrancaría → el campo se queda vacío. Sembramos un estado
+                            // inicial para que siempre produzca un primer valor.
+                            streamDataFlow(DataType.Type.POWER).onStart { emit(StreamState.NotAvailable) },
                             streamUserProfile(),
                             context?.streamWPrimeBalanceSettings() ?: flowOf(WPrimeBalanceSettings())
                         ) { powerState, profile, wPrimeSettings ->
-                            if (powerState is StreamState.Streaming) {
-                                val powerValue = powerState.dataPoint.singleValue ?: 0.0
-                                val wPrimeBalance = calculateWPrimeBalance(powerValue, profile, wPrimeSettings)
-                                StreamState.Streaming(
-                                    DataPoint(
-                                        dataTypeId = "WPRIME_BALANCE",
-                                        values = mapOf(DataType.Field.SINGLE to wPrimeBalance)
-                                    )
-                                )
+                            // Con potencia: avanza el modelo Skiba. Sin potencia (sin medidor o
+                            // dropout del medidor): CONGELA el último valor sin integrar — así el
+                            // campo no sale vacío y NO finge recuperación (que durante un dropout
+                            // pedaleando fuerte sería al revés de la realidad, estás vaciando).
+                            val wPrimeBalance = if (powerState is StreamState.Streaming) {
+                                calculateWPrimeBalance(powerState.dataPoint.singleValue ?: 0.0, profile, wPrimeSettings)
                             } else {
-                                StreamState.Searching
+                                lastWPrimeBalancePercentage()
                             }
+                            StreamState.Streaming(
+                                DataPoint(
+                                    dataTypeId = "WPRIME_BALANCE",
+                                    values = mapOf(DataType.Field.SINGLE to wPrimeBalance)
+                                )
+                            )
                         }
                         .distinctUntilChanged() // OPTIMIZACIÓN: evitar updates innecesarios
                         .timeout(STREAM_TIMEOUT.milliseconds)
@@ -680,7 +690,7 @@ fun updateFieldState(
         getColorZone(context, kaction.zone, value, userProfile, isPaletteZwift)
     } else if (shouldUseWPrimeZones) {
         getColorZone(context, kaction.zone, value, userProfile, isPaletteZwift)
-    } else if( (kaction.name =="AVERAGE_PEDAL_BALANCE" || kaction.name =="PEDAL_BALANCE") && iszone && kaction.powerField)
+    } else if( isPedalBalanceAction(kaction.name) && iszone && kaction.powerField)
     {
         if (value > valueRight*1.15)
             ColorProvider(
@@ -735,6 +745,17 @@ private object WPrimeBalanceState {
     var lastWPrime = Double.NaN  // nuevo: guarda el último W′ usado
     var avgBelowCp = 0.0
     const val MAX_DT_SECONDS = 5.0
+}
+
+// Último % de W′ ya calculado, SIN avanzar el modelo. Se usa cuando no hay potencia
+// (Searching/NotAvailable) para CONGELAR el valor en pantalla en vez de mostrar una
+// recuperación falsa (subiría aunque estuvieras vaciando en un dropout del medidor) —
+// y a la vez no dejar el campo vacío. Antes de la primera muestra: reserva llena (100%).
+fun lastWPrimeBalancePercentage(): Double = synchronized(WPrimeBalanceState) {
+    if (!WPrimeBalanceState.isInitialized ||
+        WPrimeBalanceState.lastWPrime.isNaN() || WPrimeBalanceState.lastWPrime <= 0.0
+    ) 100.0
+    else ((WPrimeBalanceState.currentWPrimeBalance / WPrimeBalanceState.lastWPrime) * 1000.0).roundToInt() / 10.0
 }
 
 /**

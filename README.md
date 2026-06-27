@@ -49,6 +49,7 @@ KDoubleType allows you to use custom fields with double types (HR, Power, etc.)
 - Alignment can be set to left, centre, or right, or you can follow the default Karoo profile alignment.
 - **Rolling fields** — *Extra Time* option: when enabled the first metric gets 3× the display time of the others.
 - **Headwind field**: reads data from the [timklge Headwind extension](https://github.com/timklge?tab=repositories). You must install and configure that app separately, and also add its headwind field to the same profile.
+- **Show KPower / Show KGhost fields** (General tab): toggles whether the KPower (`KPW…`) and KGhost (`Ghost…`) metrics appear in the field pickers. Both default ON; turn one OFF to declutter the pickers if you don't use that extension. Existing configured fields are left untouched.
 - **Sextuple fields** have 6 independently configurable metric slots. Each of the 3 sextuple field instances (One / Two / Three) stores its own configuration.
 
 ### W′ Balance Configuration
@@ -78,6 +79,12 @@ metrics you can pick in any KDouble field (Double, Rolling, Sextuple, Smart Clim
 to configure here — just select them like any other metric. If the source extension isn't
 installed (or its data isn't available yet) the metric simply stays blank (`---`).
 
+All metrics in the pickers are listed in **alphabetical order**, so the extension fields group
+together by their prefix (`KPW…` for KPower, `Ghost…` for KGhost). To keep the picker tidy if
+you don't use these extensions, the **General** settings tab has **Show KPower Fields** and
+**Show KGhost Fields** toggles (both ON by default). Turning one OFF just hides those entries
+from the pickers — it does **not** change or remove fields you have already configured.
+
 ### KSafe — fueling (carbs, hydration, calories)
 
 Requires the [KSafe](https://github.com/lockevod/Karoo-KSafe) extension with fueling enabled. These
@@ -96,43 +103,44 @@ update **only while you are recording a ride**:
 ### KGhost — gap to your ghost
 
 Requires the [KGhost](https://github.com/lockevod/KGhost) extension with a ghost/target set.
-The gap is **signed: positive = you are ahead of the ghost, negative = behind**:
 
 | Metric | Shows |
 |--------|-------|
-| **Ghost Gap s** | Gap to the ghost in seconds |
-| **Ghost Gap m** | Gap to the ghost in metres |
+| **Ghost Gap Time** | Time gap to the ghost, formatted **M:SS** (e.g. `1:30`) |
+| **Ghost Gap Dist** | Distance gap to the ghost — **metres** under 1 km (`850m`), **km** above (`1.2k`) |
+
+The gap is **signed: positive = you are ahead of the ghost, negative = behind** (e.g. `-1:30`,
+`-850m`). The `M:SS` / `m`·`k` formatting also makes it obvious at a glance whether a field is
+the time or the distance gap.
 
 When your position is briefly uncertain (a GPS dropout, or while you are off-route) KGhost
 reports the gap as an **estimate**. Because the field can't recolour just the number, an
-estimated value is prefixed with a tilde — e.g. `~-12` means *about 12 s behind, estimated*.
+estimated value is prefixed with a tilde — e.g. `~-1:30` means *about 1:30 behind, estimated*.
 
-### KPower — power, cadence & cycling dynamics
+### KPower — power
 
 Requires the [KPower](https://github.com/lockevod/Karoo-Power_Extension) extension. The
-**estimated** fields work without any meter (KPower's physical model). The **real** and
-**dynamics** fields only update while a power meter is enabled in KPower **and** you are
-recording a ride. Power fields are coloured by your Karoo power zones.
+**estimated** fields work without any meter (KPower's physical model). The **real meter** fields
+only update while a power meter is enabled in KPower **and** you are recording a ride. Power
+fields are coloured by your Karoo power zones.
+
+All KPower metrics are prefixed **`KPW`**. Fields marked **`Est`** come from KPower's estimated
+model (no meter needed); everything else (`KPW Pwr`, `KPW NP`, …) comes from the **real ANT+
+meter**.
 
 | Metric | Shows |
 |--------|-------|
-| **Est. Power** | Estimated power, instant (W) |
-| **Est. Power 3s** | Estimated power, 3 s smoothed (W) |
-| **Est. NP** | Estimated normalized power (W) |
-| **Est. Avg Power** | Estimated session-average power (W) |
-| **Real Power** | Real meter power, instant (W) |
-| **Real Power 3s / 10s** | Real meter power, 3 s / 10 s smoothed (W) |
-| **Real NP** | Real meter normalized power (W) |
-| **Real Avg Power** | Real meter session-average power (W) |
-| **Real Max Power** | Real meter session maximum power (W) |
-| **Real Cadence** | Real meter cadence (rpm) |
-| **Real Torque** | Real meter torque (Nm) |
-| **Power Phase L / R** | Power phase angle, left / right (°) |
-| **Peak PP L / R** | Peak power phase angle, left / right (°) |
+| **KPW Est Pwr** | Estimated power, instant (W) |
+| **KPW Est Pwr 3s** | Estimated power, 3 s smoothed (W) |
+| **KPW Est NP** | Estimated normalized power (W) |
+| **KPW Pwr** | Real meter power, instant (W) |
+| **KPW Pwr 3s** | Real meter power, 3 s smoothed (W) |
+| **KPW NP** | Real meter normalized power (W) |
 
-> KPower's L/R **balance**, **torque effectiveness** and **pedal smoothness** are not listed:
-> KPower publishes those only as graphical "L/R" fields (no numeric stream), so they can't be
-> shown inside a KDouble field. Use them directly as KPower fields instead.
+> **Torque, balance, torque effectiveness and pedal smoothness are no longer listed.** KPower no
+> longer publishes streams for these — the Karoo shows them natively for a paired meter (torque,
+> average/max torque, L/R pedal balance, torque effectiveness, pedal smoothness), and KPower still
+> writes them to the FIT. Use the Karoo's own native fields for those metrics.
 
 ## Known Bugs / Limitations
 

@@ -89,6 +89,11 @@ enum class MultiFields(val action: String, val left: String, val right: String, 
     AVERAGE_PEDAL_BALANCE(DataType.Type.AVERAGE_PEDAL_POWER_BALANCE, Field.PEDAL_POWER_BALANCE_LEFT, Field.PEDAL_POWER_BALANCE_LEFT, true),
 }
 
+// Campos de balance L/R nativos: comparten el coloreo por desequilibrio. (KPower ya no
+// publica balance como stream; lo muestra el Karoo de forma nativa y lo escribe al FIT.)
+fun isPedalBalanceAction(name: String): Boolean =
+    name == "PEDAL_BALANCE" || name == "AVERAGE_PEDAL_BALANCE"
+
 enum class KarooAction(val action: String, val label: String, val icon: Int, val colorday: Int, val colornight: Int, val zone: String, val convert: String, val powerField: Boolean = false) {
     AVERAGE_CADENCE(DataType.Type.AVERAGE_CADENCE, "Avg Cadence", R.drawable.ic_cadence_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     AVERAGE_HR(DataType.Type.AVERAGE_HR, "Avg HR", R.drawable.ic_hr_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "heartRateZones", "none"),
@@ -130,8 +135,8 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     // al "fantasma" (tu yo pasado o un ritmo fijo). Con signo: + por delante, − por detrás.
     // Emiten a ~1Hz y solo Streaming/Searching (no Idle), así que van por el camino normal,
     // sin el timeout/sticky extendido de KSafe. Valores nativos: segundos y metros crudos.
-    GHOST_GAP_DIST(DataType.dataTypeId("kghost", "kghost-gap-dist"), "Ghost Gap m", R.drawable.ic_ghost_gap, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    GHOST_GAP_TIME(DataType.dataTypeId("kghost", "kghost-gap-time"), "Ghost Gap s", R.drawable.ic_ghost_gap, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    GHOST_GAP_DIST(DataType.dataTypeId("kghost", "kghost-gap-dist"), "Ghost Gap Dist", R.drawable.ic_ghost_gap, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    GHOST_GAP_TIME(DataType.dataTypeId("kghost", "kghost-gap-time"), "Ghost Gap Time", R.drawable.ic_ghost_gap, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     SLOPE(DataType.Type.ELEVATION_GRADE, "Grade", R.drawable.ic_slope, R.color.hh_success_green_700, R.color.hh_success_green_400, "slopeZones", "none"),
     HEADWIND(DataType.dataTypeId("karoo-headwind", "headwind"), "Headwind", R.drawable.ic_no, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     HR(DataType.Type.HEART_RATE, "Heart Rate", R.drawable.ic_hr, R.color.hh_success_green_700, R.color.hh_success_green_400, "heartRateZones", "none"),
@@ -169,28 +174,17 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     // dejar de re-emitir > timeout genérico: van por el camino con timeout/sticky extendido
     // (ver isStickyExtStream / STREAM_TIMEOUT_KSAFE en DataTypeFunctions.kt).
     // Potencia estimada (modelo físico de KPower, sin medidor):
-    KP_EST_POWER(DataType.dataTypeId("kpower", "estimated-power-instant"), "Est. Power", R.drawable.ic_power, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
-    KP_EST_POWER_3S(DataType.dataTypeId("kpower", "estimated-power-3s"), "Est. Power 3s", R.drawable.ic_power_3, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
-    KP_EST_NP(DataType.dataTypeId("kpower", "estimated-power-np"), "Est. NP", R.drawable.ic_power_norm, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
-    KP_EST_AVG(DataType.dataTypeId("kpower", "estimated-power-avg"), "Est. Avg Power", R.drawable.ic_power_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    KP_EST_POWER(DataType.dataTypeId("kpower", "estimated-power-instant"), "KPW Est Pwr", R.drawable.ic_power, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    KP_EST_POWER_3S(DataType.dataTypeId("kpower", "estimated-power-3s"), "KPW Est Pwr 3s", R.drawable.ic_power_3, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    KP_EST_NP(DataType.dataTypeId("kpower", "estimated-power-np"), "KPW Est NP", R.drawable.ic_power_norm, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
     // Medidor real ANT+ gestionado por KPower:
-    KP_REAL_POWER(DataType.dataTypeId("kpower", "real-power-0"), "Real Power", R.drawable.ic_power, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
-    KP_REAL_POWER_3S(DataType.dataTypeId("kpower", "real-3s-0"), "Real Power 3s", R.drawable.ic_power_3, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
-    KP_REAL_POWER_10S(DataType.dataTypeId("kpower", "real-10s-0"), "Real Power 10s", R.drawable.ic_power_3, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
-    KP_REAL_NP(DataType.dataTypeId("kpower", "real-np-0"), "Real NP", R.drawable.ic_power_norm, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
-    KP_REAL_AVG(DataType.dataTypeId("kpower", "real-avg-0"), "Real Avg Power", R.drawable.ic_power_average, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
-    KP_REAL_MAX(DataType.dataTypeId("kpower", "real-max-0"), "Real Max Power", R.drawable.ic_power, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
-    KP_REAL_CADENCE(DataType.dataTypeId("kpower", "real-cadence-0"), "Real Cadence", R.drawable.ic_cadence, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    KP_REAL_TORQUE(DataType.dataTypeId("kpower", "real-torque-0"), "Real Torque", R.drawable.ic_torque, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    // Cycling Dynamics expuestas por KPower como stream de valor único (ángulos en grados).
-    // NOTA: balance / torque-effectiveness / pedal-smoothness (dyn-balance/te/ps-0) NO se
-    // incluyen: en KPower son DataTypes SOLO gráficos (DualValueDataType, solo startView para
-    // pintar el par "L/R"), no implementan startStream, así que no exponen un valor numérico
-    // consumible desde otra extensión — un campo KDouble sobre ellos se quedaría en blanco.
-    KP_DYN_PP_LEFT(DataType.dataTypeId("kpower", "dyn-pp-left-0"), "Power Phase L", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    KP_DYN_PP_RIGHT(DataType.dataTypeId("kpower", "dyn-pp-right-0"), "Power Phase R", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    KP_DYN_PEAKPP_LEFT(DataType.dataTypeId("kpower", "dyn-peakpp-left-0"), "Peak PP L", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    KP_DYN_PEAKPP_RIGHT(DataType.dataTypeId("kpower", "dyn-peakpp-right-0"), "Peak PP R", R.drawable.ic_pedal, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
+    KP_REAL_POWER(DataType.dataTypeId("kpower", "real-power-0"), "KPW Pwr", R.drawable.ic_power, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    KP_REAL_POWER_3S(DataType.dataTypeId("kpower", "real-3s-0"), "KPW Pwr 3s", R.drawable.ic_power_3, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    KP_REAL_NP(DataType.dataTypeId("kpower", "real-np-0"), "KPW NP", R.drawable.ic_power_norm, R.color.hh_success_green_700, R.color.hh_success_green_400, "powerZones", "none"),
+    // NOTA: cadence, torque (instant/avg/max), balance L/R, torque-effectiveness y pedal-smoothness ya NO
+    // se consumen vía stream. El Karoo los muestra de forma nativa para un medidor emparejado
+    // (TORQUE / AVERAGE_TORQUE / MAX_TORQUE / PEDAL_POWER_BALANCE / TORQUE_EFFECTIVENESS /
+    // PEDAL_SMOOTHNESS) y KPower los escribe al FIT, pero ya no publica streams propios para ellos.
 }
 
 @Serializable
@@ -335,6 +329,11 @@ data class GeneralSettings(
     val ispalettezwift: Boolean = false,
     val iscenterkaroo: Boolean = false,
     val isheadwindenabled: Boolean = false,
+    // Toggles para mostrar/ocultar en los desplegables los campos de extensiones (como headwind).
+    // Default ON: estos campos pintan "---" sin la extensión (no rompen), así que se muestran por
+    // defecto y el rider los apaga para descongestionar el picker si no usa KPower/KGhost.
+    val iskpowerenabled: Boolean = true,
+    val iskghostenabled: Boolean = true,
     val refreshCustom: RefreshTime = RefreshTime.HALF,
     val refreshRolling: RefreshTime = RefreshTime.HALF,
     val isdivider: Boolean = true,

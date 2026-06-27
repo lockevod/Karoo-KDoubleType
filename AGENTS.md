@@ -65,10 +65,12 @@ Defaults are pre-encoded JSON strings in `Configdata.kt` (e.g. `val defaultGener
 - **Retry pattern**: `.retryWhen { cause, attempt -> delay(…); true }` — max 4 retries with `RETRY_SHORT`/`RETRY_LONG` delays from `Configdata.kt`.
 - **Synthetic streams**: `WPRIME_BALANCE`, `VO2MAX`, `FTPG` are computed locally inside `getFieldFlow()`, not streamed from Karoo sensors. State for W′ is held in `WPrimeBalanceState` singleton.
 - **External headwind**: Guarded by `generalSettings.isheadwindenabled`; reads from extension id `karoo-headwind`. If disabled, replaced by `flowOf(StreamHeadWindData(0.0, 0.0))`.
+- **Extension-field pickers**: the `Dropdown*Field` composables in `TabFunctions.kt` build options from `KarooAction.entries`, `.sortedBy { it.name }` (alphabetical), then filter by `generalSettings` toggles — `isheadwindenabled` (HEADWIND), `iskpowerenabled` (`::kpower::`), `iskghostenabled` (`::kghost::`). KPower/KGhost default ON and filtering is **non-destructive** (the currently-selected action is re-added so it stays visible; no reset). HEADWIND is the exception: it resets to `SPEED` when disabled (a headwind field is broken without the extension).
+- **L/R dual fields** (`powerField = true`): rendered as a single `left/right` pair. `multipleStreamValues()` in `DataTypeFunctions.kt` reads the pair via `MultiFields` (in `Configdata.kt`): two field keys from one `DataPoint`, or `onlyfirst = true` to derive `right = 100 − left` from a single value (native pedal balance). The view shows `--/--` when the stream is not `Streaming`. (KPower no longer publishes balance/dynamics streams — the Karoo shows those natively for a paired meter — so the only KPower fields consumed here are single-value power streams.)
 
 ## Adding a New Metric
 
-1. Add an entry to `KarooAction` enum in `Configdata.kt` — provide `action` (DataType ID), `label`, `icon`, `colorday/night`, `zone`, `convert`, and optionally `powerField = true` for left/right dual values.
+1. Add an entry to `KarooAction` enum in `Configdata.kt` — provide `action` (DataType ID), `label`, `icon`, `colorday/night`, `zone`, `convert`, and optionally `powerField = true` for left/right dual values. For a `powerField` metric also add a `MultiFields` entry (the two field keys, or `onlyfirst = true` to derive `right = 100 − left`). KPower/KGhost fields (`::kpower::` / `::kghost::` action IDs) are auto-grouped and gated by the `iskpowerenabled` / `iskghostenabled` toggles — no extra wiring needed.
 2. Register in `app/src/main/res/xml/extension_info.xml` with a new `typeId`.
 3. Add instance to `KarooCustomFieldExtension.types` list.
 4. If the metric is computed (not a native Karoo stream), add a branch in `KarooSystemService.getFieldFlow()` in `DataTypeFunctions.kt`.

@@ -57,6 +57,10 @@
     <string name="vertical_alignment_question">¿Alineación vertical de campos (icono/texto)?</string>
     <string name="use_headwind_datafield_title">Usar Campo de Datos Headwind</string>
     <string name="enable_headwind_question">¿Habilitar campo de datos Headwind (necesitas tener la extensión Headwind instalada)?</string>
+    <string name="use_kpower_datafield_title">Mostrar campos KPower</string>
+    <string name="enable_kpower_question">¿Mostrar los campos KPower (KPW…) en los desplegables?</string>
+    <string name="use_kghost_datafield_title">Mostrar campos KGhost</string>
+    <string name="enable_kghost_question">¿Mostrar los campos KGhost (Ghost…) en los desplegables?</string>
     <string name="color_palette_title">Paleta de Colores</string>
     <string name="zwift_color_palette_question">¿Paleta de colores de Zwift?</string>
     <string name="divider_enabled_title">Divisor Habilitado</string>

@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.enderthor.kCustomField.datatype.DoubleFieldType
+import com.enderthor.kCustomField.datatype.GeneralSettings
 import com.enderthor.kCustomField.datatype.KarooAction
 import com.enderthor.kCustomField.datatype.OneFieldType
 import java.util.Locale
@@ -137,12 +138,27 @@ fun KarooKeyDropdown(remotekey: String, options: List<DropdownOption>, selectedO
 }
 
 @Composable
-fun DropdownOneField(enabled: Boolean, firstpos: Boolean, label: String, action: OneFieldType,  isheadwindenabled: Boolean = false, onActionChange: (OneFieldType) -> Unit) {
+fun DropdownOneField(enabled: Boolean, firstpos: Boolean, label: String, action: OneFieldType,  generalSettings: GeneralSettings = GeneralSettings(), onActionChange: (OneFieldType) -> Unit) {
 
+    // Orden alfabético por label (igual que el resto): así KPW.../Ghost... no caen al final.
     var dropdownOptions = KarooAction.entries.map { DropdownOption(it.action, it.label) }
+        .sortedBy { it.name }
 
-    if (!isheadwindenabled) {
+    if (!generalSettings.isheadwindenabled) {
         dropdownOptions = dropdownOptions.filter { it.id != KarooAction.HEADWIND.action }
+    }
+    if (!generalSettings.iskpowerenabled) {
+        dropdownOptions = dropdownOptions.filter { !it.id.contains("::kpower::") }
+    }
+    if (!generalSettings.iskghostenabled) {
+        dropdownOptions = dropdownOptions.filter { !it.id.contains("::kghost::") }
+    }
+
+    // Mantener visible el campo YA seleccionado aunque su toggle esté apagado: el toggle solo
+    // descongestiona el picker, no destruye lo configurado (KPower/KGhost pintan "---" sin la
+    // extensión, no hace falta resetearlos).
+    if (action.isactive && dropdownOptions.none { it.id == action.kaction.action }) {
+        dropdownOptions = dropdownOptions + DropdownOption(action.kaction.action, action.kaction.label)
     }
 
 
@@ -173,12 +189,27 @@ fun DropdownOneField(enabled: Boolean, firstpos: Boolean, label: String, action:
 
 
 @Composable
-fun DropdownDoubleField(label: String, action: DoubleFieldType, isheadwindenabled: Boolean, onActionChange: (DoubleFieldType) -> Unit) {
+fun DropdownDoubleField(label: String, action: DoubleFieldType, generalSettings: GeneralSettings, onActionChange: (DoubleFieldType) -> Unit) {
+    // Orden alfabético por label (igual que el resto): así KPW.../Ghost... no caen al final.
     var dropdownOptions = KarooAction.entries.map { DropdownOption(it.action, it.label) }
+        .sortedBy { it.name }
 
-    // Filtrar la opción HEADWIND si isheadwindenabled es false
-    if (!isheadwindenabled) {
+    // Filtrar opciones de extensiones cuyo toggle esté apagado.
+    if (!generalSettings.isheadwindenabled) {
         dropdownOptions = dropdownOptions.filter { it.id != KarooAction.HEADWIND.action }
+    }
+    if (!generalSettings.iskpowerenabled) {
+        dropdownOptions = dropdownOptions.filter { !it.id.contains("::kpower::") }
+    }
+    if (!generalSettings.iskghostenabled) {
+        dropdownOptions = dropdownOptions.filter { !it.id.contains("::kghost::") }
+    }
+
+    // Mantener visible el campo YA seleccionado aunque su toggle esté apagado: declutter sin
+    // destruir la configuración. KPower/KGhost pintan "---" sin la extensión, así que (al revés
+    // que headwind) no se resetean a SPEED al ocultarlos.
+    if (dropdownOptions.none { it.id == action.kaction.action }) {
+        dropdownOptions = dropdownOptions + DropdownOption(action.kaction.action, action.kaction.label)
     }
 
     val dropdownInitialSelection by remember(action) {
@@ -187,9 +218,9 @@ fun DropdownDoubleField(label: String, action: DoubleFieldType, isheadwindenable
         )
     }
 
-    // Cambiar la selección a SPEED si HEADWIND estaba seleccionado y isheadwindenabled es false
-    LaunchedEffect(isheadwindenabled) {
-        if (!isheadwindenabled && action.kaction == KarooAction.HEADWIND) {
+    // HEADWIND sí se resetea a SPEED si se desactiva (sin la extensión Headwind el campo no funciona).
+    LaunchedEffect(generalSettings.isheadwindenabled) {
+        if (!generalSettings.isheadwindenabled && action.kaction == KarooAction.HEADWIND) {
             onActionChange(action.copy(kaction = KarooAction.SPEED))
         }
     }

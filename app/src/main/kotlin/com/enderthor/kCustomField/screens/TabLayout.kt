@@ -282,7 +282,7 @@ fun ConfRolling(ctx: Context) {
                     firstpos = true,
                     label = stringResource(R.string.first_field),
                     action = oneFieldSettings.onefield,
-                    isheadwindenabled = generalSettings.isheadwindenabled
+                    generalSettings = generalSettings
                 ) { newAction ->
                     val updatedZone =
                         if (newAction.kaction.zone == "none") false else oneFieldSettings.onefield.iszone
@@ -303,7 +303,7 @@ fun ConfRolling(ctx: Context) {
                     firstpos = false,
                     label = stringResource(R.string.second_field),
                     action = oneFieldSettings.secondfield,
-                    isheadwindenabled = generalSettings.isheadwindenabled
+                    generalSettings = generalSettings
                 ) { newAction ->
 
                     val updatedZone =
@@ -338,7 +338,7 @@ fun ConfRolling(ctx: Context) {
                     label = stringResource(R.string.third_field),
                     action = oneFieldSettings.thirdfield,
                     enabled = oneFieldSettings.secondfield.isactive,
-                    isheadwindenabled = generalSettings.isheadwindenabled
+                    generalSettings = generalSettings
                 ) { newAction ->
                     val updatedZone =
                         if (newAction.kaction.zone == "none") false else oneFieldSettings.thirdfield.iszone
@@ -471,7 +471,7 @@ fun ConfFields(ctx: Context) {
                     DropdownDoubleField(
                         stringResource(R.string.first_field),
                         doubleFieldSettings.onefield,
-                        generalSettings.isheadwindenabled
+                        generalSettings
                     ) { newAction ->
                         val updatedZone =
                             if (newAction.kaction.zone == "none") false else doubleFieldSettings.onefield.iszone
@@ -494,7 +494,7 @@ fun ConfFields(ctx: Context) {
                     DropdownDoubleField(
                         stringResource(R.string.second_field),
                         doubleFieldSettings.secondfield,
-                        generalSettings.isheadwindenabled
+                        generalSettings
                     ) { newAction ->
                         val updatedZone =
                             if (newAction.kaction.zone == "none") false else doubleFieldSettings.secondfield.iszone
@@ -593,7 +593,7 @@ fun Conf6Fields(ctx: Context) {
                     DropdownDoubleField(
                         stringResource(R.string.first_field),
                         sextupleFieldSettings.onefield,
-                        generalSettings.isheadwindenabled
+                        generalSettings
                     ) { newAction ->
                         val updatedZone =
                             if (newAction.kaction.zone == "none") false else sextupleFieldSettings.onefield.iszone
@@ -616,7 +616,7 @@ fun Conf6Fields(ctx: Context) {
                     DropdownDoubleField(
                         stringResource(R.string.second_field),
                         sextupleFieldSettings.secondfield,
-                        generalSettings.isheadwindenabled
+                        generalSettings
                     ) { newAction ->
                         val updatedZone =
                             if (newAction.kaction.zone == "none") false else sextupleFieldSettings.secondfield.iszone
@@ -639,7 +639,7 @@ fun Conf6Fields(ctx: Context) {
                     DropdownDoubleField(
                         stringResource(R.string.third_field),
                         sextupleFieldSettings.thirdfield,
-                        generalSettings.isheadwindenabled
+                        generalSettings
                     ) { newAction ->
                         val updatedZone =
                             if (newAction.kaction.zone == "none") false else sextupleFieldSettings.thirdfield.iszone
@@ -662,7 +662,7 @@ fun Conf6Fields(ctx: Context) {
                     DropdownDoubleField(
                         stringResource(R.string.fourth_field),
                         sextupleFieldSettings.fourthfield,
-                        generalSettings.isheadwindenabled
+                        generalSettings
                     ) { newAction ->
                         val updatedZone =
                             if (newAction.kaction.zone == "none") false else sextupleFieldSettings.fourthfield.iszone
@@ -685,7 +685,7 @@ fun Conf6Fields(ctx: Context) {
                     DropdownDoubleField(
                         stringResource(R.string.fifth_field),
                         sextupleFieldSettings.fifthfield,
-                        generalSettings.isheadwindenabled
+                        generalSettings
                     ) { newAction ->
                         val updatedZone =
                             if (newAction.kaction.zone == "none") false else sextupleFieldSettings.fifthfield.iszone
@@ -708,7 +708,7 @@ fun Conf6Fields(ctx: Context) {
                     DropdownDoubleField(
                         stringResource(R.string.sixth_field),
                         sextupleFieldSettings.sixthfield,
-                        generalSettings.isheadwindenabled
+                        generalSettings
                     ) { newAction ->
                         val updatedZone =
                             if (newAction.kaction.zone == "none") false else sextupleFieldSettings.sixthfield.iszone
@@ -811,7 +811,7 @@ fun ConfSmart(ctx: Context) {
                 DropdownDoubleField(
                     stringResource(R.string.first_field),
                     climbFieldSettings.onefield,
-                    generalSettings.isheadwindenabled
+                    generalSettings
                 ) { newAction ->
                     val updatedZone = if (newAction.kaction.zone == "none") false else climbFieldSettings.onefield.iszone
                     val updatedNewAction = newAction.copy(iszone = updatedZone)
@@ -831,7 +831,7 @@ fun ConfSmart(ctx: Context) {
                 DropdownDoubleField(
                     stringResource(R.string.second_field),
                     climbFieldSettings.secondfield,
-                    generalSettings.isheadwindenabled
+                    generalSettings
                 ) { newAction ->
                     val updatedZone = if (newAction.kaction.zone == "none") false else climbFieldSettings.secondfield.iszone
                     val updatedNewAction = newAction.copy(iszone = updatedZone)
@@ -855,7 +855,7 @@ fun ConfSmart(ctx: Context) {
                 DropdownDoubleField(
                     stringResource(R.string.third_field),
                     climbFieldSettings.thirdfield,
-                    generalSettings.isheadwindenabled
+                    generalSettings
                 ) { newAction ->
                     val updatedZone = if (newAction.kaction.zone == "none") false else climbFieldSettings.thirdfield.iszone
                     val updatedNewAction = newAction.copy(iszone = updatedZone)
@@ -875,7 +875,7 @@ fun ConfSmart(ctx: Context) {
                 DropdownDoubleField(
                     stringResource(R.string.fourth_field),
                     climbFieldSettings.fourthfield,
-                    generalSettings.isheadwindenabled
+                    generalSettings
                 ) { newAction ->
                     val updatedZone = if (newAction.kaction.zone == "none") false else climbFieldSettings.fourthfield.iszone
                     val updatedNewAction = newAction.copy(iszone = updatedZone)
@@ -901,7 +901,7 @@ fun ConfSmart(ctx: Context) {
                 DropdownDoubleField(
                     stringResource(R.string.on_climber_measure),
                     climbFieldSettings.climbOnfield,
-                    generalSettings.isheadwindenabled
+                    generalSettings
                 ) { newAction ->
                     val updatedZone = if (newAction.kaction.zone == "none") false else climbFieldSettings.climbOnfield.iszone
                     val updatedNewAction = newAction.copy(iszone = updatedZone)
@@ -920,7 +920,7 @@ fun ConfSmart(ctx: Context) {
                 DropdownDoubleField(
                     stringResource(R.string.no_climber_measure),
                     climbFieldSettings.climbfield,
-                    generalSettings.isheadwindenabled
+                    generalSettings
                 ) { newAction ->
                     val updatedZone = if (newAction.kaction.zone == "none") false else climbFieldSettings.climbfield.iszone
                     val updatedNewAction = newAction.copy(iszone = updatedZone)
@@ -979,6 +979,8 @@ fun ConfGeneral() {
     var iscentervertical by remember { mutableStateOf(FieldPosition.CENTER) }
     var iscenterkaroo by remember { mutableStateOf(false) }
     var isheadwindenabled by remember { mutableStateOf(false) }
+    var iskpowerenabled by remember { mutableStateOf(true) }
+    var iskghostenabled by remember { mutableStateOf(true) }
     var isdivider by remember { mutableStateOf(true) }
     var distanceWithDecimals by remember { mutableStateOf(false) }
     var bellsong by remember {mutableStateOf(KarooKey.BELL4) }
@@ -1000,6 +1002,8 @@ fun ConfGeneral() {
             iscentervertical = settings.iscentervertical
             iscenterkaroo = settings.iscenterkaroo
             isheadwindenabled = settings.isheadwindenabled
+            iskpowerenabled = settings.iskpowerenabled
+            iskghostenabled = settings.iskghostenabled
             isdivider = settings.isdivider
             distanceWithDecimals = settings.distanceWithDecimals
             bellsong = settings.bellBeepKey
@@ -1021,6 +1025,8 @@ fun ConfGeneral() {
                 iscentervertical = gs.iscentervertical
                 iscenterkaroo = gs.iscenterkaroo
                 isheadwindenabled = gs.isheadwindenabled
+                iskpowerenabled = gs.iskpowerenabled
+                iskghostenabled = gs.iskghostenabled
                 isdivider = gs.isdivider
                 distanceWithDecimals = gs.distanceWithDecimals
                 bellsong = gs.bellBeepKey
@@ -1096,6 +1102,28 @@ fun ConfGeneral() {
                 })
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(stringResource(R.string.enable_headwind_question))
+            }
+
+            Spacer(modifier = Modifier.height(2.dp))
+            TopAppBar(title = { Text(stringResource(R.string.use_kpower_datafield_title)) })
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = iskpowerenabled, onCheckedChange = {
+                    iskpowerenabled = it
+                })
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(stringResource(R.string.enable_kpower_question))
+            }
+
+            Spacer(modifier = Modifier.height(2.dp))
+            TopAppBar(title = { Text(stringResource(R.string.use_kghost_datafield_title)) })
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = iskghostenabled, onCheckedChange = {
+                    iskghostenabled = it
+                })
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(stringResource(R.string.enable_kghost_question))
             }
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -1290,6 +1318,8 @@ fun ConfGeneral() {
                      iscentervertical = iscentervertical,
                      iscenterkaroo = iscenterkaroo,
                      isheadwindenabled = isheadwindenabled,
+                     iskpowerenabled = iskpowerenabled,
+                     iskghostenabled = iskghostenabled,
                      isdivider = isdivider,
                      bellBeepKey = bellsong,
                      distanceWithDecimals = distanceWithDecimals
