@@ -3,7 +3,9 @@ package com.enderthor.kCustomField.extensions
 import android.content.Context
 
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStore
 
 import io.hammerhead.karooext.KarooSystemService
@@ -19,7 +21,14 @@ import com.enderthor.kCustomField.datatype.CustomRollingType
 
 import timber.log.Timber
 
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+// Sin corruptionHandler, un kill del proceso a mitad de un edit{} deja settings.preferences_pb
+// ilegible y DataStore relanza CorruptionException en CADA lectura, para siempre: los catch de
+// cada stream NO lo capturan porque se lanza aguas arriba del map{}, al abrir el fichero. La
+// extensión entra en bucle de crash y el usuario solo puede salir borrando los datos de la app.
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "settings",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() }
+)
 
 
 class KarooCustomFieldExtension : KarooExtension("kcustomfield", BuildConfig.VERSION_NAME) {

@@ -135,6 +135,10 @@ fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivi
 // power y climb fuerzan entero. Si el usuario activa "distancia con decimales"
 // (ajuste global), los campos de distancia (convert=="distance") pasan a decimal.
 fun isIntField(kaction: KarooAction, isPower: Boolean, isClimb: Boolean, distanceWithDecimals: Boolean): Boolean {
+    // "pressure" va con decimal SIEMPRE, y antes que los overrides: en métrico son bar (6.2) y
+    // un `|| isClimb` posterior lo devolvería a "6" — un 3% de error, justo la precisión que
+    // esta excepción existe para conservar.
+    if (kaction.convert == "pressure") return false
     val base = !(kaction.convert == "speed" || kaction.zone == "slopeZones" || kaction.label == "IF")
     val adjusted = if (distanceWithDecimals && kaction.convert == "distance") false else base
     return adjusted || isPower || isClimb

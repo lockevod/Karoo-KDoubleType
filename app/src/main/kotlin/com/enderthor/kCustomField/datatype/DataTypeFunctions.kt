@@ -133,25 +133,35 @@ fun convertValue(
     unitType: UserProfile.PreferredUnit.UnitType,
     type: String
 ): Double {
-    //Timber.d("convertValue: convert=$convert, unitType=$unitType, type=$type, streamState=$streamState")
+    // El SDK marca como Optional FIELD_ASCENT_REMAINING_ID, FIELD_DISTANCE_TO_DESTINATION_ID y
+    // FIELD_VERTICAL_SPEED_ID (ver DataType.kt de karoo-ext). Cuando la clave con nombre no viene,
+    // hay que caer a singleValue: terminar en `?: 0.0` hacía que un dato AUSENTE se mostrara como
+    // un CERO creíble — "0 m de desnivel restante" en mitad de un puerto, o el VAM a 0 subiendo.
+    val dataPoint = (streamState as? StreamState.Streaming)?.dataPoint
+
+    // Ramas contra las constantes del SDK, NO contra literales a mano: las de marchas y presión
+    // comparaban "SHIFTING_REAR_GEAR" / "TIRE_PRESSURE_FRONT" cuando lo que llega es
+    // kaction.action = "TYPE_SHIFTING_REAR_GEAR_ID". Nunca se ejecutaban y el valor salía por
+    // singleValue, que es values.firstOrNull(): con 3 campos en marchas y 4 en presión, el que
+    // el host haya puesto primero en el mapa. Con constantes el compilador no deja que derive.
     val value = when (type) {
-        "TYPE_ELEVATION_REMAINING_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ASCENT_REMAINING_ID")
-            ?: (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_REMAINING_ID")
-        "TYPE_DISTANCE_TO_DESTINATION_ID" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_DISTANCE_TO_DESTINATION_ID")
-        "TYPE_VERTICAL_SPEED_ID", "TYPE_AVERAGE_VERTICAL_SPEED_30S_ID" ->
-            (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_VERTICAL_SPEED_ID")
-        "SHIFTING_FRONT_GEAR" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_SHIFTING_FRONT_GEAR_ID")
-        "SHIFTING_REAR_GEAR" -> (streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_SHIFTING_FRONT_REAR_ID")
-        "TIRE_PRESSURE_FRONT","TIRE_PRESSURE_REAR" -> ((streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_TIRE_PRESSURE_ID"))
-        "TYPE_ELEVATION_TO_TOP" -> ((streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_TO_TOP_ID"))
-        "TYPE_ELEVATION_FROM_BOTTOM" -> ((streamState as? StreamState.Streaming)?.dataPoint?.values?.get("FIELD_ELEVATION_FROM_BOTTOM_ID"))
+        DataType.Type.ELEVATION_REMAINING -> dataPoint?.values?.get(DataType.Field.ASCENT_REMAINING)
+        DataType.Type.DISTANCE_TO_DESTINATION -> dataPoint?.values?.get(DataType.Field.DISTANCE_TO_DESTINATION)
+        DataType.Type.VERTICAL_SPEED, DataType.Type.AVERAGE_VERTICAL_SPEED_30S ->
+            dataPoint?.values?.get(DataType.Field.VERTICAL_SPEED)
+        DataType.Type.SHIFTING_FRONT_GEAR -> dataPoint?.values?.get(DataType.Field.SHIFTING_FRONT_GEAR)
+        DataType.Type.SHIFTING_REAR_GEAR -> dataPoint?.values?.get(DataType.Field.SHIFTING_REAR_GEAR)
+        DataType.Type.TIRE_PRESSURE_FRONT, DataType.Type.TIRE_PRESSURE_REAR ->
+            dataPoint?.values?.get(DataType.Field.TIRE_PRESSURE)
+        DataType.Type.ELEVATION_TO_TOP -> dataPoint?.values?.get(DataType.Field.ELEVATION_TO_TOP)
+        DataType.Type.ELEVATION_FROM_BOTTOM -> dataPoint?.values?.get(DataType.Field.ELEVATION_FROM_BOTTOM)
         // KGhost emite 2 valores en el DataPoint (SINGLE = gap, "estimated" = flag). El
         // getter singleValue del SDK devuelve values.firstOrNull(), que solo acierta porque
         // KGhost pone SINGLE primero; leemos la clave explícita para no depender de ese orden.
-        "TYPE_EXT::kghost::kghost-gap-time", "TYPE_EXT::kghost::kghost-gap-dist" ->
-            (streamState as? StreamState.Streaming)?.dataPoint?.values?.get(DataType.Field.SINGLE)
-        else -> (streamState as? StreamState.Streaming)?.dataPoint?.singleValue
-    } ?: 0.0
+        KarooAction.GHOST_GAP_TIME.action, KarooAction.GHOST_GAP_DIST.action ->
+            dataPoint?.values?.get(DataType.Field.SINGLE)
+        else -> dataPoint?.singleValue
+    } ?: dataPoint?.singleValue ?: 0.0
 
     val convertedValue = when (convert) {
         "distance", "speed" -> when (unitType) {

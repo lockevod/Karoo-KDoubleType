@@ -16,6 +16,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -57,6 +58,7 @@ import kotlinx.coroutines.withContext
 
 import timber.log.Timber
 
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 
@@ -74,10 +76,12 @@ abstract class CustomDoubleTypeBase(
     private val secondField = { settings: DoubleFieldSettings -> settings.secondfield }
     private val ishorizontal = { settings: DoubleFieldSettings -> settings.ishorizontal }
 
-    @Volatile private var isCancelled = false
     // Decodificado una vez por instancia: startView() se re-entra muy rápido en cambios
     // de página/perfil y re-decodificar el recurso en cada entrada es trabajo inútil.
     @Volatile private var cachedBaseBitmap: Bitmap? = null
+    // Scope del último preview servido por esta instancia, para poder cancelarlo cuando llega
+    // el siguiente (ver el bloque config.preview en startView).
+    @Volatile private var previewScope: CoroutineScope? = null
 
     private val isKaroo = karooSystem.hardwareType == HardwareType.KAROO
 
@@ -109,7 +113,21 @@ abstract class CustomDoubleTypeBase(
 
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
-        isCancelled = false
+        // setCancellable ignora deliberadamente el cancel cuando config.preview=true (cancelarlo
+        // ahí dejaba el editor de perfiles en blanco), así que el scope de un preview no lo
+        // cancela NADIE: cada visita al editor dejaba para siempre un previewFlow emitiendo cada
+        // 2s y una composición Glance en el hilo principal contra un emitter ya muerto. Aquí
+        // cancelamos solo el preview YA superado por otro preview; nunca un scope de vista viva.
+        if (config.preview) {
+            previewScope?.cancel()
+            previewScope = scope
+        }
+        // Local a ESTA invocación de startView. `types` en KarooCustomFieldExtension es un
+        // `by lazy`, así que existe UN solo objeto por datatype durante toda la vida del
+        // proceso: con un campo de instancia, el cancel de una vista anterior — que el SDK
+        // puede disparar DESPUÉS de haber arrancado la siguiente — ponía el flag a true y
+        // congelaba la vista nueva el resto de la ruta, con todos sus streams vivos.
+        val isCancelled = AtomicBoolean(false)
         ViewState.setCancelled(false)
 
         val dataflow = context.streamDoubleFieldSettings()
@@ -130,7 +148,7 @@ abstract class CustomDoubleTypeBase(
 
             ) { (settings, generalSettings), userProfile ->
                 GlobalConfigState(settings, generalSettings, userProfile)
-            }
+            }.distinctUntilChanged()
 
 
 
@@ -192,15 +210,21 @@ abstract class CustomDoubleTypeBase(
                                 if (listOf(primaryField, secondaryField).any { it.kaction.name == "HEADWIND" } && generalSettings.isheadwindenabled)
                                     createHeadwindFlow(karooSystem, refreshTime) else flowOf(StreamHeadWindData(0.0, 0.0))
 
-                            val firstFieldFlow = if (!config.preview) karooSystem.getFieldFlow(primaryField, headwindFlow, generalSettings, isCancelledProvider = { isCancelled }) else previewFlow()
-                            val secondFieldFlow = if (!config.preview) karooSystem.getFieldFlow(secondaryField, headwindFlow, generalSettings, isCancelledProvider = { isCancelled }) else previewFlow()
+                            val firstFieldFlow = if (!config.preview) karooSystem.getFieldFlow(primaryField, headwindFlow, generalSettings, isCancelledProvider = { isCancelled.get() }) else previewFlow()
+                            val secondFieldFlow = if (!config.preview) karooSystem.getFieldFlow(secondaryField, headwindFlow, generalSettings, isCancelledProvider = { isCancelled.get() }) else previewFlow()
 
                             combine(firstFieldFlow, secondFieldFlow) { firstState, secondState ->
                                 Triple(firstState, secondState, state)
                             }
-                    }.conflate().onEach { (firstFieldState, secondFieldState, globalConfig) ->
+                    }
+                    // La vista es función pura de (estado1, estado2, config) más constantes de
+                    // esta invocación. StreamState.Streaming y DataPoint son data class, así que
+                    // la igualdad es estructural: si la terna repite, la composición Glance y el
+                    // updateView por Binder que vendrían detrás son trabajo tirado.
+                    .distinctUntilChanged()
+                    .conflate().onEach { (firstFieldState, secondFieldState, globalConfig) ->
 
-                        if (isCancelled) {
+                        if (isCancelled.get()) {
                             Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
                         }
@@ -253,12 +277,12 @@ abstract class CustomDoubleTypeBase(
                             }
 
                             try {
-                                if (isCancelled) {
+                                if (isCancelled.get()) {
                                     Timber.d("DOUBLE Skipping composition, job cancelled: $extension $globalIndex")
                                     return@onEach
                                 }
                                 withContext(Dispatchers.Main) {
-                                    if (isCancelled) return@withContext
+                                    if (isCancelled.get()) return@withContext
                                     val newView = glance.compose(context, DpSize.Unspecified) {
                                         DoubleScreenSelector(
                                             fieldNumber,
@@ -287,7 +311,7 @@ abstract class CustomDoubleTypeBase(
                                             generalSettings.distanceWithDecimals
                                         )
                                     }.remoteViews
-                                    if (!isCancelled) emitter.updateView(newView)
+                                    if (!isCancelled.get()) emitter.updateView(newView)
                                 }
                                 // Sin delay: SDK Karoo limita streams a 1Hz máximo.
                                 // El tiempo de composición Glance (~50-100ms) ya es throttle suficiente.
@@ -297,7 +321,7 @@ abstract class CustomDoubleTypeBase(
                                     Timber.d("DOUBLE View update cancelled normally: $extension $globalIndex")
                                 } else {
                                     Timber.e(e, "DOUBLE Error composing/updating view: $extension $globalIndex")
-                                    if (coroutineContext.isActive && !isCancelled) {
+                                    if (coroutineContext.isActive && !isCancelled.get()) {
                                         throw e
                                     }
                                 }
@@ -319,7 +343,7 @@ abstract class CustomDoubleTypeBase(
 
                             when {
 
-                                cause is CancellationException && isCancelled -> {
+                                cause is CancellationException && isCancelled.get() -> {
                                     Timber.d("DOUBLE No se reintenta el flujo cancelado por el emitter: $extension $globalIndex")
                                     false
                                 }
@@ -367,7 +391,7 @@ abstract class CustomDoubleTypeBase(
 
                 Timber.d("Iniciando cancelación de CustomDoubleTypeBase")
 
-                isCancelled = true
+                isCancelled.set(true)
                 ViewState.setCancelled(true)
 
                 configjob.cancel()

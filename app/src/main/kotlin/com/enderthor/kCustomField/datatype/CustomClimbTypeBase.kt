@@ -33,7 +33,6 @@ import com.enderthor.kCustomField.extensions.streamGeneralSettings
 import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.streamClimbFieldSettings
 import com.enderthor.kCustomField.extensions.streamDataFlow
-
 import com.enderthor.kCustomField.extensions.streamUserProfile
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
@@ -60,6 +59,7 @@ import kotlinx.coroutines.withContext
 
 import timber.log.Timber
 
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 
@@ -82,11 +82,13 @@ abstract class CustomClimbTypeBase(
     private val isAlwaysClimbPos = { settings: ClimbFieldSettings -> settings.isAlwaysClimbPos }
     private val isfirsthorizontal = { settings: ClimbFieldSettings -> settings.isfirsthorizontal }
     private val issecondhorizontal = { settings: ClimbFieldSettings -> settings.issecondhorizontal }
-    @Volatile private var isCancelled = false
     @Volatile private var isOnClimb = false
     // Decodificado una vez por instancia: startView() se re-entra muy rápido en cambios
     // de página/perfil y re-decodificar el recurso en cada entrada es trabajo inútil.
     @Volatile private var cachedBaseBitmap: Bitmap? = null
+    // Scope del último preview servido por esta instancia, para poder cancelarlo cuando llega
+    // el siguiente (ver el bloque config.preview en startView).
+    @Volatile private var previewScope: CoroutineScope? = null
 
     private val isKaroo = karooSystem.hardwareType == HardwareType.KAROO
 
@@ -135,14 +137,31 @@ abstract class CustomClimbTypeBase(
 
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
+        // setCancellable ignora deliberadamente el cancel cuando config.preview=true (cancelarlo
+        // ahí dejaba el editor de perfiles en blanco), así que el scope de un preview no lo
+        // cancela NADIE: cada visita al editor dejaba para siempre un previewFlow emitiendo cada
+        // 2s y una composición Glance en el hilo principal contra un emitter ya muerto. Aquí
+        // cancelamos solo el preview YA superado por otro preview; nunca un scope de vista viva.
+        if (config.preview) {
+            previewScope?.cancel()
+            previewScope = scope
+        }
 
         var isAlwaysclimbOnEnabled = true
         var isShowClimbField = true
 
-        isCancelled = false
+        // Local a ESTA invocación de startView. `types` en KarooCustomFieldExtension es un
+        // `by lazy`, así que existe UN solo objeto por datatype durante toda la vida del
+        // proceso: con un campo de instancia, el cancel de una vista anterior — que el SDK
+        // puede disparar DESPUÉS de haber arrancado la siguiente — ponía el flag a true y
+        // congelaba la vista nueva el resto de la ruta, con todos sus streams vivos.
+        val isCancelled = AtomicBoolean(false)
         ViewState.setCancelled(false)
 
-        checkClimbStatus(scope)
+        // En preview NO abrimos el stream real de ELEVATION_TO_TOP: se llamaba antes de mirar
+        // config.preview, así que cada visita al editor de perfiles dejaba un consumer Binder
+        // vivo para el resto de la sesión. El preview no necesita el estado real de subida.
+        if (!config.preview) checkClimbStatus(scope)
 
         // OPTIMIZACIÓN: reutilizar bitmap solo para el círculo base (no datos)
         val baseBitmap = cachedBaseBitmap
@@ -166,7 +185,7 @@ abstract class CustomClimbTypeBase(
 
             ) { (settings, generalSettings), userProfile ->
                 ClimbGlobalConfigState(settings, generalSettings, userProfile)
-            }
+            }.distinctUntilChanged()
 
 
 
@@ -252,38 +271,38 @@ abstract class CustomClimbTypeBase(
                             primaryField,
                             headwindFlow,
                             generalSettings,
-                            isCancelledProvider = { isCancelled }
+                            isCancelledProvider = { isCancelled.get() }
                         ) else previewFlow()
                         val secondFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             secondaryField,
                             headwindFlow,
                             generalSettings,
-                            isCancelledProvider = { isCancelled }
+                            isCancelledProvider = { isCancelled.get() }
                         ) else previewFlow()
                         val thirdFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             thirdField,
                             headwindFlow,
                             generalSettings,
-                            isCancelledProvider = { isCancelled }
+                            isCancelledProvider = { isCancelled.get() }
                         ) else previewFlow()
                         val fourthFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             fourthField,
                             headwindFlow,
                             generalSettings,
-                            isCancelledProvider = { isCancelled }
+                            isCancelledProvider = { isCancelled.get() }
                         ) else previewFlow()
 
                         val climbStartFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             climbField,
                             headwindFlow,
                             generalSettings,
-                            isCancelledProvider = { isCancelled }
+                            isCancelledProvider = { isCancelled.get() }
                         ) else previewFlow()
                         val climbOnFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                             climbOnField,
                             headwindFlow,
                             generalSettings,
-                            isCancelledProvider = { isCancelled }
+                            isCancelledProvider = { isCancelled.get() }
                         ) else previewFlow()
 
 
@@ -322,8 +341,15 @@ abstract class CustomClimbTypeBase(
                     // conflate() descarta emisiones intermedias mientras el render está ocupado.
                     // Sin esto, los 6 streams producen más emisiones de las que se pueden renderizar
                     // (6 streams × 1Hz > 5 renders/seg con delay 200ms) → cola que crece 4-5s de lag.
-                    }.conflate().onEach { result ->
-                        if (isCancelled) {
+                    }
+                    // NO poner distinctUntilChanged() aquí: la vista NO es función pura de la
+                    // tupla. `isOnClimb` lo alimenta checkClimbStatus, un flow independiente que
+                    // no entra en ClimbResultData, y se lee abajo para elegir el stream del hueco
+                    // de climb, el icono/etiqueta y si el panel se muestra. Con el ciclista parado
+                    // al pie del puerto la tupla repite idéntica (DataPoint no lleva timestamp),
+                    // así que el dedup se tragaba la transición a subida.
+                    .conflate().onEach { result ->
+                        if (isCancelled.get()) {
                             Timber.d("CLIMB Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
                         }
@@ -412,7 +438,11 @@ abstract class CustomClimbTypeBase(
                             else -> generalSettings.iscenteralign
                         }
 
-                        isShowClimbField  = (isOnClimb || isAlwaysclimbOnEnabled)
+                        // En preview isOnClimb ya no se alimenta del stream real, así que el
+                        // editor mostraría el layout SIN campo de climb salvo que el usuario
+                        // tenga "always on". Forzarlo aquí hace que la vista previa enseñe lo
+                        // que el usuario ha configurado, y de forma determinista.
+                        isShowClimbField  = (isOnClimb || isAlwaysclimbOnEnabled || config.preview)
 
                         val isfirsthorizontal = if (isShowClimbField) false else isfirsthorizontal(settings)
                         val issecondhorizontal = if (isShowClimbField) false else issecondhorizontal(settings)
@@ -422,12 +452,12 @@ abstract class CustomClimbTypeBase(
 
                         //Timber.w("CLIMB field climbField: ${climbField(settings)}  isOnClimb: $isOnClimb isAlwaysclimbOnEnabled: $isAlwaysclimbOnEnabled")
                         try {
-                            if (isCancelled) {
+                            if (isCancelled.get()) {
                                 Timber.d("CLIMB Skipping composition, job cancelled: $extension $globalIndex")
                                 return@onEach
                             }
                             withContext(Dispatchers.Main) {
-                                if (isCancelled) return@withContext
+                                if (isCancelled.get()) return@withContext
                                 val newView = glance.compose(context, DpSize.Unspecified) {
                                      ClimbScreenSelector(
                                          firstvalue,
@@ -475,7 +505,7 @@ abstract class CustomClimbTypeBase(
                                     )
                                 }.remoteViews
                                 // Timber.d("CLIMB Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
-                                if (!isCancelled) emitter.updateView(newView)
+                                if (!isCancelled.get()) emitter.updateView(newView)
                             }
                             delay(refreshTime)
                         } catch (e: Exception) {
@@ -502,7 +532,7 @@ abstract class CustomClimbTypeBase(
 
                             when {
 
-                                cause is CancellationException && isCancelled -> {
+                                cause is CancellationException && isCancelled.get() -> {
                                     Timber.d("CLIMB  No se reintenta el flujo cancelado por el emitter: $extension $globalIndex")
                                     false  // Importante: no reintentar
                                 }
@@ -556,7 +586,7 @@ abstract class CustomClimbTypeBase(
 
 
                 Timber.d("Cancelando todos los jobs y flujos de CLIMB")
-                isCancelled = true
+                isCancelled.set(true)
                 ViewState.setCancelled(true)
 
                 configjob.cancel()
