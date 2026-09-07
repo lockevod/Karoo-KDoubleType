@@ -115,9 +115,12 @@ abstract class CustomDoubleTypeBase(
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
         // setCancellable ignora deliberadamente el cancel cuando config.preview=true (cancelarlo
         // ahí dejaba el editor de perfiles en blanco), así que el scope de un preview no lo
-        // cancela NADIE: cada visita al editor dejaba para siempre un previewFlow emitiendo cada
-        // 2s y una composición Glance en el hilo principal contra un emitter ya muerto. Aquí
-        // cancelamos solo el preview YA superado por otro preview; nunca un scope de vista viva.
+        // cancela NADIE en el acto: el apagado va con margen, en el propio setCancellable
+        // (ver Delay.PREVIEW_GRACE abajo). Aquí solo se sustituye un preview por el siguiente.
+        // OJO: NO cancelar desde una invocación viva. karoo-ext resuelve la implementación por
+        // typeId pero guarda las vistas por id de attachment, así que el editor de perfiles y
+        // una vista de ruta del MISMO datatype pueden estar attachados a la vez; cancelar el
+        // preview desde la vista viva congelaría el editor que el usuario está mirando.
         if (config.preview) {
             previewScope?.cancel()
             previewScope = scope
@@ -384,6 +387,16 @@ abstract class CustomDoubleTypeBase(
                 Timber.d("CANCEL DOUBLE config.preview=%s", config.preview)
                 if (config.preview) {
                     Timber.w("Emitter.setCancellable ignored because config.preview=true (profile/preview). extension=$extension index=$globalIndex")
+                    // Cancelar el scope aquí mismo dejaba el editor de perfiles en blanco, así que no se
+                    // cancela en el acto — pero tampoco puede no cancelarse nunca: así quedaba un previewFlow
+                    // por datatype emitiendo cada 2s y componiendo Glance contra un emitter muerto durante el
+                    // resto de la sesión. Se apaga con margen: si el editor sigue vivo volverá a llamar a
+                    // startView y ese preview nuevo sustituye a este antes de que expire la gracia.
+                    scope.launch {
+                        delay(Delay.PREVIEW_GRACE.time)
+                        Timber.d("Preview scope self-cancel tras gracia: $extension $globalIndex")
+                        scope.cancel()
+                    }
                     return@setCancellable
                 }
 

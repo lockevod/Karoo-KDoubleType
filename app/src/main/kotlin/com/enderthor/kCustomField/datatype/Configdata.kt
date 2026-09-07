@@ -322,7 +322,10 @@ enum class RefreshTime( val time: Long) {
 }
 
 enum class Delay( val time: Long) {
-    PREVIEW (2000L), RETRY_SHORT (1500L), RETRY_LONG (6000L),
+    // PREVIEW_GRACE: margen entre que el host cancela el emitter de un preview y que apagamos
+    // su scope. Cancelar en el acto dejaba el editor de perfiles en blanco; no cancelar nunca
+    // dejaba un previewFlow por datatype vivo el resto de la sesión.
+    PREVIEW (2000L), PREVIEW_GRACE (10000L), RETRY_SHORT (1500L), RETRY_LONG (6000L),
 }
 
 @Serializable

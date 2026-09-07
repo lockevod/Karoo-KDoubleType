@@ -111,9 +111,12 @@ abstract class CustomRollingTypeBase(
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
         // setCancellable ignora deliberadamente el cancel cuando config.preview=true (cancelarlo
         // ahí dejaba el editor de perfiles en blanco), así que el scope de un preview no lo
-        // cancela NADIE: cada visita al editor dejaba para siempre un previewFlow emitiendo cada
-        // 2s y una composición Glance en el hilo principal contra un emitter ya muerto. Aquí
-        // cancelamos solo el preview YA superado por otro preview; nunca un scope de vista viva.
+        // cancela NADIE en el acto: el apagado va con margen, en el propio setCancellable
+        // (ver Delay.PREVIEW_GRACE abajo). Aquí solo se sustituye un preview por el siguiente.
+        // OJO: NO cancelar desde una invocación viva. karoo-ext resuelve la implementación por
+        // typeId pero guarda las vistas por id de attachment, así que el editor de perfiles y
+        // una vista de ruta del MISMO datatype pueden estar attachados a la vez; cancelar el
+        // preview desde la vista viva congelaría el editor que el usuario está mirando.
         if (config.preview) {
             previewScope?.cancel()
             previewScope = scope
@@ -263,18 +266,36 @@ abstract class CustomRollingTypeBase(
                             generalSetting,
                             isCancelledProvider = { isCancelled.get() }
                         ) else previewFlow()
-                        val secondFieldFlow = if (!config.preview)  karooSystem.getFieldFlow(
-                            secondaryField,
-                            headwindFlow,
-                            generalSetting,
-                            isCancelledProvider = { isCancelled.get() }
-                        ) else previewFlow()
-                        val thirdFieldFlow = if (!config.preview)  karooSystem.getFieldFlow(
-                            thirdField,
-                            headwindFlow,
-                            generalSetting,
-                            isCancelledProvider = { isCancelled.get() }
-                        ) else previewFlow()
+                        // Un campo que no puede llegar a mostrarse no se suscribe: solo abría un
+                        // consumer Binder invisible cuyas emisiones, al no haber dedup aquí,
+                        // recomponían el campo visible sin que cambiara nada. Por defecto el 2º y
+                        // el 3º vienen isactive=false (Configdata.kt), así que esto le pasaba a
+                        // todo el mundo de fábrica.
+                        // Las DOS condiciones de cyclicIndexFlow, no solo isactive: con
+                        // rollingtime=0 no hay rotación (emite flowOf(0) y se queda en el índice
+                        // 0), y la pantalla de ajustes puede activar el segundo campo sin darle
+                        // duración — activo pero inalcanzable.
+                        val rotates = rollingtime(currentSetting).time > 0L
+                        val secondFieldFlow = when {
+                            config.preview -> previewFlow()
+                            !(rotates && secondaryField.isactive) -> flowOf(StreamState.NotAvailable)
+                            else -> karooSystem.getFieldFlow(
+                                secondaryField,
+                                headwindFlow,
+                                generalSetting,
+                                isCancelledProvider = { isCancelled.get() }
+                            )
+                        }
+                        val thirdFieldFlow = when {
+                            config.preview -> previewFlow()
+                            !(rotates && thirdField.isactive) -> flowOf(StreamState.NotAvailable)
+                            else -> karooSystem.getFieldFlow(
+                                thirdField,
+                                headwindFlow,
+                                generalSetting,
+                                isCancelledProvider = { isCancelled.get() }
+                            )
+                        }
 
                         combine(
                             firstFieldFlow,
@@ -290,15 +311,21 @@ abstract class CustomRollingTypeBase(
                             )
                         }
                     }
+                    // El perfil entra EN el flujo, no se lee por la puerta de atrás con
+                    // userProfileFlow.value. Leerlo fuera de la tupla obligaba a renunciar al
+                    // dedup, y aun así no arreglaba nada: un cambio de unidades o de zonas no
+                    // emite por sí solo, así que se quedaba sin reflejar hasta que otro stream
+                    // emitiera — indefinidamente en un campo estable. Dentro del combine, el
+                    // cambio de perfil provoca render Y la tupla vuelve a ser la entrada
+                    // completa del render, así que distinctUntilChanged es correcto otra vez.
+                    .combine(userProfileFlow) { data, profile -> data to profile }
+                    .distinctUntilChanged()
                     // conflate() descarta emisiones intermedias mientras el render está ocupado.
                     // El SDK Karoo limita los streams a 1Hz máximo, así que el tiempo de
                     // composición de Glance (~50-100ms) ya actúa de throttle suficiente.
-                    // NO poner distinctUntilChanged() aquí: la vista NO es función pura de la
-                    // tupla. `userProfileFlow.value` se lee abajo y no entra en ella, así que un
-                    // cambio de unidades o de zonas a mitad de ruta con la tupla congelada no se
-                    // reflejaría — justo el bug que el comentario de arriba dice haber arreglado.
                     .conflate()
-                    .onEach { (fieldStates, settingsData) ->
+                    .onEach { (data, userProfile) ->
+                        val (fieldStates, settingsData) = data
 
                         if ( isCancelled.get()) {
                             Timber.d("ROLLING Skipping update, job cancelled: $extension $globalIndex")
@@ -312,7 +339,6 @@ abstract class CustomRollingTypeBase(
 
                         val (firstFieldState, secondFieldState, thirdFieldState) = fieldStates
                         val (settings, generalSetting, cyclicIndex) = settingsData
-                        val userProfile = userProfileFlow.value
 
                         val field = when (cyclicIndex) {
                             0 -> firstField
@@ -439,6 +465,16 @@ abstract class CustomRollingTypeBase(
                 Timber.d("CANCEL ROLLING config.preview=%s", config.preview)
                 if (config.preview) {
                     Timber.w("Emitter.setCancellable ignored because config.preview=true (profile/preview). extension=$extension index=$index")
+                    // Cancelar el scope aquí mismo dejaba el editor de perfiles en blanco, así que no se
+                    // cancela en el acto — pero tampoco puede no cancelarse nunca: así quedaba un previewFlow
+                    // por datatype emitiendo cada 2s y componiendo Glance contra un emitter muerto durante el
+                    // resto de la sesión. Se apaga con margen: si el editor sigue vivo volverá a llamar a
+                    // startView y ese preview nuevo sustituye a este antes de que expire la gracia.
+                    scope.launch {
+                        delay(Delay.PREVIEW_GRACE.time)
+                        Timber.d("Preview scope self-cancel tras gracia: $extension $index")
+                        scope.cancel()
+                    }
                     return@setCancellable
                 }
 

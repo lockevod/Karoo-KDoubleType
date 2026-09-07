@@ -17,6 +17,7 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -82,7 +83,10 @@ abstract class CustomClimbTypeBase(
     private val isAlwaysClimbPos = { settings: ClimbFieldSettings -> settings.isAlwaysClimbPos }
     private val isfirsthorizontal = { settings: ClimbFieldSettings -> settings.isfirsthorizontal }
     private val issecondhorizontal = { settings: ClimbFieldSettings -> settings.issecondhorizontal }
-    @Volatile private var isOnClimb = false
+    // StateFlow, no un @Volatile suelto: el render depende de este valor, así que tiene que
+    // ENTRAR en el flujo combinado. Como campo volátil, un cambio de isOnClimb no emitía nada
+    // por sí solo y la transición a subida se quedaba esperando a que emitiera otro stream.
+    private val isOnClimbFlow = MutableStateFlow(false)
     // Decodificado una vez por instancia: startView() se re-entra muy rápido en cambios
     // de página/perfil y re-decodificar el recurso en cada entrada es trabajo inútil.
     @Volatile private var cachedBaseBitmap: Bitmap? = null
@@ -121,8 +125,8 @@ abstract class CustomClimbTypeBase(
             }
             .distinctUntilChanged()
             .onEach { newIsOnClimb ->
-                isOnClimb = newIsOnClimb
-                Timber.d("CLIMB isOnClimb changed to: $isOnClimb")
+                isOnClimbFlow.value = newIsOnClimb
+                Timber.d("CLIMB isOnClimb changed to: $newIsOnClimb")
             }
             .flowOn(Dispatchers.IO)
             .launchIn(scope)  // usa el scope padre — se cancela automáticamente con él
@@ -139,9 +143,12 @@ abstract class CustomClimbTypeBase(
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
         // setCancellable ignora deliberadamente el cancel cuando config.preview=true (cancelarlo
         // ahí dejaba el editor de perfiles en blanco), así que el scope de un preview no lo
-        // cancela NADIE: cada visita al editor dejaba para siempre un previewFlow emitiendo cada
-        // 2s y una composición Glance en el hilo principal contra un emitter ya muerto. Aquí
-        // cancelamos solo el preview YA superado por otro preview; nunca un scope de vista viva.
+        // cancela NADIE en el acto: el apagado va con margen, en el propio setCancellable
+        // (ver Delay.PREVIEW_GRACE abajo). Aquí solo se sustituye un preview por el siguiente.
+        // OJO: NO cancelar desde una invocación viva. karoo-ext resuelve la implementación por
+        // typeId pero guarda las vistas por id de attachment, así que el editor de perfiles y
+        // una vista de ruta del MISMO datatype pueden estar attachados a la vez; cancelar el
+        // preview desde la vista viva congelaría el editor que el usuario está mirando.
         if (config.preview) {
             previewScope?.cancel()
             previewScope = scope
@@ -229,12 +236,20 @@ abstract class CustomClimbTypeBase(
 
                         if (userProfile == null) {
                             Timber.d("CLIMB UserProfile no disponible")
+                            // Antes emitía un Triple aquí, pero el onEach hace `result as
+                            // ClimbResultData`: si esta rama llegaba a correr, petaba con
+                            // ClassCastException en vez de mostrar "Searching". Misma forma
+                            // que la rama normal.
                             return@flatMapLatest flowOf(
-                                Triple(
+                                ClimbResultData(
+                                    StreamState.Searching,
+                                    StreamState.Searching,
+                                    StreamState.Searching,
+                                    StreamState.Searching,
                                     StreamState.Searching,
                                     StreamState.Searching,
                                     state
-                                )
+                                ) to false
                             )
                         }
 
@@ -322,8 +337,13 @@ abstract class CustomClimbTypeBase(
 
                         combine(
                             combinedFlow1,
-                            combinedFlow2
-                        ) { triple1, triple2 ->
+                            combinedFlow2,
+                            // isOnClimbFlow es de la INSTANCIA y sobrevive entre startView, y en
+                            // preview no se lanza checkClimbStatus que lo corregiría: el editor
+                            // heredaría el estado de subida de la última ruta y elegiría
+                            // climbOnField o climbField según eso. En preview, valor fijo.
+                            if (config.preview) flowOf(false) else isOnClimbFlow
+                        ) { triple1, triple2, onClimb ->
                             val (firstState, secondState, thirdState) = triple1
                             val (fourthState, climbStartState,climbOnState) = triple2
 
@@ -335,20 +355,22 @@ abstract class CustomClimbTypeBase(
                                 climbStartState,
                                 climbOnState,
                                 state
-                            )
+                            ) to onClimb
                         }
 
                     // conflate() descarta emisiones intermedias mientras el render está ocupado.
                     // Sin esto, los 6 streams producen más emisiones de las que se pueden renderizar
                     // (6 streams × 1Hz > 5 renders/seg con delay 200ms) → cola que crece 4-5s de lag.
                     }
-                    // NO poner distinctUntilChanged() aquí: la vista NO es función pura de la
-                    // tupla. `isOnClimb` lo alimenta checkClimbStatus, un flow independiente que
-                    // no entra en ClimbResultData, y se lee abajo para elegir el stream del hueco
-                    // de climb, el icono/etiqueta y si el panel se muestra. Con el ciclista parado
-                    // al pie del puerto la tupla repite idéntica (DataPoint no lleva timestamp),
-                    // así que el dedup se tragaba la transición a subida.
-                    .conflate().onEach { result ->
+                    // `isOnClimb` va DENTRO del combine, no leído aparte desde checkClimbStatus:
+                    // fuera de la tupla no solo impedía deduplicar, es que además la transición a
+                    // subida no emitía por sí sola — con el ciclista parado al pie del puerto se
+                    // quedaba esperando a que emitiera cualquier otro stream. Ya dentro, la tupla
+                    // vuelve a ser la entrada completa del render y distinctUntilChanged es
+                    // correcto: 6 streams a 1Hz recomponiendo sin que cambie nada era el mayor
+                    // desperdicio de CPU de la vista.
+                    .distinctUntilChanged()
+                    .conflate().onEach { (result, isOnClimb) ->
                         if (isCancelled.get()) {
                             Timber.d("CLIMB Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
@@ -581,6 +603,16 @@ abstract class CustomClimbTypeBase(
                 Timber.d("CANCEL CLIMB and config.preview is = %s", config.preview)
                 if (config.preview) {
                     Timber.w("Emitter.setCancellable ignored because config.preview=true (profile/preview). extension=$extension index=$globalIndex")
+                    // Cancelar el scope aquí mismo dejaba el editor de perfiles en blanco, así que no se
+                    // cancela en el acto — pero tampoco puede no cancelarse nunca: así quedaba un previewFlow
+                    // por datatype emitiendo cada 2s y componiendo Glance contra un emitter muerto durante el
+                    // resto de la sesión. Se apaga con margen: si el editor sigue vivo volverá a llamar a
+                    // startView y ese preview nuevo sustituye a este antes de que expire la gracia.
+                    scope.launch {
+                        delay(Delay.PREVIEW_GRACE.time)
+                        Timber.d("Preview scope self-cancel tras gracia: $extension $globalIndex")
+                        scope.cancel()
+                    }
                     return@setCancellable
                 }
 

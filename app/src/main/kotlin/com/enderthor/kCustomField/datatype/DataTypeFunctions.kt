@@ -543,6 +543,15 @@ fun KarooSystemService.getFieldFlow(
                     emit(processedState)
                 }
 
+                // collect solo retorna si el flujo se COMPLETÓ. Y se completa en silencio en el
+                // camino de error: el operador `catch` de arriba se traga la excepción, emite
+                // NotAvailable y da el flujo por terminado (catch completa, no relanza). Sin este
+                // delay el `while` volvía a suscribirse al instante — un bucle a tope de CPU
+                // registrando consumers Binder justo cuando el sistema Karoo está caído, que es
+                // cuando menos batería hay que gastar. Los timeouts NO pasan por aquí (van
+                // downstream del catch y salen por el catch de abajo, que ya espera).
+                delay(WAIT_STREAMS_SHORT)
+
             } catch (e: Exception) {
                 when (e) {
                     is CancellationException -> {
