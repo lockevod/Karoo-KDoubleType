@@ -27,7 +27,10 @@ import timber.log.Timber
 // extensión entra en bucle de crash y el usuario solo puede salir borrando los datos de la app.
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
     name = "settings",
-    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() }
+    corruptionHandler = ReplaceFileCorruptionHandler { e ->
+        Timber.e(e, "DataStore corrupted, resetting settings to defaults")
+        emptyPreferences()
+    }
 )
 
 
