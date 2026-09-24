@@ -135,6 +135,10 @@ fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivi
 // power y climb fuerzan entero. Si el usuario activa "distancia con decimales"
 // (ajuste global), los campos de distancia (convert=="distance") pasan a decimal.
 fun isIntField(kaction: KarooAction, isPower: Boolean, isClimb: Boolean, distanceWithDecimals: Boolean): Boolean {
+    // "pressure" va con decimal SIEMPRE, y antes que los overrides: en métrico son bar (6.2) y
+    // un `|| isClimb` posterior lo devolvería a "6" — un 3% de error, justo la precisión que
+    // esta excepción existe para conservar.
+    if (kaction.convert == "pressure") return false
     val base = !(kaction.convert == "speed" || kaction.zone == "slopeZones" || kaction.label == "IF")
     val adjusted = if (distanceWithDecimals && kaction.convert == "distance") false else base
     return adjusted || isPower || isClimb
@@ -187,7 +191,15 @@ fun formatGhostGap(action: KarooAction, value: Double): String? = when (action) 
 fun ghostOrNumber(
     action: KarooAction, value: Double, isInt: Boolean, isTime: Boolean = false,
     isCivil: Boolean = false, isClimb: Boolean = false, thousandsSuffix: Char = 'k'
-): String = formatGhostGap(action, value) ?: formatNumber(value, isInt, isTime, isCivil, isClimb, thousandsSuffix)
+): String = formatGhostGap(action, value) ?: formatNumber(truncateDistance(action, value, isInt, isClimb), isInt, isTime, isCivil, isClimb, thousandsSuffix)
+
+// Distancia se TRUNCA a la precisión mostrada (como el campo nativo de Karoo): con redondeo,
+// 12.6 km salía "13" y el campo iba medio km por delante de lo recorrido. formatNumber luego
+// redondea, pero sobre un valor ya truncado a entero/décima el redondeo no cambia nada.
+fun truncateDistance(action: KarooAction, value: Double, isInt: Boolean, isClimb: Boolean): Double =
+    if (action.convert != "distance" || isClimb || !value.isFinite()) value
+    else if (isInt) kotlin.math.truncate(value)
+    else kotlin.math.truncate(value * 10.0) / 10.0
 
 // Ajusta un valor a maxChars SIN truncar dígitos: recortar "12345" a "1234" o "-1500" a
 // "-150" es un error 10x silencioso. Enteros que no caben pasan a notación compacta de

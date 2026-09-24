@@ -16,6 +16,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -57,6 +58,7 @@ import kotlinx.coroutines.withContext
 
 import timber.log.Timber
 
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 
@@ -85,10 +87,12 @@ abstract class CustomSextupleTypeBase(
             else -> RefreshTime.HALF.time
         }.coerceAtLeast(100L)
 
-    @Volatile private var isCancelled = false
     // Decodificado una vez por instancia: startView() se re-entra muy rápido en cambios
     // de página/perfil y re-decodificar el recurso en cada entrada es trabajo inútil.
     @Volatile private var cachedBaseBitmap: Bitmap? = null
+    // Scope del último preview servido por esta instancia, para poder cancelarlo cuando llega
+    // el siguiente (ver el bloque config.preview en startView).
+    @Volatile private var previewScope: CoroutineScope? = null
 
 
 
@@ -113,7 +117,24 @@ abstract class CustomSextupleTypeBase(
 
         val scopeJob = Job()
         val scope = CoroutineScope(Dispatchers.IO + scopeJob)
-        isCancelled = false
+        // setCancellable ignora deliberadamente el cancel cuando config.preview=true (cancelarlo
+        // ahí dejaba el editor de perfiles en blanco), así que el scope de un preview no lo
+        // cancela NADIE en el acto: el apagado va con margen, en el propio setCancellable
+        // (ver Delay.PREVIEW_GRACE abajo). Aquí solo se sustituye un preview por el siguiente.
+        // OJO: NO cancelar desde una invocación viva. karoo-ext resuelve la implementación por
+        // typeId pero guarda las vistas por id de attachment, así que el editor de perfiles y
+        // una vista de ruta del MISMO datatype pueden estar attachados a la vez; cancelar el
+        // preview desde la vista viva congelaría el editor que el usuario está mirando.
+        if (config.preview) {
+            previewScope?.cancel()
+            previewScope = scope
+        }
+        // Local a ESTA invocación de startView. `types` en KarooCustomFieldExtension es un
+        // `by lazy`, así que existe UN solo objeto por datatype durante toda la vida del
+        // proceso: con un campo de instancia, el cancel de una vista anterior — que el SDK
+        // puede disparar DESPUÉS de haber arrancado la siguiente — ponía el flag a true y
+        // congelaba la vista nueva el resto de la ruta, con todos sus streams vivos.
+        val isCancelled = AtomicBoolean(false)
         ViewState.setCancelled(false)
 
         val dataflow = context.streamSextupleFieldSettings()
@@ -134,7 +155,7 @@ abstract class CustomSextupleTypeBase(
 
             ) { (settings, generalSettings), userProfile ->
                 SextupleGlobalConfigState(settings, generalSettings, userProfile)
-            }
+            }.distinctUntilChanged()
 
 
 
@@ -213,37 +234,37 @@ abstract class CustomSextupleTypeBase(
                                 primaryField,
                                 headwindFlow,
                                 generalSettings,
-                                isCancelledProvider = { isCancelled }
+                                isCancelledProvider = { isCancelled.get() }
                             ) else previewFlow()
                             val secondFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                                 secondaryField,
                                 headwindFlow,
                                 generalSettings,
-                                isCancelledProvider = { isCancelled }
+                                isCancelledProvider = { isCancelled.get() }
                             ) else previewFlow()
                             val thirdFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                                 thirdField,
                                 headwindFlow,
                                 generalSettings,
-                                isCancelledProvider = { isCancelled }
+                                isCancelledProvider = { isCancelled.get() }
                             ) else previewFlow()
                             val fourthFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                                 fourthField,
                                 headwindFlow,
                                 generalSettings,
-                                isCancelledProvider = { isCancelled }
+                                isCancelledProvider = { isCancelled.get() }
                             ) else previewFlow()
                             val fifthFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                                 fifthField,
                                 headwindFlow,
                                 generalSettings,
-                                isCancelledProvider = { isCancelled }
+                                isCancelledProvider = { isCancelled.get() }
                             ) else previewFlow()
                             val sixthFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
                                 sixthField,
                                 headwindFlow,
                                 generalSettings,
-                                isCancelledProvider = { isCancelled }
+                                isCancelledProvider = { isCancelled.get() }
                             ) else previewFlow()
                             val combinedFlow1 = combine(
                                 firstFieldFlow,
@@ -281,10 +302,15 @@ abstract class CustomSextupleTypeBase(
                                     state
                                 )
                             }
-                        }.conflate()
+                        }
+                        // La vista es función pura de los 6 estados más la config: si la tupla
+                        // repite, la composición Glance y el updateView por Binder que vendrían
+                        // detrás son trabajo tirado. StreamState/DataPoint son data class.
+                        .distinctUntilChanged()
+                        .conflate()
                         .onEach { result ->
 
-                        if (isCancelled) {
+                        if (isCancelled.get()) {
                             Timber.d("SEXTUPLE Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
                         }
@@ -369,12 +395,12 @@ abstract class CustomSextupleTypeBase(
                             }
 
                             try {
-                                if (isCancelled) {
+                                if (isCancelled.get()) {
                                     Timber.d("SEXTUPLE Skipping composition, job cancelled: $extension $globalIndex")
                                     return@onEach
                                 }
                                 withContext(Dispatchers.Main) {
-                                    if (isCancelled) return@withContext
+                                    if (isCancelled.get()) return@withContext
                                     val newView = glance.compose(context, DpSize.Unspecified) {
                                         SextupleScreenSelector(
                                             fieldNumber,
@@ -424,14 +450,14 @@ abstract class CustomSextupleTypeBase(
                                             sixthFieldState = sixthFieldState as? StreamState
                                         )
                                     }.remoteViews
-                                    if (!isCancelled) emitter.updateView(newView)
+                                    if (!isCancelled.get()) emitter.updateView(newView)
                                 }
                             } catch (e: Exception) {
                                 if (e is CancellationException) {
                                     Timber.d("SEXTUPLE View update cancelled normally: $extension $globalIndex")
                                 } else {
                                     Timber.e(e, "SEXTUPLE Error composing/updating view: $extension $globalIndex")
-                                    if (coroutineContext.isActive && !isCancelled) {
+                                    if (coroutineContext.isActive && !isCancelled.get()) {
                                         throw e
                                     }
                                 }
@@ -455,7 +481,7 @@ abstract class CustomSextupleTypeBase(
 
                             when {
 
-                                cause is CancellationException && isCancelled -> {
+                                cause is CancellationException && isCancelled.get() -> {
                                     Timber.d("SEXTUPLE No se reintenta el flujo cancelado por el emitter: $extension $globalIndex")
                                     false
                                 }
@@ -493,11 +519,24 @@ abstract class CustomSextupleTypeBase(
 
         emitter.setCancellable {
             try {
-                if (config.preview) return@setCancellable
+                if (config.preview) {
+                    // Cancelar el scope aquí mismo dejaba el editor de perfiles en blanco, así
+                    // que no se cancela en el acto — pero tampoco puede no cancelarse nunca: así
+                    // quedaba un previewFlow por datatype emitiendo cada 2s y componiendo Glance
+                    // contra un emitter muerto durante el resto de la sesión. Se apaga con
+                    // margen: si el editor sigue vivo volverá a llamar a startView y ese preview
+                    // nuevo sustituye a este antes de que expire la gracia.
+                    scope.launch {
+                        delay(Delay.PREVIEW_GRACE.time)
+                        Timber.d("Preview scope self-cancel tras gracia: $extension $globalIndex")
+                        scope.cancel()
+                    }
+                    return@setCancellable
+                }
 
                 Timber.d("SEXTUPLE Emitter.setCancellable: extension=$extension index=$globalIndex")
 
-                isCancelled = true
+                isCancelled.set(true)
                 ViewState.setCancelled(true)
                 configjob.cancel()
                 viewjob.cancel()

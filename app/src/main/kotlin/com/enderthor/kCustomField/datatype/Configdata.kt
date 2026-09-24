@@ -159,8 +159,11 @@ enum class KarooAction(val action: String, val label: String, val icon: Int, val
     SPEED(DataType.Type.SPEED, "Speed", R.drawable.ic_speed, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "speed"),
     TEMPERATURE(DataType.Type.TEMPERATURE, "Temperature", R.drawable.ic_temperature, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     TIMETODEST(DataType.Type.TIME_TO_DESTINATION, "Time to Dest.", R.drawable.ic_time_to_dest, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
-    TIRE_PRESSURE_FRONT(DataType.Type.TIRE_PRESSURE_FRONT, "Tire Pressure Front", R.drawable.ic_tire_pressure_front, R.color.hh_success_green_700, R.color.hh_success_green_400, "pressure", "none"),
-    TIRE_PRESSURE_REAR(DataType.Type.TIRE_PRESSURE_REAR, "Tire Pressure Rear", R.drawable.ic_tire_pressure_rear, R.color.hh_success_green_700, R.color.hh_success_green_400, "pressure", "none"),
+    // "pressure" estaba en la ranura `zone` (que getColorZone no conoce → no hacía nada) en vez
+    // de en `convert`, así que la conversión kPa→bar/psi de convertValue nunca se ejecutaba y el
+    // campo mostraba kPa crudos, ignorando el sistema de unidades del perfil.
+    TIRE_PRESSURE_FRONT(DataType.Type.TIRE_PRESSURE_FRONT, "Tire Pressure Front", R.drawable.ic_tire_pressure_front, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "pressure"),
+    TIRE_PRESSURE_REAR(DataType.Type.TIRE_PRESSURE_REAR, "Tire Pressure Rear", R.drawable.ic_tire_pressure_rear, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "pressure"),
     TORQUE(DataType.Type.TORQUE_EFFECTIVENESS, "Torque", R.drawable.ic_torque, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none", true),
     TSS(DataType.Type.TRAINING_STRESS_SCORE, "TSS", R.drawable.ic_tss, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
     VAM(DataType.Type.VERTICAL_SPEED, "VAM3s", R.drawable.ic_vam, R.color.hh_success_green_700, R.color.hh_success_green_400, "none", "none"),
@@ -319,7 +322,10 @@ enum class RefreshTime( val time: Long) {
 }
 
 enum class Delay( val time: Long) {
-    PREVIEW (2000L), RETRY_SHORT (1500L), RETRY_LONG (6000L),
+    // PREVIEW_GRACE: margen entre que el host cancela el emitter de un preview y que apagamos
+    // su scope. Cancelar en el acto dejaba el editor de perfiles en blanco; no cancelar nunca
+    // dejaba un previewFlow por datatype vivo el resto de la sesión.
+    PREVIEW (2000L), PREVIEW_GRACE (10000L), RETRY_SHORT (1500L), RETRY_LONG (6000L),
 }
 
 @Serializable
