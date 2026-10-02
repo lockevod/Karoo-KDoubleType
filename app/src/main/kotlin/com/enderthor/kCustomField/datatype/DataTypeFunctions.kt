@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.FlowPreview
+import com.enderthor.kCustomField.BuildConfig
 import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.getZone
 import com.enderthor.kCustomField.extensions.slopeZones
@@ -51,7 +52,7 @@ class StickyStreamState private constructor() {
         private val lastValidStates = object : LinkedHashMap<String, Pair<Any, Long>>(MAX_STATES, 0.75f, true) {
             override fun removeEldestEntry(eldest: Map.Entry<String, Pair<Any, Long>>) = size > MAX_STATES
         }
-        private const val STICKY_TIMEOUT_MS = 7000L
+        internal const val STICKY_TIMEOUT_MS = 7000L
 
         // synchronized: con accessOrder=true hasta un get() muta el LinkedHashMap, y este
         // mapa se comparte entre los colectores concurrentes de todos los campos (IO pool).
@@ -80,6 +81,44 @@ class StickyStreamState private constructor() {
         fun invalidate(actionName: String) = synchronized(lastValidStates) {
             lastValidStates.remove(actionName)
         }
+    }
+}
+
+
+// Paso por emisión de getFieldFlow: sticky primero, dedup DESPUÉS. Con dedup sobre el estado
+// crudo, un NotAvailable repetido se descartaba y el sticky nunca se re-evaluaba → el último
+// valor se quedaba congelado para siempre. Así cada repetición vuelve a pasar por process()
+// (expira a los 7s, y un Streaming repetido refresca el timestamp). Uno por suscripción: cada
+// re-suscripción empieza de cero, así que el re-seed tras el timeout sigue llegando downstream.
+internal class StickyEmitter(
+    private val actionName: String,
+    private val isStickyExtStream: Boolean,
+    private val extStickyTimeoutMs: Long,
+    private val stickyTimeoutMs: Long = StickyStreamState.STICKY_TIMEOUT_MS,
+) {
+    private var lastEmitted: Any? = null
+
+    /** Devuelve el estado a emitir, o null si es un duplicado. */
+    fun next(state: Any): Any? {
+        // KSafe: Streaming es el ÚNICO estado "con dato". Idle (fin de ride:
+        // el productor lo emite a propósito para que no se muestren los
+        // totales del ride anterior como vivos) y NotAvailable (toggle off)
+        // pasan tal cual, sin sticky. El sticky extendido solo puentea el
+        // Searching transitorio de la re-suscripción tras timeout.
+        val processedState = when {
+            isStickyExtStream && (state is StreamState.Idle || state is StreamState.NotAvailable) -> {
+                // Estado "sin dato" deliberado: limpia el sticky para que el
+                // Searching de la re-suscripción tras el timeout no muestre el
+                // valor del ride anterior un frame antes de que llegue el Idle.
+                StickyStreamState.invalidate(actionName)
+                state
+            }
+            isStickyExtStream -> StickyStreamState.process(state, actionName, extStickyTimeoutMs)
+            else -> StickyStreamState.process(state, actionName, stickyTimeoutMs)
+        }
+        if (processedState == lastEmitted) return null
+        lastEmitted = processedState
+        return processedState
     }
 }
 
@@ -147,6 +186,7 @@ fun convertValue(
     val value = when (type) {
         DataType.Type.ELEVATION_REMAINING -> dataPoint?.values?.get(DataType.Field.ASCENT_REMAINING)
         DataType.Type.DISTANCE_TO_DESTINATION -> dataPoint?.values?.get(DataType.Field.DISTANCE_TO_DESTINATION)
+        DataType.Type.TIME_TO_DESTINATION -> dataPoint?.values?.get(DataType.Field.TIME_TO_DESTINATION)
         DataType.Type.VERTICAL_SPEED, DataType.Type.AVERAGE_VERTICAL_SPEED_30S ->
             dataPoint?.values?.get(DataType.Field.VERTICAL_SPEED)
         DataType.Type.SHIFTING_FRONT_GEAR -> dataPoint?.values?.get(DataType.Field.SHIFTING_FRONT_GEAR)
@@ -515,37 +555,26 @@ fun KarooSystemService.getFieldFlow(
                                 }
                                 else -> {
                                     Timber.e(e, "Error en streamDataFlow")
-                                    emit(StreamState.NotAvailable)
+                                    // Fallo interno: dato DESCONOCIDO, no "sin dato". Searching lo
+                                    // puentea el sticky y no dispara el hide-empty.
+                                    emit(StreamState.Searching)
                                 }
                             }
                         }
                         .timeout(extStreamTimeout.milliseconds)
                 }
 
-                // OPTIMIZACIÓN: aplicar distinctUntilChanged antes del collect
-                streamFlow.distinctUntilChanged().collect { state ->
-                    // KSafe: Streaming es el ÚNICO estado "con dato". Idle (fin de ride:
-                    // el productor lo emite a propósito para que no se muestren los
-                    // totales del ride anterior como vivos) y NotAvailable (toggle off)
-                    // pasan tal cual, sin sticky. El sticky extendido solo puentea el
-                    // Searching transitorio de la re-suscripción tras timeout.
-                    val processedState = when {
-                        isStickyExtStream && (state is StreamState.Idle || state is StreamState.NotAvailable) -> {
-                            // Estado "sin dato" deliberado: limpia el sticky para que el
-                            // Searching de la re-suscripción tras el timeout no muestre el
-                            // valor del ride anterior un frame antes de que llegue el Idle.
-                            StickyStreamState.invalidate(action.name)
-                            state
-                        }
-                        isStickyExtStream -> StickyStreamState.process(state, action.name, extStickyTimeout)
-                        else -> StickyStreamState.process(state, action.name)
-                    }
-                    emit(processedState)
+                // Dedup DESPUÉS del sticky (ver StickyEmitter). Uno por iteración: cada
+                // re-suscripción empieza de cero y el re-seed tras el timeout llega downstream.
+                val stickyEmitter = StickyEmitter(action.name, isStickyExtStream, extStickyTimeout)
+                streamFlow.collect { state ->
+                    if (BuildConfig.DEBUG) Timber.d("RAWSTATE ${action.name} raw=$state")
+                    stickyEmitter.next(state)?.let { emit(it) }
                 }
 
                 // collect solo retorna si el flujo se COMPLETÓ. Y se completa en silencio en el
                 // camino de error: el operador `catch` de arriba se traga la excepción, emite
-                // NotAvailable y da el flujo por terminado (catch completa, no relanza). Sin este
+                // Searching y da el flujo por terminado (catch completa, no relanza). Sin este
                 // delay el `while` volvía a suscribirse al instante — un bucle a tope de CPU
                 // registrando consumers Binder justo cuando el sistema Karoo está caído, que es
                 // cuando menos batería hay que gastar. Los timeouts NO pasan por aquí (van
@@ -564,7 +593,7 @@ fun KarooSystemService.getFieldFlow(
                     }
                     else -> {
                         Timber.e(e, "Error en getFieldFlow para ${action.name}")
-                        emit(StreamState.NotAvailable)
+                        emit(StreamState.Searching)
                         delay(WAIT_STREAMS_SHORT)
                     }
                 }

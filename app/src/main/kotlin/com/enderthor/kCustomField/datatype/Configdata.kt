@@ -68,6 +68,13 @@ data class SextupleResultData(
     val globalConfig: SextupleGlobalConfigState
 )
 
+data class TripleResultData(
+    val firstState: Any,
+    val secondState: Any,
+    val thirdState: Any,
+    val globalConfig: TripleGlobalConfigState
+)
+
 enum class Headwind (val type: String) {
     DIFF(DataType.dataTypeId("karoo-headwind", "headwind")),SPEED(DataType.dataTypeId("karoo-headwind", "headwindSpeed"))
 }
@@ -269,6 +276,7 @@ data class DoubleFieldSettings(
     var secondfield: DoubleFieldType = DoubleFieldType(KarooAction.SLOPE, true),
     val ishorizontal: Boolean = true,
     val isenabled: Boolean = true,
+    val hideEmpty: Boolean = false,
     )
 
 //ADDED
@@ -283,6 +291,16 @@ data class SextupleFieldSettings(
     var sixthfield: DoubleFieldType = DoubleFieldType(KarooAction.AVERAGE_POWER, true),
     //val ishorizontal: Boolean = true,
     val isenabled: Boolean = true,
+)
+
+@Serializable
+data class TripleFieldSettings(
+    var index: Int = 0,
+    var onefield: DoubleFieldType = DoubleFieldType(KarooAction.ELEV_GAIN, false),
+    var secondfield: DoubleFieldType = DoubleFieldType(KarooAction.ELEV_LOSS, false),
+    var thirdfield: DoubleFieldType = DoubleFieldType(KarooAction.SLOPE, true),
+    val ishorizontal: Boolean = true,
+    val hideEmpty: Boolean = false,
 )
 
 @Serializable
@@ -359,6 +377,12 @@ data class SextupleGlobalConfigState(
     val userProfile: UserProfile? = null
 )
 
+data class TripleGlobalConfigState(
+    val settings: List<TripleFieldSettings>,
+    val generalSettings: GeneralSettings,
+    val userProfile: UserProfile? = null
+)
+
 data class ClimbGlobalConfigState(
     val settings: List<ClimbFieldSettings>,
     val generalSettings: GeneralSettings,
@@ -369,6 +393,12 @@ data class ClimbGlobalConfigState(
 val defaultGeneralSettings = Json.encodeToString(GeneralSettings())
 val previewDoubleFieldSettings = listOf(DoubleFieldSettings(index=0),DoubleFieldSettings(1, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),true,true),DoubleFieldSettings(2, DoubleFieldType(KarooAction.IF, false),DoubleFieldType(KarooAction.TSS, false),false,true),DoubleFieldSettings(3, DoubleFieldType(KarooAction.ELEV_GAIN, false),DoubleFieldType(KarooAction.ELEV_REMAIN,false),false,true),DoubleFieldSettings(4, DoubleFieldType(KarooAction.PEDAL_BALANCE, false),DoubleFieldType(KarooAction.AVERAGE_PEDAL_BALANCE, true),false,true),DoubleFieldSettings(5, DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.WPRIME_BALANCE, true),false,true))
 val previewSextupleFieldSettings = listOf(SextupleFieldSettings(index=0),SextupleFieldSettings(1, DoubleFieldType(KarooAction.SPEED, false),DoubleFieldType(KarooAction.SLOPE, true),DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),DoubleFieldType(KarooAction.HR, true), sixthfield = DoubleFieldType(KarooAction.AVERAGE_POWER, true),true), SextupleFieldSettings(2, DoubleFieldType(KarooAction.SPEED, false),DoubleFieldType(KarooAction.SLOPE, true),DoubleFieldType(KarooAction.CADENCE, false),DoubleFieldType(KarooAction.POWER3s, true),DoubleFieldType(KarooAction.HR, true), sixthfield = DoubleFieldType(KarooAction.AVERAGE_POWER, true),true))
+val previewTripleFieldSettings = listOf(
+    TripleFieldSettings(index = 0),
+    TripleFieldSettings(1, DoubleFieldType(KarooAction.SPEED, false), DoubleFieldType(KarooAction.CADENCE, false), DoubleFieldType(KarooAction.POWER3s, true), true),
+    TripleFieldSettings(2, DoubleFieldType(KarooAction.HR, true), DoubleFieldType(KarooAction.POWER3s, true), DoubleFieldType(KarooAction.CADENCE, false), false)
+)
+val defaultTripleFieldSettings = Json.encodeToString(previewTripleFieldSettings)
 val defaultDoubleFieldSettings = Json.encodeToString(previewDoubleFieldSettings)
 val defaultSextupleFieldSettings = Json.encodeToString(previewSextupleFieldSettings)
 val previewOneFieldSettings = listOf(OneFieldSettings(index=0),OneFieldSettings(1, OneFieldType(KarooAction.POWER_NORMALIZED, false,

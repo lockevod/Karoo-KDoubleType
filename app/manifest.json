@@ -3,10 +3,10 @@
   "packageName": "com.enderthor.kCustomField",
   "latestApkUrl": "https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.apk",
   "iconUrl": "https://github.com/lockevod/Karoo-KDoubleType/releases/latest/download/kdouble.png",
-  "latestVersion": "4.5.0",
-  "latestVersionCode": 202609071,
+  "latestVersion": "4.6.0",
+  "latestVersionCode": 202610021,
   "developer": "github.com/lockevod",
-  "description": "This extension for Karoo allows to use custom fields with double types (HR,Power,etc). Includes vertical and horizontal layout, smart fields, rolling fields, W prime, FTP and bell option",
-  "releaseNotes": "Fixes: VAM, ascent remaining and distance to destination no longer show 0 when there is no data; fields no longer freeze for the rest of a ride; tyre pressure follows your unit settings and keeps its decimal; gear fields show the right value; distance truncates like the native Karoo field (12.6 km shows 12, not 13); corrupted settings recover instead of breaking the app. Less battery and CPU: fields only redraw when something changes. Climb fields switch as soon as the climb starts, and unit or zone changes apply immediately. Upgrading from below 3.4.0 still needs uninstall and reinstall - note your settings first.",
+  "description": "This extension for Karoo adds custom data fields: double, triple and sextuple fields (HR, power, etc.) with vertical and horizontal layouts, rolling fields, smart climb field, W prime, FTP and a bell option",
+  "releaseNotes": "New Triple field: three metrics in one slot, as a row or a column (KTriple One starts with Ascent / Descent / Grade). New optional switch on Double and Triple fields hides a metric that has no data, for example Distance Remain without a route, so the rest use the space. A sensor that drops or a route you clear no longer leaves its old value frozen on screen. Upgrading from below 3.4.0 still needs uninstall and reinstall - note your settings first.",
   "tags": ["entertainment","health","performance"]
 }

@@ -13,6 +13,11 @@
     <string name="second_field">Segundo Campo</string>
     <string name="third_field">Tercer Campo</string>
     <string name="fourth_field">Cuarto Campo</string>
+    <string name="hide_empty_switch">¿Ocultar métrica sin datos?</string>
+    <string name="switch_coloured_zone">¿Zona coloreada?</string>
+    <string name="switch_horizontal_field">¿Campo horizontal?</string>
+    <string name="switch_enabled_field">¿Campo activado?</string>
+    <string name="switch_climb_always_active">¿Campo de subida siempre activo (sin medidor de subida cuando no hay puerto)?</string>
     <string name="rolling_time_question">¿Tiempo de Rodado?</string>
     <string name="enable_extra_time">¿Habilitar Tiempo Extra para el Primer Campo (x3)?</string>
     <string name="save_rolling">Guardar Rodado</string>
@@ -113,6 +118,12 @@
     <string name="custom_double_vertical_description2">Karoo DualType Five</string>
     <string name="custom_double_vertical_description3">Karoo DualType Six</string>
     <string name="custom_vertical_double2">KDouble Five</string>
+    <string name="custom_triple1">KTriple One</string>
+    <string name="custom_triple_description1">Karoo TripleType One</string>
+    <string name="custom_triple2">KTriple Two</string>
+    <string name="custom_triple_description2">Karoo TripleType Two</string>
+    <string name="custom_triple3">KTriple Three</string>
+    <string name="custom_triple_description3">Karoo TripleType Three</string>
     <string name="custom_rolling1">KRolling One</string>
     <string name="custom_rolling_description1">Karoo Rolling Type One</string>
     <string name="custom_rolling2">KRolling Two</string>

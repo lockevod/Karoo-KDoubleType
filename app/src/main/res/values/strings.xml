@@ -3,6 +3,7 @@
     <!-- Tab names -->
     <string name="tab_field" translatable="false">Custom</string>
     <string name="tab_6field" translatable="false">Sextuple</string>
+    <string name="tab_3field" translatable="false">Triple</string>
     <string name="tab_rolling" translatable="false">Rolling</string>
     <string name="tab_smart" translatable="false">Smart</string>
     <string name="tab_wbal" translatable="false">W\' Bal.</string>
@@ -14,6 +15,11 @@
     <string name="second_field">Second Field</string>
     <string name="third_field">Third Field</string>
     <string name="fourth_field">Fourth Field</string>
+    <string name="hide_empty_switch">Hide metric without data?</string>
+    <string name="switch_coloured_zone">Coloured Zone?</string>
+    <string name="switch_horizontal_field">Horizontal Field?</string>
+    <string name="switch_enabled_field">Enabled Field?</string>
+    <string name="switch_climb_always_active">Climb Field Always Active (No Climber Measure when climber is out)?</string>
     <string name="rolling_time_question" translatable="false">Rolling Time?</string>
     <string name="enable_extra_time">Enable Extra Time for First Field (x3 time)?</string>
     <string name="save_rolling" translatable="false">Save Rolling</string>
@@ -126,6 +132,12 @@
     <string name="custom_sextuple_description2">Karoo SextupleType Two</string>
     <string name="custom_sextuple3">KSextuple Three</string>
     <string name="custom_sextuple_description3">Karoo SextupleType Three</string>
+    <string name="custom_triple1">KTriple One</string>
+    <string name="custom_triple_description1">Karoo TripleType One</string>
+    <string name="custom_triple2">KTriple Two</string>
+    <string name="custom_triple_description2">Karoo TripleType Two</string>
+    <string name="custom_triple3">KTriple Three</string>
+    <string name="custom_triple_description3">Karoo TripleType Three</string>
     <string name="custom_rolling1">KRolling One</string>
     <string name="custom_rolling_description1">Karoo Rolling Type One</string>
     <string name="custom_rolling2">KRolling Two</string>
