@@ -13,6 +13,7 @@ KarooCustomFieldExtension (KarooExtension)
   └─ karooSystem: KarooSystemService        ← connects to Karoo sensor bus
   └─ types: List<DataTypeImpl>
        ├─ CustomDoubleType (×6)             ← horizontal/vertical dual metrics
+       ├─ CustomTripleType (×3)             ← three metrics, row (1x3) or column (3x1)
        ├─ CustomRollingType (×3)            ← cycles between up to 3 metrics
        ├─ CustomClimbType (×1)              ← smart climb composite field
        └─ BellActionDataType (×1)           ← tap-to-beep action field
@@ -50,6 +51,7 @@ All config lives in `DataStore<Preferences>` named `"settings"` (defined as `Con
 | `generalsettings` | `GeneralSettings` | `defaultGeneralSettings` |
 | `doublefieldsettings` | `List<DoubleFieldSettings>` (6 entries, indices 0–5) | `defaultDoubleFieldSettings` |
 | `onefieldsettings` | `List<OneFieldSettings>` (3 entries) | `defaultOneFieldSettings` |
+| `triplefieldsettings` | `List<TripleFieldSettings>` (3 entries) | `defaultTripleFieldSettings` |
 | `climbfieldsettings` | `List<ClimbFieldSettings>` | `defaultClimbFieldSettings` |
 | `wprimebalancesettings` | `WPrimeBalanceSettings` | `defaultWPrimeBalanceSettings` |
 
@@ -66,6 +68,7 @@ Defaults are pre-encoded JSON strings in `Configdata.kt` (e.g. `val defaultGener
 - **Synthetic streams**: `WPRIME_BALANCE`, `VO2MAX`, `FTPG` are computed locally inside `getFieldFlow()`, not streamed from Karoo sensors. State for W′ is held in `WPrimeBalanceState` singleton.
 - **External headwind**: Guarded by `generalSettings.isheadwindenabled`; reads from extension id `karoo-headwind`. If disabled, replaced by `flowOf(StreamHeadWindData(0.0, 0.0))`.
 - **Extension-field pickers**: the `Dropdown*Field` composables in `TabFunctions.kt` build options from `KarooAction.entries`, `.sortedBy { it.name }` (alphabetical), then filter by `generalSettings` toggles — `isheadwindenabled` (HEADWIND), `iskpowerenabled` (`::kpower::`), `iskghostenabled` (`::kghost::`). KPower/KGhost default ON and filtering is **non-destructive** (the currently-selected action is re-added so it stays visible; no reset). HEADWIND is the exception: it resets to `SPEED` when disabled (a headwind field is broken without the extension).
+- **Hide-empty switch**: `hideEmpty` on `DoubleFieldSettings`/`TripleFieldSettings` (default `false`). When set, `isEmptyMetric()` (`EmptyMetric.kt`) hides a metric the Karoo reports as no data, via `visibleIndices()`; never while `Searching`, never in preview, and large slots keep at least 2 metrics. Route metrics (`isRouteMetric`) bypass the sticky cache in `getFieldFlow` so they don't freeze after a route is cleared. Run tests with `./gradlew :app:testDebugUnitTest`.
 - **L/R dual fields** (`powerField = true`): rendered as a single `left/right` pair. `multipleStreamValues()` in `DataTypeFunctions.kt` reads the pair via `MultiFields` (in `Configdata.kt`): two field keys from one `DataPoint`, or `onlyfirst = true` to derive `right = 100 − left` from a single value (native pedal balance). The view shows `--/--` when the stream is not `Streaming`. (KPower no longer publishes balance/dynamics streams — the Karoo shows those natively for a paired meter — so the only KPower fields consumed here are single-value power streams.)
 
 ## Adding a New Metric
@@ -97,6 +100,8 @@ adb install app/release/app-release.apk
 | `datatype/Configdata.kt` | All enums, data classes, default settings, timing constants |
 | `datatype/DataTypeFunctions.kt` | `getFieldFlow()`, zone coloring, value conversion, W′ model |
 | `datatype/CustomDoubleTypeBase.kt` | Base `startView()` for dual-metric fields |
+| `datatype/CustomTripleTypeBase.kt` | Base `startView()` for triple-metric fields |
+| `datatype/EmptyMetric.kt` | Pure hide-empty rule: `isEmptyMetric`, `isRouteMetric`, `visibleIndices` (JVM tests in `app/src/test`) |
 | `datatype/CustomRollingTypeBase.kt` | Base `startView()` for cyclic rolling fields |
 | `datatype/CustomDoubleTypeView.kt` | Glance composables for field rendering |
 | `extensions/Extensions.kt` | DataStore stream helpers, `streamDataFlow`, `streamUserProfile` |
@@ -107,6 +112,7 @@ adb install app/release/app-release.apk
 
 Timber is used throughout. Debug builds log everything; release builds log `WARN+` only. Log prefixes:
 - `"DOUBLE ..."` — dual-metric field events
+- `"TRIPLE ..."` — triple field events
 - `"ROLLING ..."` — rolling field events  
 - `"CLIMB ..."` — climb field events
 
