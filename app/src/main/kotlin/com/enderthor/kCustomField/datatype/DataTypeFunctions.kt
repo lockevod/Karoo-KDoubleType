@@ -539,6 +539,12 @@ fun KarooSystemService.getFieldFlow(
                             StickyStreamState.invalidate(action.name)
                             state
                         }
+                        isRouteMetric(action.action) && (state is StreamState.Idle || state is StreamState.NotAvailable) -> {
+                            // Ruta borrada a mitad de ride: sin esto el sticky devolvía el último
+                            // Streaming y, con el distinctUntilChanged de arriba, el valor se congelaba.
+                            StickyStreamState.invalidate(action.name)
+                            state
+                        }
                         isStickyExtStream -> StickyStreamState.process(state, action.name, extStickyTimeout)
                         else -> StickyStreamState.process(state, action.name)
                     }

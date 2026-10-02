@@ -18,6 +18,7 @@ cardview = "1.0.0"
 foundationAndroid = "1.7.2"
 foundationLayoutAndroid = "1.7.2"
 firebaseInstallationsKtx = "19.0.1"
+junit = "4.13.2"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -55,6 +56,8 @@ timber = { module = "com.jakewharton.timber:timber", version = "5.0.1" }
 androidx-foundation-android = { group = "androidx.compose.foundation", name = "foundation-android", version.ref = "foundationAndroid" }
 androidx-foundation-layout-android = { group = "androidx.compose.foundation", name = "foundation-layout-android", version.ref = "foundationLayoutAndroid" }
 firebase-installations-ktx = { group = "com.google.firebase", name = "firebase-installations-ktx", version.ref = "firebaseInstallationsKtx" }
+
+junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [bundles]
 androidx-lifeycle = ["androidx-lifecycle-runtime-compose", "androidx-lifecycle-viewmodel-compose"]

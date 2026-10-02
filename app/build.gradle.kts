@@ -31,6 +31,9 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 
@@ -53,4 +56,5 @@ dependencies {
     implementation(libs.timber)
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.foundation.layout.android)
+    testImplementation(libs.junit)
 }
