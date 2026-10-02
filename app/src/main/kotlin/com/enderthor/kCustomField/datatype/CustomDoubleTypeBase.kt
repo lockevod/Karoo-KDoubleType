@@ -32,6 +32,7 @@ import io.hammerhead.karooext.internal.ViewEmitter
 
 import com.enderthor.kCustomField.extensions.streamDoubleFieldSettings
 import com.enderthor.kCustomField.extensions.streamGeneralSettings
+import com.enderthor.kCustomField.BuildConfig
 import com.enderthor.kCustomField.R
 
 import com.enderthor.kCustomField.extensions.streamUserProfile
@@ -226,6 +227,7 @@ abstract class CustomDoubleTypeBase(
                     // updateView por Binder que vendrían detrás son trabajo tirado.
                     .distinctUntilChanged()
                     .conflate().onEach { (firstFieldState, secondFieldState, globalConfig) ->
+                        if (BuildConfig.DEBUG) Timber.d("DOUBLE procstate first=$firstFieldState second=$secondFieldState")
 
                         if (isCancelled.get()) {
                             Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")

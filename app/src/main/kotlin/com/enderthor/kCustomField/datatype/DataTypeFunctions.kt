@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.FlowPreview
+import com.enderthor.kCustomField.BuildConfig
 import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.getZone
 import com.enderthor.kCustomField.extensions.slopeZones
@@ -524,6 +525,7 @@ fun KarooSystemService.getFieldFlow(
 
                 // OPTIMIZACIÓN: aplicar distinctUntilChanged antes del collect
                 streamFlow.distinctUntilChanged().collect { state ->
+                    if (BuildConfig.DEBUG) Timber.d("RAWSTATE ${action.name} raw=$state")
                     // KSafe: Streaming es el ÚNICO estado "con dato". Idle (fin de ride:
                     // el productor lo emite a propósito para que no se muestren los
                     // totales del ride anterior como vivos) y NotAvailable (toggle off)
