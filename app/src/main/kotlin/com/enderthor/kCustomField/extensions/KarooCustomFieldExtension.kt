@@ -16,6 +16,7 @@ import com.enderthor.kCustomField.datatype.BellActionDataType
 import com.enderthor.kCustomField.datatype.CustomClimbType
 import com.enderthor.kCustomField.datatype.CustomDoubleType
 import com.enderthor.kCustomField.datatype.CustomSextupleType
+import com.enderthor.kCustomField.datatype.CustomTripleType
 import com.enderthor.kCustomField.datatype.CustomRollingType
 
 
@@ -55,6 +56,9 @@ class KarooCustomFieldExtension : KarooExtension("kcustomfield", BuildConfig.VER
             CustomSextupleType(karooSystem,  "sextuple-one", 0) ,
             CustomSextupleType(karooSystem,  "sextuple-two", 1) ,
             CustomSextupleType(karooSystem,  "sextuple-three", 2) ,
+            CustomTripleType(karooSystem,  "triple-one", 0) ,
+            CustomTripleType(karooSystem,  "triple-two", 1) ,
+            CustomTripleType(karooSystem,  "triple-three", 2) ,
             CustomRollingType(karooSystem, "rolling-one", 0),
             CustomRollingType(karooSystem,  "rolling-two", 1),
             CustomRollingType(karooSystem,  "rolling-three", 2),

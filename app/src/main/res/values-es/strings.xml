@@ -113,6 +113,12 @@
     <string name="custom_double_vertical_description2">Karoo DualType Five</string>
     <string name="custom_double_vertical_description3">Karoo DualType Six</string>
     <string name="custom_vertical_double2">KDouble Five</string>
+    <string name="custom_triple1">KTriple Uno</string>
+    <string name="custom_triple_description1">Karoo Tipo Triple Uno</string>
+    <string name="custom_triple2">KTriple Dos</string>
+    <string name="custom_triple_description2">Karoo Tipo Triple Dos</string>
+    <string name="custom_triple3">KTriple Tres</string>
+    <string name="custom_triple_description3">Karoo Tipo Triple Tres</string>
     <string name="custom_rolling1">KRolling One</string>
     <string name="custom_rolling_description1">Karoo Rolling Type One</string>
     <string name="custom_rolling2">KRolling Two</string>

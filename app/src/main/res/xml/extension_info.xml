@@ -59,6 +59,24 @@
         icon="@drawable/ic_field"
         typeId="sextuple-three" />
     <DataType
+        description="@string/custom_triple_description1"
+        displayName="@string/custom_triple1"
+        graphical="true"
+        icon="@drawable/ic_field"
+        typeId="triple-one" />
+    <DataType
+        description="@string/custom_triple_description2"
+        displayName="@string/custom_triple2"
+        graphical="true"
+        icon="@drawable/ic_field"
+        typeId="triple-two" />
+    <DataType
+        description="@string/custom_triple_description3"
+        displayName="@string/custom_triple3"
+        graphical="true"
+        icon="@drawable/ic_field"
+        typeId="triple-three" />
+    <DataType
         description="@string/custom_rolling_description1"
         displayName="@string/custom_rolling1"
         graphical="true"
