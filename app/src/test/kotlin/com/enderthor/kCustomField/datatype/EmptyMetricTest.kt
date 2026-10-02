@@ -52,6 +52,20 @@ class EmptyMetricTest {
         )
     }
 
+    @Test fun elevRemainWithKeyIsNotEmpty() = assertFalse(
+        isEmptyMetric(
+            streaming(DataType.Type.ELEVATION_REMAINING, mapOf(DataType.Field.ASCENT_REMAINING to 250.0)),
+            KarooAction.ELEV_REMAIN
+        )
+    )
+
+    @Test fun timeToDestStreamingWithoutNamedKeyIsNotEmpty() = assertFalse(
+        isEmptyMetric(
+            streaming(DataType.Type.TIME_TO_DESTINATION, mapOf(DataType.Field.SINGLE to 600.0)),
+            KarooAction.TIMETODEST
+        )
+    )
+
     @Test fun streamingOtherTypeIsNotEmpty() = assertFalse(
         isEmptyMetric(streaming(DataType.Type.HEART_RATE, mapOf(DataType.Field.SINGLE to 140.0)), KarooAction.HR)
     )
