@@ -7,12 +7,7 @@ import io.hammerhead.karooext.models.StreamState
 private val optionalKeys = mapOf(
     DataType.Type.DISTANCE_TO_DESTINATION to DataType.Field.DISTANCE_TO_DESTINATION,
     DataType.Type.ELEVATION_REMAINING to DataType.Field.ASCENT_REMAINING,
-)
-
-private val routeTypes = setOf(
-    DataType.Type.DISTANCE_TO_DESTINATION,
-    DataType.Type.TIME_TO_DESTINATION,
-    DataType.Type.ELEVATION_REMAINING,
+    DataType.Type.TIME_TO_DESTINATION to DataType.Field.TIME_TO_DESTINATION,
 )
 
 // Sin dato: Idle/NotAvailable, o Streaming sin la clave opcional. Searching/null NO cuentan
@@ -22,8 +17,6 @@ fun isEmptyMetric(state: StreamState?, action: KarooAction): Boolean = when (sta
     is StreamState.Streaming -> optionalKeys[action.action]?.let { it !in state.dataPoint.values } ?: false
     else -> false
 }
-
-fun isRouteMetric(actionType: String): Boolean = actionType in routeTypes
 
 // Índices a mostrar: todos si la opción está apagada, si todo está vacío o si quedarían menos de minVisible.
 fun visibleIndices(hideEmpty: Boolean, empty: List<Boolean>, minVisible: Int): List<Int> {

@@ -148,6 +148,7 @@ fun convertValue(
     val value = when (type) {
         DataType.Type.ELEVATION_REMAINING -> dataPoint?.values?.get(DataType.Field.ASCENT_REMAINING)
         DataType.Type.DISTANCE_TO_DESTINATION -> dataPoint?.values?.get(DataType.Field.DISTANCE_TO_DESTINATION)
+        DataType.Type.TIME_TO_DESTINATION -> dataPoint?.values?.get(DataType.Field.TIME_TO_DESTINATION)
         DataType.Type.VERTICAL_SPEED, DataType.Type.AVERAGE_VERTICAL_SPEED_30S ->
             dataPoint?.values?.get(DataType.Field.VERTICAL_SPEED)
         DataType.Type.SHIFTING_FRONT_GEAR -> dataPoint?.values?.get(DataType.Field.SHIFTING_FRONT_GEAR)
@@ -516,15 +517,23 @@ fun KarooSystemService.getFieldFlow(
                                 }
                                 else -> {
                                     Timber.e(e, "Error en streamDataFlow")
-                                    emit(StreamState.NotAvailable)
+                                    // Fallo interno: dato DESCONOCIDO, no "sin dato". Searching lo
+                                    // puentea el sticky y no dispara el hide-empty.
+                                    emit(StreamState.Searching)
                                 }
                             }
                         }
                         .timeout(extStreamTimeout.milliseconds)
                 }
 
-                // OPTIMIZACIÓN: aplicar distinctUntilChanged antes del collect
-                streamFlow.distinctUntilChanged().collect { state ->
+                // Dedup DESPUÉS del sticky, no antes: con distinctUntilChanged sobre el estado
+                // crudo, un NotAvailable repetido se descartaba y el sticky nunca se re-evaluaba
+                // → el último valor se quedaba congelado para siempre. Así cada repetición vuelve
+                // a pasar por process() (expira a los 7s, y un Streaming repetido refresca el
+                // timestamp). Declarado por iteración: cada re-suscripción empieza de cero, así
+                // que el re-seed tras el timeout sigue llegando downstream.
+                var lastEmitted: Any? = null
+                streamFlow.collect { state ->
                     if (BuildConfig.DEBUG) Timber.d("RAWSTATE ${action.name} raw=$state")
                     // KSafe: Streaming es el ÚNICO estado "con dato". Idle (fin de ride:
                     // el productor lo emite a propósito para que no se muestren los
@@ -539,21 +548,18 @@ fun KarooSystemService.getFieldFlow(
                             StickyStreamState.invalidate(action.name)
                             state
                         }
-                        isRouteMetric(action.action) && (state is StreamState.Idle || state is StreamState.NotAvailable) -> {
-                            // Ruta borrada a mitad de ride: sin esto el sticky devolvía el último
-                            // Streaming y, con el distinctUntilChanged de arriba, el valor se congelaba.
-                            StickyStreamState.invalidate(action.name)
-                            state
-                        }
                         isStickyExtStream -> StickyStreamState.process(state, action.name, extStickyTimeout)
                         else -> StickyStreamState.process(state, action.name)
                     }
-                    emit(processedState)
+                    if (processedState != lastEmitted) {
+                        lastEmitted = processedState
+                        emit(processedState)
+                    }
                 }
 
                 // collect solo retorna si el flujo se COMPLETÓ. Y se completa en silencio en el
                 // camino de error: el operador `catch` de arriba se traga la excepción, emite
-                // NotAvailable y da el flujo por terminado (catch completa, no relanza). Sin este
+                // Searching y da el flujo por terminado (catch completa, no relanza). Sin este
                 // delay el `while` volvía a suscribirse al instante — un bucle a tope de CPU
                 // registrando consumers Binder justo cuando el sistema Karoo está caído, que es
                 // cuando menos batería hay que gastar. Los timeouts NO pasan por aquí (van
@@ -572,7 +578,7 @@ fun KarooSystemService.getFieldFlow(
                     }
                     else -> {
                         Timber.e(e, "Error en getFieldFlow para ${action.name}")
-                        emit(StreamState.NotAvailable)
+                        emit(StreamState.Searching)
                         delay(WAIT_STREAMS_SHORT)
                     }
                 }

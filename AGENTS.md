@@ -61,14 +61,14 @@ Defaults are pre-encoded JSON strings in `Configdata.kt` (e.g. `val defaultGener
 
 ## Key Patterns
 
-- **Sticky stream state**: `StickyStreamState.process()` in `DataTypeFunctions.kt` caches the last valid `StreamState.Streaming` for 7 seconds to survive brief sensor dropout.
+- **Sticky stream state**: `StickyStreamState.process()` in `DataTypeFunctions.kt` caches the last valid `StreamState.Streaming` for 7 seconds to survive brief sensor dropout. `getFieldFlow` dedups AFTER the sticky (per subscription), not on the raw stream, so a repeated `NotAvailable`/`Idle`/`Searching` re-evaluates expiry and an old value cannot freeze; a repeated `Streaming` refreshes the timestamp. Internal stream errors (the `catch` inside the loop) emit `Searching` (unknown), not `NotAvailable` (no data).
 - **Cancellation guard**: `@Volatile private var isCancelled` + global `ViewState.setCancelled()` — check before every `emitter.updateView()` call.
 - **Hardware throttle**: `karooSystem.hardwareType == HardwareType.K2` → use `RefreshTime.MID` (800 ms) instead of `RefreshTime.HALF` (200 ms). Always coerce refresh to `≥ 100L`.
 - **Retry pattern**: `.retryWhen { cause, attempt -> delay(…); true }` — max 4 retries with `RETRY_SHORT`/`RETRY_LONG` delays from `Configdata.kt`.
 - **Synthetic streams**: `WPRIME_BALANCE`, `VO2MAX`, `FTPG` are computed locally inside `getFieldFlow()`, not streamed from Karoo sensors. State for W′ is held in `WPrimeBalanceState` singleton.
 - **External headwind**: Guarded by `generalSettings.isheadwindenabled`; reads from extension id `karoo-headwind`. If disabled, replaced by `flowOf(StreamHeadWindData(0.0, 0.0))`.
 - **Extension-field pickers**: the `Dropdown*Field` composables in `TabFunctions.kt` build options from `KarooAction.entries`, `.sortedBy { it.name }` (alphabetical), then filter by `generalSettings` toggles — `isheadwindenabled` (HEADWIND), `iskpowerenabled` (`::kpower::`), `iskghostenabled` (`::kghost::`). KPower/KGhost default ON and filtering is **non-destructive** (the currently-selected action is re-added so it stays visible; no reset). HEADWIND is the exception: it resets to `SPEED` when disabled (a headwind field is broken without the extension).
-- **Hide-empty switch**: `hideEmpty` on `DoubleFieldSettings`/`TripleFieldSettings` (default `false`). When set, `isEmptyMetric()` (`EmptyMetric.kt`) hides a metric the Karoo reports as no data, via `visibleIndices()`; never while `Searching`, never in preview, and large slots keep at least 2 metrics. On route metrics (`isRouteMetric`: DISTANCE_TO_DESTINATION, TIME_TO_DESTINATION, ELEVATION_REMAINING) only `Idle`/`NotAvailable` skip the sticky in `getFieldFlow` and invalidate it, so they don't freeze after a route is cleared; `Streaming` is still cached and `Searching` is still bridged by the 7 s sticky. Run tests with `./gradlew :app:testDebugUnitTest`.
+- **Hide-empty switch**: `hideEmpty` on `DoubleFieldSettings`/`TripleFieldSettings` (default `false`). When set, `isEmptyMetric()` (`EmptyMetric.kt`) hides a metric the Karoo reports as no data, via `visibleIndices()`; never while `Searching`, never in preview, and large slots keep at least 2 metrics. Route metrics have no special sticky path: after a route is cleared they expire through the normal 7 s sticky (see "Sticky stream state"). Run tests with `./gradlew :app:testDebugUnitTest`.
 - **L/R dual fields** (`powerField = true`): rendered as a single `left/right` pair. `multipleStreamValues()` in `DataTypeFunctions.kt` reads the pair via `MultiFields` (in `Configdata.kt`): two field keys from one `DataPoint`, or `onlyfirst = true` to derive `right = 100 − left` from a single value (native pedal balance). The view shows `--/--` when the stream is not `Streaming`. (KPower no longer publishes balance/dynamics streams — the Karoo shows those natively for a paired meter — so the only KPower fields consumed here are single-value power streams.)
 
 ## Adding a New Metric
@@ -101,7 +101,7 @@ adb install app/release/app-release.apk
 | `datatype/DataTypeFunctions.kt` | `getFieldFlow()`, zone coloring, value conversion, W′ model |
 | `datatype/CustomDoubleTypeBase.kt` | Base `startView()` for dual-metric fields |
 | `datatype/CustomTripleTypeBase.kt` | Base `startView()` for triple-metric fields |
-| `datatype/EmptyMetric.kt` | Pure hide-empty rule: `isEmptyMetric`, `isRouteMetric`, `visibleIndices` (JVM tests in `app/src/test`) |
+| `datatype/EmptyMetric.kt` | Pure hide-empty rule: `isEmptyMetric`, `visibleIndices` (JVM tests in `app/src/test`) |
 | `datatype/CustomRollingTypeBase.kt` | Base `startView()` for cyclic rolling fields |
 | `datatype/CustomDoubleTypeView.kt` | Glance composables for field rendering |
 | `extensions/Extensions.kt` | DataStore stream helpers, `streamDataFlow`, `streamUserProfile` |

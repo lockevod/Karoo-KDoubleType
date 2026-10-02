@@ -59,9 +59,16 @@ class EmptyMetricTest {
         )
     )
 
-    @Test fun timeToDestStreamingWithoutNamedKeyIsNotEmpty() = assertFalse(
+    @Test fun timeToDestStreamingMissingKeyIsEmpty() = assertTrue(
         isEmptyMetric(
             streaming(DataType.Type.TIME_TO_DESTINATION, mapOf(DataType.Field.SINGLE to 600.0)),
+            KarooAction.TIMETODEST
+        )
+    )
+
+    @Test fun timeToDestWithKeyIsNotEmpty() = assertFalse(
+        isEmptyMetric(
+            streaming(DataType.Type.TIME_TO_DESTINATION, mapOf(DataType.Field.TIME_TO_DESTINATION to 600.0)),
             KarooAction.TIMETODEST
         )
     )
@@ -69,14 +76,6 @@ class EmptyMetricTest {
     @Test fun streamingOtherTypeIsNotEmpty() = assertFalse(
         isEmptyMetric(streaming(DataType.Type.HEART_RATE, mapOf(DataType.Field.SINGLE to 140.0)), KarooAction.HR)
     )
-
-    @Test fun routeMetrics() {
-        assertTrue(isRouteMetric(DataType.Type.DISTANCE_TO_DESTINATION))
-        assertTrue(isRouteMetric(DataType.Type.TIME_TO_DESTINATION))
-        assertTrue(isRouteMetric(DataType.Type.ELEVATION_REMAINING))
-        assertFalse(isRouteMetric(DataType.Type.HEART_RATE))
-        assertFalse(isRouteMetric(DataType.Type.DISTANCE))
-    }
 
     @Test fun visibleIndicesOffReturnsAll() =
         assertEquals(listOf(0, 1), visibleIndices(false, listOf(false, true), 1))
