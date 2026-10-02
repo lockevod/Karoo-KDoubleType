@@ -133,6 +133,7 @@ abstract class CustomDoubleTypeBase(
         // congelaba la vista nueva el resto de la ruta, con todos sus streams vivos.
         val isCancelled = AtomicBoolean(false)
         ViewState.setCancelled(false)
+        val effectiveFieldSize = getEffectiveFieldSize(config.gridSize.second, config.textSize)
 
         val dataflow = context.streamDoubleFieldSettings()
             .onStart {
@@ -281,6 +282,19 @@ abstract class CustomDoubleTypeBase(
                                 else -> generalSettings.iscentervertical
                             }
 
+                            // Ocultar mitad sin datos: solo con el switch y nunca en preview (los
+                            // DataPoints de preview solo llevan SINGLE). RollingFieldScreen solo
+                            // soporta SMALL/MEDIUM, así que en tamaños mayores no se oculta nada.
+                            val minVisible = if (effectiveFieldSize == FieldSize.SMALL || effectiveFieldSize == FieldSize.MEDIUM) 1 else 2
+                            val visible = visibleIndices(
+                                settings.hideEmpty && !config.preview,
+                                listOf(
+                                    isEmptyMetric(firstFieldState as? StreamState, firstField(settings).kaction),
+                                    isEmptyMetric(secondFieldState as? StreamState, secondField(settings).kaction)
+                                ),
+                                minVisible
+                            )
+
                             try {
                                 if (isCancelled.get()) {
                                     Timber.d("DOUBLE Skipping composition, job cancelled: $extension $globalIndex")
@@ -289,7 +303,30 @@ abstract class CustomDoubleTypeBase(
                                 withContext(Dispatchers.Main) {
                                     if (isCancelled.get()) return@withContext
                                     val newView = glance.compose(context, DpSize.Unspecified) {
-                                        DoubleScreenSelector(
+                                        if (visible.size == 1) {
+                                            val first = visible[0] == 0
+                                            val rawState = if (first) firstFieldState else secondFieldState
+                                            val kaction = (if (first) firstField(settings) else secondField(settings)).kaction
+                                            RollingFieldScreen(
+                                                if (first) firstvalue else secondvalue,
+                                                isIntField(kaction, false, false, generalSettings.distanceWithDecimals),
+                                                kaction,
+                                                if (first) firstIconcolor else secondIconcolor,
+                                                if (first) firstColorzone else secondColorzone,
+                                                effectiveFieldSize,
+                                                isKaroo,
+                                                clayout,
+                                                windtext,
+                                                winddiff.roundToInt(),
+                                                baseBitmap,
+                                                rawState is StreamState,
+                                                config.textSize,
+                                                if (first) isleftzone else isrightzone,
+                                                config.preview,
+                                                if (first) firstvalueRight else secondvalueRight,
+                                                fieldState = rawState as? StreamState
+                                            )
+                                        } else DoubleScreenSelector(
                                             fieldNumber,
                                             ishorizontal(settings),
                                             firstvalue,
@@ -300,7 +337,7 @@ abstract class CustomDoubleTypeBase(
                                             secondIconcolor,
                                             firstColorzone,
                                             secondColorzone,
-                                            getEffectiveFieldSize(config.gridSize.second, config.textSize),
+                                            effectiveFieldSize,
                                             isKaroo,
                                             clayout,
                                             windtext,

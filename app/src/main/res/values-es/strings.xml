@@ -53,6 +53,7 @@
     <!-- General configuration -->
     <string name="fields_alignment_title">Alineación de Campos</string>
     <string name="use_default_karoo_alignment">¿Usar alineación por defecto de Karoo?</string>
+    <string name="hide_empty_switch">¿Ocultar métrica sin datos?</string>
     <string name="horizontal_alignment_question">¿Alineación horizontal/campos rodantes (icono/texto)?</string>
     <string name="vertical_alignment_question">¿Alineación vertical de campos (icono/texto)?</string>
     <string name="use_headwind_datafield_title">Usar Campo de Datos Headwind</string>

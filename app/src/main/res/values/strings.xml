@@ -60,6 +60,7 @@
     <!-- General configuration -->
     <string name="fields_alignment_title">Fields Alignment</string>
     <string name="use_default_karoo_alignment">Use default Karoo Alignment?</string>
+    <string name="hide_empty_switch">Hide metric without data?</string>
     <string name="horizontal_alignment_question">Horizontal/Rolling Fields alignment (icon/text)?</string>
     <string name="vertical_alignment_question">Vertical Fields alignment (icon/text)?</string>
     <string name="use_headwind_datafield_title">Use Headwind DataField</string>

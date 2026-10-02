@@ -276,6 +276,7 @@ data class DoubleFieldSettings(
     var secondfield: DoubleFieldType = DoubleFieldType(KarooAction.SLOPE, true),
     val ishorizontal: Boolean = true,
     val isenabled: Boolean = true,
+    val hideEmpty: Boolean = false,
     )
 
 //ADDED

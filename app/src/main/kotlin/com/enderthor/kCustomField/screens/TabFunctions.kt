@@ -31,7 +31,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.datatype.DoubleFieldType
 import com.enderthor.kCustomField.datatype.GeneralSettings
 import com.enderthor.kCustomField.datatype.KarooAction
@@ -254,6 +256,7 @@ fun ZoneMultiSwitch(option: Int, checked: Boolean, enabled: Boolean, onCheckedCh
             1 -> Text("Horizontal Field?")
             2 -> Text("Enabled Field?")
             3 -> Text("Climb Field Always Active (No Climber Measure when climber is out)?")
+            4 -> Text(stringResource(R.string.hide_empty_switch))
         }
     }
 }

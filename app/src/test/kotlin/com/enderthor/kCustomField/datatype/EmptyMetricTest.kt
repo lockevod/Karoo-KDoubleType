@@ -7,6 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.enderthor.kCustomField.extensions.jsonWithUnknownKeys
 
 class EmptyMetricTest {
 
@@ -76,4 +77,8 @@ class EmptyMetricTest {
         assertEquals(listOf(0, 1), visibleIndices(true, listOf(false, true), 2))
         assertEquals(listOf(0, 1, 2), visibleIndices(true, listOf(false, true, true), 2))
     }
+
+    @Test fun oldDoubleSettingsDecodeHideEmptyFalse() = assertFalse(
+        jsonWithUnknownKeys.decodeFromString<DoubleFieldSettings>("""{"index":1,"ishorizontal":true}""").hideEmpty
+    )
 }

@@ -519,6 +519,9 @@ fun ConfFields(ctx: Context) {
                         doubleFieldSettingsList[index] =
                             doubleFieldSettings.copy(ishorizontal = newHorizontal)
                     }
+                    ZoneMultiSwitch(4, doubleFieldSettings.hideEmpty, true) {
+                        doubleFieldSettingsList[index] = doubleFieldSettings.copy(hideEmpty = it)
+                    }
                 }
             }
 
