@@ -660,6 +660,9 @@ fun ConfTripleFields(ctx: Context) {
                 ZoneMultiSwitch(1, t.ishorizontal, true) { newHorizontal ->
                     tripleFieldSettingsList[index] = t.copy(ishorizontal = newHorizontal)
                 }
+                ZoneMultiSwitch(4, t.hideEmpty, true) {
+                    tripleFieldSettingsList[index] = t.copy(hideEmpty = it)
+                }
             }
 
             FilledTonalButton(modifier = Modifier

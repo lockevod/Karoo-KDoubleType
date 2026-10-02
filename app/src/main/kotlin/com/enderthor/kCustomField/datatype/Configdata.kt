@@ -300,6 +300,7 @@ data class TripleFieldSettings(
     var secondfield: DoubleFieldType = DoubleFieldType(KarooAction.ELEV_LOSS, false),
     var thirdfield: DoubleFieldType = DoubleFieldType(KarooAction.SLOPE, true),
     val ishorizontal: Boolean = true,
+    val hideEmpty: Boolean = false,
 )
 
 @Serializable

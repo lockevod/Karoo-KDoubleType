@@ -81,4 +81,8 @@ class EmptyMetricTest {
     @Test fun oldDoubleSettingsDecodeHideEmptyFalse() = assertFalse(
         jsonWithUnknownKeys.decodeFromString<DoubleFieldSettings>("""{"index":1,"ishorizontal":true}""").hideEmpty
     )
+
+    @Test fun oldTripleSettingsDecodeHideEmptyFalse() = assertFalse(
+        jsonWithUnknownKeys.decodeFromString<TripleFieldSettings>("""{"index":1,"ishorizontal":true}""").hideEmpty
+    )
 }

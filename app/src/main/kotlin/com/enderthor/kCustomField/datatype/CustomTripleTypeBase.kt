@@ -261,19 +261,14 @@ abstract class CustomTripleTypeBase(
                             }
                             val settings = setting[globalIndex]
 
-                            val cells = listOf(
-                                firstFieldState to firstField(settings),
-                                secondFieldState to secondField(settings),
-                                thirdFieldState to thirdField(settings)
-                            ).map { (fieldState, field) ->
-                                val (value, iconColor, zoneColor, _, valueRight) = getFieldState(
-                                    fieldState,
-                                    field,
-                                    context,
-                                    userProfile,
-                                    generalSettings.ispalettezwift
-                                )
-                                TripleCell(value, valueRight, field, iconColor, zoneColor, fieldState as? StreamState)
+                            val rawStates = listOf(firstFieldState, secondFieldState, thirdFieldState)
+                            val fields = listOf(firstField(settings), secondField(settings), thirdField(settings))
+                            val fieldStates = rawStates.zip(fields).map { (fieldState, field) ->
+                                getFieldState(fieldState, field, context, userProfile, generalSettings.ispalettezwift)
+                            }
+                            val cells = fieldStates.mapIndexed { i, fs ->
+                                val (value, iconColor, zoneColor, _, valueRight) = fs
+                                TripleCell(value, valueRight, fields[i], iconColor, zoneColor, rawStates[i] as? StreamState)
                             }
 
                             val (winddiff, windtext) = listOf(
@@ -293,6 +288,16 @@ abstract class CustomTripleTypeBase(
                                 else -> generalSettings.iscentervertical
                             }
 
+                            // Ocultar celdas sin datos: solo con el switch y nunca en preview. Igual que
+                            // en Double: RollingFieldScreen solo soporta SMALL/MEDIUM, así que en
+                            // tamaños mayores se mantienen al menos 2 celdas.
+                            val minVisible = if (effectiveFieldSize == FieldSize.SMALL || effectiveFieldSize == FieldSize.MEDIUM) 1 else 2
+                            val visible = visibleIndices(
+                                settings.hideEmpty && !config.preview,
+                                rawStates.mapIndexed { i, s -> isEmptyMetric(s as? StreamState, fields[i].kaction) },
+                                minVisible
+                            )
+
                             try {
                                 if (isCancelled.get()) {
                                     Timber.d("TRIPLE Skipping composition, job cancelled: $extension $globalIndex")
@@ -301,8 +306,31 @@ abstract class CustomTripleTypeBase(
                                 withContext(Dispatchers.Main) {
                                     if (isCancelled.get()) return@withContext
                                     val newView = glance.compose(context, DpSize.Unspecified) {
-                                        TripleScreenSelector(
-                                            cells,
+                                        if (visible.size == 1) {
+                                            val i = visible[0]
+                                            val kaction = fields[i].kaction
+                                            val rawState = rawStates[i]
+                                            RollingFieldScreen(
+                                                cells[i].value,
+                                                isIntField(kaction, false, false, generalSettings.distanceWithDecimals),
+                                                kaction,
+                                                cells[i].iconColor,
+                                                cells[i].zoneColor,
+                                                effectiveFieldSize,
+                                                isKaroo,
+                                                clayout,
+                                                windtext,
+                                                winddiff.roundToInt(),
+                                                baseBitmap,
+                                                rawState is StreamState,
+                                                config.textSize,
+                                                fieldStates[i].component4(),
+                                                config.preview,
+                                                cells[i].valueRight,
+                                                fieldState = rawState as? StreamState
+                                            )
+                                        } else TripleScreenSelector(
+                                            visible.map { cells[it] },
                                             settings.ishorizontal,
                                             effectiveFieldSize,
                                             isKaroo,
