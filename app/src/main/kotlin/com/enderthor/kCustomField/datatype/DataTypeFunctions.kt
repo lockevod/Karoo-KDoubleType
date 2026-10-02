@@ -52,7 +52,7 @@ class StickyStreamState private constructor() {
         private val lastValidStates = object : LinkedHashMap<String, Pair<Any, Long>>(MAX_STATES, 0.75f, true) {
             override fun removeEldestEntry(eldest: Map.Entry<String, Pair<Any, Long>>) = size > MAX_STATES
         }
-        private const val STICKY_TIMEOUT_MS = 7000L
+        internal const val STICKY_TIMEOUT_MS = 7000L
 
         // synchronized: con accessOrder=true hasta un get() muta el LinkedHashMap, y este
         // mapa se comparte entre los colectores concurrentes de todos los campos (IO pool).
@@ -81,6 +81,44 @@ class StickyStreamState private constructor() {
         fun invalidate(actionName: String) = synchronized(lastValidStates) {
             lastValidStates.remove(actionName)
         }
+    }
+}
+
+
+// Paso por emisión de getFieldFlow: sticky primero, dedup DESPUÉS. Con dedup sobre el estado
+// crudo, un NotAvailable repetido se descartaba y el sticky nunca se re-evaluaba → el último
+// valor se quedaba congelado para siempre. Así cada repetición vuelve a pasar por process()
+// (expira a los 7s, y un Streaming repetido refresca el timestamp). Uno por suscripción: cada
+// re-suscripción empieza de cero, así que el re-seed tras el timeout sigue llegando downstream.
+class StickyEmitter(
+    private val actionName: String,
+    private val isStickyExtStream: Boolean,
+    private val extStickyTimeoutMs: Long,
+    private val stickyTimeoutMs: Long = StickyStreamState.STICKY_TIMEOUT_MS,
+) {
+    private var lastEmitted: Any? = null
+
+    /** Devuelve el estado a emitir, o null si es un duplicado. */
+    fun next(state: Any): Any? {
+        // KSafe: Streaming es el ÚNICO estado "con dato". Idle (fin de ride:
+        // el productor lo emite a propósito para que no se muestren los
+        // totales del ride anterior como vivos) y NotAvailable (toggle off)
+        // pasan tal cual, sin sticky. El sticky extendido solo puentea el
+        // Searching transitorio de la re-suscripción tras timeout.
+        val processedState = when {
+            isStickyExtStream && (state is StreamState.Idle || state is StreamState.NotAvailable) -> {
+                // Estado "sin dato" deliberado: limpia el sticky para que el
+                // Searching de la re-suscripción tras el timeout no muestre el
+                // valor del ride anterior un frame antes de que llegue el Idle.
+                StickyStreamState.invalidate(actionName)
+                state
+            }
+            isStickyExtStream -> StickyStreamState.process(state, actionName, extStickyTimeoutMs)
+            else -> StickyStreamState.process(state, actionName, stickyTimeoutMs)
+        }
+        if (processedState == lastEmitted) return null
+        lastEmitted = processedState
+        return processedState
     }
 }
 
@@ -526,35 +564,12 @@ fun KarooSystemService.getFieldFlow(
                         .timeout(extStreamTimeout.milliseconds)
                 }
 
-                // Dedup DESPUÉS del sticky, no antes: con distinctUntilChanged sobre el estado
-                // crudo, un NotAvailable repetido se descartaba y el sticky nunca se re-evaluaba
-                // → el último valor se quedaba congelado para siempre. Así cada repetición vuelve
-                // a pasar por process() (expira a los 7s, y un Streaming repetido refresca el
-                // timestamp). Declarado por iteración: cada re-suscripción empieza de cero, así
-                // que el re-seed tras el timeout sigue llegando downstream.
-                var lastEmitted: Any? = null
+                // Dedup DESPUÉS del sticky (ver StickyEmitter). Uno por iteración: cada
+                // re-suscripción empieza de cero y el re-seed tras el timeout llega downstream.
+                val stickyEmitter = StickyEmitter(action.name, isStickyExtStream, extStickyTimeout)
                 streamFlow.collect { state ->
                     if (BuildConfig.DEBUG) Timber.d("RAWSTATE ${action.name} raw=$state")
-                    // KSafe: Streaming es el ÚNICO estado "con dato". Idle (fin de ride:
-                    // el productor lo emite a propósito para que no se muestren los
-                    // totales del ride anterior como vivos) y NotAvailable (toggle off)
-                    // pasan tal cual, sin sticky. El sticky extendido solo puentea el
-                    // Searching transitorio de la re-suscripción tras timeout.
-                    val processedState = when {
-                        isStickyExtStream && (state is StreamState.Idle || state is StreamState.NotAvailable) -> {
-                            // Estado "sin dato" deliberado: limpia el sticky para que el
-                            // Searching de la re-suscripción tras el timeout no muestre el
-                            // valor del ride anterior un frame antes de que llegue el Idle.
-                            StickyStreamState.invalidate(action.name)
-                            state
-                        }
-                        isStickyExtStream -> StickyStreamState.process(state, action.name, extStickyTimeout)
-                        else -> StickyStreamState.process(state, action.name)
-                    }
-                    if (processedState != lastEmitted) {
-                        lastEmitted = processedState
-                        emit(processedState)
-                    }
+                    stickyEmitter.next(state)?.let { emit(it) }
                 }
 
                 // collect solo retorna si el flujo se COMPLETÓ. Y se completa en silencio en el
