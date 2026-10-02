@@ -32,9 +32,9 @@ class StickyStreamStateTest {
         assertEquals(StreamState.NotAvailable, StickyStreamState.process(StreamState.NotAvailable, "D_TEST", 7000))
     }
 
-    // StickyEmitter: el dedup va DESPUÉS del sticky. Si se dedupe el estado crudo, el segundo
-    // NotAvailable nunca llega a process() y el valor caducado se queda congelado.
-    @Test fun repeatedNotAvailableExpiresThroughDedup() {
+    // Con timeout 0 el NotAvailable caduca al instante: sale una vez y el repetido se suprime.
+    // NO protege el orden del dedup (ambos órdenes pasan); eso lo guarda repeatedNotAvailableUnfreezesAfterWindow.
+    @Test fun expiredNotAvailablePassesThenRepeatIsSuppressed() {
         val e = StickyEmitter("E_TEST", isStickyExtStream = false, extStickyTimeoutMs = 15000, stickyTimeoutMs = 0)
         assertEquals(x, e.next(x))
         assertEquals(StreamState.NotAvailable, e.next(StreamState.NotAvailable))
@@ -67,5 +67,6 @@ class StickyStreamStateTest {
         val e = StickyEmitter("H_TEST", isStickyExtStream = true, extStickyTimeoutMs = 15000)
         e.next(x)
         assertEquals(StreamState.Idle, e.next(StreamState.Idle))
+        assertEquals(StreamState.Searching, e.next(StreamState.Searching))
     }
 }

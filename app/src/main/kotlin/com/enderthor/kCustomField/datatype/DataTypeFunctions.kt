@@ -90,7 +90,7 @@ class StickyStreamState private constructor() {
 // valor se quedaba congelado para siempre. Así cada repetición vuelve a pasar por process()
 // (expira a los 7s, y un Streaming repetido refresca el timestamp). Uno por suscripción: cada
 // re-suscripción empieza de cero, así que el re-seed tras el timeout sigue llegando downstream.
-class StickyEmitter(
+internal class StickyEmitter(
     private val actionName: String,
     private val isStickyExtStream: Boolean,
     private val extStickyTimeoutMs: Long,
