@@ -252,10 +252,10 @@ fun ZoneMultiSwitch(option: Int, checked: Boolean, enabled: Boolean, onCheckedCh
         )
         Spacer(modifier = Modifier.width(10.dp))
         when (option) {
-            0 -> Text("Coloured Zone?")
-            1 -> Text("Horizontal Field?")
-            2 -> Text("Enabled Field?")
-            3 -> Text("Climb Field Always Active (No Climber Measure when climber is out)?")
+            0 -> Text(stringResource(R.string.switch_coloured_zone))
+            1 -> Text(stringResource(R.string.switch_horizontal_field))
+            2 -> Text(stringResource(R.string.switch_enabled_field))
+            3 -> Text(stringResource(R.string.switch_climb_always_active))
             4 -> Text(stringResource(R.string.hide_empty_switch))
         }
     }

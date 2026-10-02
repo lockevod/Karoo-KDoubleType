@@ -10,13 +10,13 @@ import com.enderthor.kCustomField.datatype.ClimbFieldSettings
 import com.enderthor.kCustomField.datatype.DoubleFieldSettings
 import com.enderthor.kCustomField.datatype.SextupleFieldSettings
 import com.enderthor.kCustomField.datatype.TripleFieldSettings
-import com.enderthor.kCustomField.datatype.defaultTripleFieldSettings
 import com.enderthor.kCustomField.datatype.GeneralSettings
 import com.enderthor.kCustomField.datatype.OneFieldSettings
 import com.enderthor.kCustomField.datatype.SmartFieldSettings
 import com.enderthor.kCustomField.datatype.defaultClimbFieldSettings
 import com.enderthor.kCustomField.datatype.defaultDoubleFieldSettings
 import com.enderthor.kCustomField.datatype.defaultSextupleFieldSettings
+import com.enderthor.kCustomField.datatype.defaultTripleFieldSettings
 import com.enderthor.kCustomField.datatype.defaultGeneralSettings
 import com.enderthor.kCustomField.datatype.defaultOneFieldSettings
 import com.enderthor.kCustomField.datatype.defaultSmartFieldSettings

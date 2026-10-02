@@ -200,11 +200,11 @@ abstract class CustomTripleTypeBase(
 
                             val primaryField = firstField(currentSettings)
                             val secondaryField = secondField(currentSettings)
-                            val thirdField = thirdField(currentSettings)
+                            val tertiaryField = thirdField(currentSettings)
 
                             val headwindFlow =
                                 if (listOf(
-                                        primaryField, secondaryField, thirdField
+                                        primaryField, secondaryField, tertiaryField
                                     ).any { it.kaction.name == "HEADWIND" } && generalSettings.isheadwindenabled
                                 )
                                     createHeadwindFlow(karooSystem, refreshTime) else flowOf(
@@ -224,7 +224,7 @@ abstract class CustomTripleTypeBase(
                                 isCancelledProvider = { isCancelled.get() }
                             ) else previewFlow()
                             val thirdFieldFlow = if (!config.preview) karooSystem.getFieldFlow(
-                                thirdField,
+                                tertiaryField,
                                 headwindFlow,
                                 generalSettings,
                                 isCancelledProvider = { isCancelled.get() }
@@ -310,12 +310,14 @@ abstract class CustomTripleTypeBase(
                                             val i = visible[0]
                                             val kaction = fields[i].kaction
                                             val rawState = rawStates[i]
+                                            val cell = cells[i]
+                                            val (_, _, _, isRealZone) = fieldStates[i]
                                             RollingFieldScreen(
-                                                cells[i].value,
+                                                cell.value,
                                                 isIntField(kaction, false, false, generalSettings.distanceWithDecimals),
                                                 kaction,
-                                                cells[i].iconColor,
-                                                cells[i].zoneColor,
+                                                cell.iconColor,
+                                                cell.zoneColor,
                                                 effectiveFieldSize,
                                                 isKaroo,
                                                 clayout,
@@ -324,9 +326,9 @@ abstract class CustomTripleTypeBase(
                                                 baseBitmap,
                                                 rawState is StreamState,
                                                 config.textSize,
-                                                fieldStates[i].component4(),
+                                                isRealZone,
                                                 config.preview,
-                                                cells[i].valueRight,
+                                                cell.valueRight,
                                                 fieldState = rawState as? StreamState
                                             )
                                         } else TripleScreenSelector(

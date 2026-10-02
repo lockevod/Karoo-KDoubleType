@@ -15,6 +15,11 @@
     <string name="second_field">Second Field</string>
     <string name="third_field">Third Field</string>
     <string name="fourth_field">Fourth Field</string>
+    <string name="hide_empty_switch">Hide metric without data?</string>
+    <string name="switch_coloured_zone">Coloured Zone?</string>
+    <string name="switch_horizontal_field">Horizontal Field?</string>
+    <string name="switch_enabled_field">Enabled Field?</string>
+    <string name="switch_climb_always_active">Climb Field Always Active (No Climber Measure when climber is out)?</string>
     <string name="rolling_time_question" translatable="false">Rolling Time?</string>
     <string name="enable_extra_time">Enable Extra Time for First Field (x3 time)?</string>
     <string name="save_rolling" translatable="false">Save Rolling</string>
@@ -60,7 +65,6 @@
     <!-- General configuration -->
     <string name="fields_alignment_title">Fields Alignment</string>
     <string name="use_default_karoo_alignment">Use default Karoo Alignment?</string>
-    <string name="hide_empty_switch">Hide metric without data?</string>
     <string name="horizontal_alignment_question">Horizontal/Rolling Fields alignment (icon/text)?</string>
     <string name="vertical_alignment_question">Vertical Fields alignment (icon/text)?</string>
     <string name="use_headwind_datafield_title">Use Headwind DataField</string>

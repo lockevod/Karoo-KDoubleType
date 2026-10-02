@@ -591,71 +591,71 @@ fun ConfTripleFields(ctx: Context) {
             tripleFieldSettingsDerived.value.forEachIndexed { index, t ->
                 TopAppBar(title = { Text(stringResource(R.string.custom_field_title, index + 1)) })
 
-                    DropdownDoubleField(
-                        stringResource(R.string.first_field),
-                        t.onefield,
-                        generalSettings
-                    ) { newAction ->
-                        val updatedZone =
-                            if (newAction.kaction.zone == "none") false else t.onefield.iszone
-                        tripleFieldSettingsList[index] =
-                            t.copy(onefield = newAction.copy(iszone = updatedZone))
-                    }
-                    ZoneMultiSwitch(
-                        0,
-                        t.onefield.iszone,
-                        t.onefield.kaction.zone != "none"
-                    ) { newZone ->
-                        val updatedZone =
-                            if (t.onefield.kaction.zone == "none") false else newZone
-                        tripleFieldSettingsList[index] = t.copy(
-                            onefield = t.onefield.copy(iszone = updatedZone)
-                        )
-                    }
+                DropdownDoubleField(
+                    stringResource(R.string.first_field),
+                    t.onefield,
+                    generalSettings
+                ) { newAction ->
+                    val updatedZone =
+                        if (newAction.kaction.zone == "none") false else t.onefield.iszone
+                    tripleFieldSettingsList[index] =
+                        t.copy(onefield = newAction.copy(iszone = updatedZone))
+                }
+                ZoneMultiSwitch(
+                    0,
+                    t.onefield.iszone,
+                    t.onefield.kaction.zone != "none"
+                ) { newZone ->
+                    val updatedZone =
+                        if (t.onefield.kaction.zone == "none") false else newZone
+                    tripleFieldSettingsList[index] = t.copy(
+                        onefield = t.onefield.copy(iszone = updatedZone)
+                    )
+                }
 
-                    DropdownDoubleField(
-                        stringResource(R.string.second_field),
-                        t.secondfield,
-                        generalSettings
-                    ) { newAction ->
-                        val updatedZone =
-                            if (newAction.kaction.zone == "none") false else t.secondfield.iszone
-                        tripleFieldSettingsList[index] =
-                            t.copy(secondfield = newAction.copy(iszone = updatedZone))
-                    }
-                    ZoneMultiSwitch(
-                        0,
-                        t.secondfield.iszone,
-                        t.secondfield.kaction.zone != "none"
-                    ) { newZone ->
-                        val updatedZone =
-                            if (t.secondfield.kaction.zone == "none") false else newZone
-                        tripleFieldSettingsList[index] = t.copy(
-                            secondfield = t.secondfield.copy(iszone = updatedZone)
-                        )
-                    }
+                DropdownDoubleField(
+                    stringResource(R.string.second_field),
+                    t.secondfield,
+                    generalSettings
+                ) { newAction ->
+                    val updatedZone =
+                        if (newAction.kaction.zone == "none") false else t.secondfield.iszone
+                    tripleFieldSettingsList[index] =
+                        t.copy(secondfield = newAction.copy(iszone = updatedZone))
+                }
+                ZoneMultiSwitch(
+                    0,
+                    t.secondfield.iszone,
+                    t.secondfield.kaction.zone != "none"
+                ) { newZone ->
+                    val updatedZone =
+                        if (t.secondfield.kaction.zone == "none") false else newZone
+                    tripleFieldSettingsList[index] = t.copy(
+                        secondfield = t.secondfield.copy(iszone = updatedZone)
+                    )
+                }
 
-                    DropdownDoubleField(
-                        stringResource(R.string.third_field),
-                        t.thirdfield,
-                        generalSettings
-                    ) { newAction ->
-                        val updatedZone =
-                            if (newAction.kaction.zone == "none") false else t.thirdfield.iszone
-                        tripleFieldSettingsList[index] =
-                            t.copy(thirdfield = newAction.copy(iszone = updatedZone))
-                    }
-                    ZoneMultiSwitch(
-                        0,
-                        t.thirdfield.iszone,
-                        t.thirdfield.kaction.zone != "none"
-                    ) { newZone ->
-                        val updatedZone =
-                            if (t.thirdfield.kaction.zone == "none") false else newZone
-                        tripleFieldSettingsList[index] = t.copy(
-                            thirdfield = t.thirdfield.copy(iszone = updatedZone)
-                        )
-                    }
+                DropdownDoubleField(
+                    stringResource(R.string.third_field),
+                    t.thirdfield,
+                    generalSettings
+                ) { newAction ->
+                    val updatedZone =
+                        if (newAction.kaction.zone == "none") false else t.thirdfield.iszone
+                    tripleFieldSettingsList[index] =
+                        t.copy(thirdfield = newAction.copy(iszone = updatedZone))
+                }
+                ZoneMultiSwitch(
+                    0,
+                    t.thirdfield.iszone,
+                    t.thirdfield.kaction.zone != "none"
+                ) { newZone ->
+                    val updatedZone =
+                        if (t.thirdfield.kaction.zone == "none") false else newZone
+                    tripleFieldSettingsList[index] = t.copy(
+                        thirdfield = t.thirdfield.copy(iszone = updatedZone)
+                    )
+                }
 
                 ZoneMultiSwitch(1, t.ishorizontal, true) { newHorizontal ->
                     tripleFieldSettingsList[index] = t.copy(ishorizontal = newHorizontal)

@@ -13,6 +13,11 @@
     <string name="second_field">Segundo Campo</string>
     <string name="third_field">Tercer Campo</string>
     <string name="fourth_field">Cuarto Campo</string>
+    <string name="hide_empty_switch">¿Ocultar métrica sin datos?</string>
+    <string name="switch_coloured_zone">¿Zona coloreada?</string>
+    <string name="switch_horizontal_field">¿Campo horizontal?</string>
+    <string name="switch_enabled_field">¿Campo activado?</string>
+    <string name="switch_climb_always_active">¿Campo de subida siempre activo (sin medidor de subida cuando no hay puerto)?</string>
     <string name="rolling_time_question">¿Tiempo de Rodado?</string>
     <string name="enable_extra_time">¿Habilitar Tiempo Extra para el Primer Campo (x3)?</string>
     <string name="save_rolling">Guardar Rodado</string>
@@ -53,7 +58,6 @@
     <!-- General configuration -->
     <string name="fields_alignment_title">Alineación de Campos</string>
     <string name="use_default_karoo_alignment">¿Usar alineación por defecto de Karoo?</string>
-    <string name="hide_empty_switch">¿Ocultar métrica sin datos?</string>
     <string name="horizontal_alignment_question">¿Alineación horizontal/campos rodantes (icono/texto)?</string>
     <string name="vertical_alignment_question">¿Alineación vertical de campos (icono/texto)?</string>
     <string name="use_headwind_datafield_title">Usar Campo de Datos Headwind</string>
