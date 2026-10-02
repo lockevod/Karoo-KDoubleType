@@ -9,6 +9,8 @@ import com.enderthor.kCustomField.datatype.ClimbFieldSettings
 
 import com.enderthor.kCustomField.datatype.DoubleFieldSettings
 import com.enderthor.kCustomField.datatype.SextupleFieldSettings
+import com.enderthor.kCustomField.datatype.TripleFieldSettings
+import com.enderthor.kCustomField.datatype.defaultTripleFieldSettings
 import com.enderthor.kCustomField.datatype.GeneralSettings
 import com.enderthor.kCustomField.datatype.OneFieldSettings
 import com.enderthor.kCustomField.datatype.SmartFieldSettings
@@ -59,6 +61,7 @@ val jsonPersist = Json { encodeDefaults = true }
 val generalsettingsKey = stringPreferencesKey("generalsettings")
 val doublefieldKey = stringPreferencesKey("doublefieldsettings")
 val sextuplefieldKey = stringPreferencesKey("sextuplefieldsettings")
+val triplefieldKey = stringPreferencesKey("triplefieldsettings")
 val onefieldKey = stringPreferencesKey("onefieldsettings")
 val smartfieldKey = stringPreferencesKey("smartfieldsettings")
 val climbfieldKey = stringPreferencesKey("climbfieldsettings")
@@ -159,6 +162,31 @@ fun Context.streamSextupleFieldSettings(): Flow<List<SextupleFieldSettings>> {
         } catch (e: Throwable) {
             Timber.tag("KarooDualTypeExtension").e(e, "Failed to read preferences")
             jsonWithUnknownKeys.decodeFromString<List<SextupleFieldSettings>>(defaultSextupleFieldSettings)
+        }
+    }.distinctUntilChanged()
+}
+
+suspend fun saveTripleFieldSettings(context: Context, settings: List<TripleFieldSettings>) {
+    // Timber.d("saveSettings IN $settings")
+    context.dataStore.edit { t ->
+        t[triplefieldKey] = jsonPersist.encodeToString(settings)
+    }
+}
+fun Context.streamTripleFieldSettings(): Flow<List<TripleFieldSettings>> {
+    return dataStore.data.map { settingsJson ->
+        try {
+            val decodedSettings = if (settingsJson.contains(triplefieldKey)) {
+                jsonWithUnknownKeys.decodeFromString<List<TripleFieldSettings>>(
+                    settingsJson[triplefieldKey] ?: defaultTripleFieldSettings
+                )
+            } else {
+                jsonWithUnknownKeys.decodeFromString<List<TripleFieldSettings>>(defaultTripleFieldSettings)
+            }
+
+            decodedSettings
+        } catch (e: Throwable) {
+            Timber.tag("KarooDualTypeExtension").e(e, "Failed to read preferences")
+            jsonWithUnknownKeys.decodeFromString<List<TripleFieldSettings>>(defaultTripleFieldSettings)
         }
     }.distinctUntilChanged()
 }
