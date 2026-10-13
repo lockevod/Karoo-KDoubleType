@@ -17,8 +17,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.FlowPreview
 import com.enderthor.kCustomField.BuildConfig
+import com.enderthor.kCustomField.Diag
 import com.enderthor.kCustomField.R
 import com.enderthor.kCustomField.extensions.getZone
 import com.enderthor.kCustomField.extensions.slopeZones
@@ -364,8 +367,13 @@ fun KarooSystemService.getFieldFlow(
     generalSettings: GeneralSettings,
     context: Context? = null,
     isCancelledProvider: () -> Boolean = { ViewState.isCancelledByEmitter }
-): Flow<Any> = flow {
-
+): Flow<Any> {
+  val diagTag = Diag.subTag(when (field) {
+      is DoubleFieldType -> field.kaction.name
+      is OneFieldType -> field.kaction.name
+      else -> "?"
+  })
+  return flow {
 
     try {
         val (actionId, action) = when (field) {
@@ -571,7 +579,7 @@ fun KarooSystemService.getFieldFlow(
                 // re-suscripción empieza de cero y el re-seed tras el timeout llega downstream.
                 val stickyEmitter = StickyEmitter(action.name, isStickyExtStream, extStickyTimeout)
                 streamFlow.collect { state ->
-                    if (BuildConfig.DEBUG) Timber.d("RAWSTATE ${action.name} raw=$state")
+                    Diag.rawState(diagTag, state)
                     stickyEmitter.next(state)?.let { emit(it) }
                 }
 
@@ -636,6 +644,10 @@ fun KarooSystemService.getFieldFlow(
             }
         }
     }
+    // Frontera final: STATE ve todo lo que llega al campo (semillas, Searching de error, Idle de reintento).
+    .onEach { Diag.state(diagTag, it) }
+    .onCompletion { Diag.endSub(diagTag) }
+}
 
 fun calculateVO2max(powerValue: Double, userProfile: UserProfile): Double {
     val weight = userProfile.weight
@@ -727,6 +739,8 @@ fun updateFieldState(
             0.0
         )
     }
+
+    Diag.value(fieldState, kaction, userProfile.preferredUnit.distance, value, valueRight)
 
     val isRealZone = if(checkRealZone(kaction,iszone,value,valueRight)) iszone else false
 

@@ -1,5 +1,6 @@
 package com.enderthor.kCustomField.datatype
 
+import com.enderthor.kCustomField.Diag
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -163,6 +164,8 @@ abstract class CustomClimbTypeBase(
         // puede disparar DESPUÉS de haber arrancado la siguiente — ponía el flag a true y
         // congelaba la vista nueva el resto de la ruta, con todos sus streams vivos.
         val isCancelled = AtomicBoolean(false)
+        val diagKey = Diag.viewKey("CLIMB", globalIndex, config.preview)
+        Diag.fieldStart(diagKey, "grid=${config.gridSize} text=${config.textSize}")
         ViewState.setCancelled(false)
 
         // En preview NO abrimos el stream real de ELEVATION_TO_TOP: se llamaba antes de mirar
@@ -262,6 +265,7 @@ abstract class CustomClimbTypeBase(
                         val fourthField = fourthField(currentSettings)
                         val climbField = climbField(currentSettings)
                         val climbOnField = climbOnField(currentSettings)
+                        Diag.fieldConfig(diagKey, listOf(primaryField, secondaryField, thirdField, fourthField, climbField, climbOnField).map { it.kaction })
 
 
                         isAlwaysclimbOnEnabled = isAlwaysClimbPos(currentSettings)
@@ -370,7 +374,9 @@ abstract class CustomClimbTypeBase(
                     // correcto: 6 streams a 1Hz recomponiendo sin que cambie nada era el mayor
                     // desperdicio de CPU de la vista.
                     .distinctUntilChanged()
-                    .conflate().onEach { (result, isOnClimb) ->
+                    .onEach { Diag.input(diagKey) }
+                    .conflate()
+                    .onEach { Diag.renderStart(diagKey) }.onEach { (result, isOnClimb) ->
                         if (isCancelled.get()) {
                             Timber.d("CLIMB Skipping update, job cancelled: $extension $globalIndex")
                             return@onEach
@@ -527,7 +533,7 @@ abstract class CustomClimbTypeBase(
                                     )
                                 }.remoteViews
                                 // Timber.d("CLIMB Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
-                                if (!isCancelled.get()) emitter.updateView(newView)
+                                if (!isCancelled.get()) { emitter.updateView(newView); Diag.rendered(diagKey) }
                             }
                             delay(refreshTime)
                         } catch (e: Exception) {
@@ -619,6 +625,7 @@ abstract class CustomClimbTypeBase(
 
                 Timber.d("Cancelando todos los jobs y flujos de CLIMB")
                 isCancelled.set(true)
+                Diag.fieldStop(diagKey)
                 ViewState.setCancelled(true)
 
                 configjob.cancel()

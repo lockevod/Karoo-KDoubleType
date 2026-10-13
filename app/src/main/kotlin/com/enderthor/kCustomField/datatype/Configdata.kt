@@ -363,6 +363,7 @@ data class GeneralSettings(
     val isdivider: Boolean = true,
     val bellBeepKey: KarooKey = KarooKey.BELL4,
     val distanceWithDecimals: Boolean = false,
+    val isfilelogging: Boolean = false,
 )
 //############################## CHECK
 data class GlobalConfigState(

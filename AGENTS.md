@@ -110,7 +110,9 @@ adb install app/release/app-release.apk
 
 ## Logging
 
-Timber is used throughout. Debug builds log everything; release builds log `WARN+` only. Log prefixes:
+Timber is used throughout. Debug builds log everything; release builds log `ERROR` only (R8 strips `Timber.v/d/i/w` via `proguard-rules.pro`).
+
+**Diagnostic file log** (opt-in, works in release): General settings → "Log de diagnóstico" (`GeneralSettings.isfilelogging`). `Diag.kt` writes prefixed lines (`BOOT`, `SETTINGS`, `FIELD`, `RAWSTATE`, `STATE`, `HIDE`, `RENDER`, `VALUE`, `SUBEND`, `CRASH`) straight to `FileLogTree.write` — never through Timber, which R8 strips. Files: `Android/data/com.enderthor.kCustomField/files/logs/` (5 MB per file, last 6, 20 MB total). Off cost is a volatile read per call: never build strings before the `on` check. Log prefixes:
 - `"DOUBLE ..."` — dual-metric field events
 - `"TRIPLE ..."` — triple field events
 - `"ROLLING ..."` — rolling field events  

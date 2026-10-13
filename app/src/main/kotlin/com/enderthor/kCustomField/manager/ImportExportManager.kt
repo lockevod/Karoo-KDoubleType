@@ -2,6 +2,7 @@
 
 package com.enderthor.kCustomField.manager
 
+import com.enderthor.kCustomField.extensions.streamGeneralSettings
 import android.content.Context
 import android.net.Uri
 import com.enderthor.kCustomField.datatype.*
@@ -112,7 +113,11 @@ object ImportExportManager {
 
     suspend fun applyPayload(ctx: Context, payload: ExportPayload) {
         // apply known sections using existing save helpers
-        payload.generalSettings?.let { saveGeneralSettings(ctx, it) }
+        // El log de diagnóstico es del dispositivo, no de la config: un backup no lo enciende ni lo apaga.
+        payload.generalSettings?.let {
+            val logging = runCatching { ctx.streamGeneralSettings().first().isfilelogging }.getOrDefault(false)
+            saveGeneralSettings(ctx, it.copy(isfilelogging = logging))
+        }
         payload.doubleFieldSettings?.let { saveDoubleFieldSettings(ctx, it) }
         payload.sextupleFieldSettings?.let { saveSextupleFieldSettings(ctx, it) }
         payload.tripleFieldSettings?.let { saveTripleFieldSettings(ctx, it) }

@@ -1,5 +1,7 @@
 package com.enderthor.kCustomField.datatype
 
+import com.enderthor.kCustomField.Diag
+import com.enderthor.kCustomField.FileLogTree
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -132,6 +134,8 @@ abstract class CustomTripleTypeBase(
         // puede disparar DESPUÉS de haber arrancado la siguiente — ponía el flag a true y
         // congelaba la vista nueva el resto de la ruta, con todos sus streams vivos.
         val isCancelled = AtomicBoolean(false)
+        val diagKey = Diag.viewKey("TRIPLE", globalIndex, config.preview)
+        Diag.fieldStart(diagKey, "grid=${config.gridSize} text=${config.textSize}")
         ViewState.setCancelled(false)
 
         val dataflow = context.streamTripleFieldSettings()
@@ -201,6 +205,7 @@ abstract class CustomTripleTypeBase(
                             val primaryField = firstField(currentSettings)
                             val secondaryField = secondField(currentSettings)
                             val tertiaryField = thirdField(currentSettings)
+                            Diag.fieldConfig(diagKey, listOf(primaryField, secondaryField, tertiaryField).map { it.kaction }, "hide=${currentSettings.hideEmpty}")
 
                             val headwindFlow =
                                 if (listOf(
@@ -242,7 +247,9 @@ abstract class CustomTripleTypeBase(
                         // repite, la composición Glance y el updateView por Binder que vendrían
                         // detrás son trabajo tirado. StreamState/DataPoint son data class.
                         .distinctUntilChanged()
+                        .onEach { Diag.input(diagKey) }
                         .conflate()
+                        .onEach { Diag.renderStart(diagKey) }
                         .onEach { result ->
 
                         if (isCancelled.get()) {
@@ -292,11 +299,9 @@ abstract class CustomTripleTypeBase(
                             // en Double: RollingFieldScreen solo soporta SMALL/MEDIUM, así que en
                             // tamaños mayores se mantienen al menos 2 celdas.
                             val minVisible = if (effectiveFieldSize == FieldSize.SMALL || effectiveFieldSize == FieldSize.MEDIUM) 1 else 2
-                            val visible = visibleIndices(
-                                settings.hideEmpty && !config.preview,
-                                rawStates.mapIndexed { i, s -> isEmptyMetric(s as? StreamState, fields[i].kaction) },
-                                minVisible
-                            )
+                            val empty = rawStates.mapIndexed { i, s -> isEmptyMetric(s as? StreamState, fields[i].kaction) }
+                            val visible = visibleIndices(settings.hideEmpty && !config.preview, empty, minVisible)
+                            if (settings.hideEmpty && FileLogTree.enabled) Diag.hide(diagKey, visible, empty, rawStates)
 
                             try {
                                 if (isCancelled.get()) {
@@ -344,7 +349,7 @@ abstract class CustomTripleTypeBase(
                                             baseBitmap
                                         )
                                     }.remoteViews
-                                    if (!isCancelled.get()) emitter.updateView(newView)
+                                    if (!isCancelled.get()) { emitter.updateView(newView); Diag.rendered(diagKey) }
                                 }
                             } catch (e: Exception) {
                                 if (e is CancellationException) {
@@ -431,6 +436,7 @@ abstract class CustomTripleTypeBase(
                 Timber.d("TRIPLE Emitter.setCancellable: extension=$extension index=$globalIndex")
 
                 isCancelled.set(true)
+                Diag.fieldStop(diagKey)
                 ViewState.setCancelled(true)
                 configjob.cancel()
                 viewjob.cancel()

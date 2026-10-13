@@ -1128,6 +1128,7 @@ fun ConfGeneral() {
     var iskghostenabled by remember { mutableStateOf(true) }
     var isdivider by remember { mutableStateOf(true) }
     var distanceWithDecimals by remember { mutableStateOf(false) }
+    var isfilelogging by remember { mutableStateOf(false) }
     var bellsong by remember {mutableStateOf(KarooKey.BELL4) }
 
     var powerLoss by remember { mutableStateOf("2.2") }
@@ -1151,6 +1152,7 @@ fun ConfGeneral() {
             iskghostenabled = settings.iskghostenabled
             isdivider = settings.isdivider
             distanceWithDecimals = settings.distanceWithDecimals
+            isfilelogging = settings.isfilelogging
             bellsong = settings.bellBeepKey
         }
         ctx.streamStoredPowerSettings().collect { settings ->
@@ -1174,6 +1176,7 @@ fun ConfGeneral() {
                 iskghostenabled = gs.iskghostenabled
                 isdivider = gs.isdivider
                 distanceWithDecimals = gs.distanceWithDecimals
+                isfilelogging = gs.isfilelogging
                 bellsong = gs.bellBeepKey
 
                 val ps = ctx.streamStoredPowerSettings().first()
@@ -1451,6 +1454,16 @@ fun ConfGeneral() {
                 }
             }, onClose = { showBackupPicker = false })
 
+            Spacer(modifier = Modifier.height(2.dp))
+            TopAppBar(title = { Text(stringResource(R.string.file_logging_title)) })
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = isfilelogging, onCheckedChange = {
+                    isfilelogging = it
+                })
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(stringResource(R.string.file_logging_question))
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
 
@@ -1467,7 +1480,8 @@ fun ConfGeneral() {
                      iskghostenabled = iskghostenabled,
                      isdivider = isdivider,
                      bellBeepKey = bellsong,
-                     distanceWithDecimals = distanceWithDecimals
+                     distanceWithDecimals = distanceWithDecimals,
+                     isfilelogging = isfilelogging
 
                  )
 
