@@ -68,6 +68,7 @@ Defaults are pre-encoded JSON strings in `Configdata.kt` (e.g. `val defaultGener
 - **Synthetic streams**: `WPRIME_BALANCE`, `VO2MAX`, `FTPG` are computed locally inside `getFieldFlow()`, not streamed from Karoo sensors. State for W′ is held in `WPrimeBalanceState` singleton.
 - **External headwind**: Guarded by `generalSettings.isheadwindenabled`; reads from extension id `karoo-headwind`. If disabled, replaced by `flowOf(StreamHeadWindData(0.0, 0.0))`.
 - **Extension-field pickers**: the `Dropdown*Field` composables in `TabFunctions.kt` build options from `KarooAction.entries`, `.sortedBy { it.name }` (alphabetical), then filter by `generalSettings` toggles — `isheadwindenabled` (HEADWIND), `iskpowerenabled` (`::kpower::`), `iskghostenabled` (`::kghost::`). KPower/KGhost default ON and filtering is **non-destructive** (the currently-selected action is re-added so it stays visible; no reset). HEADWIND is the exception: it resets to `SPEED` when disabled (a headwind field is broken without the extension).
+- **Field size**: `getEffectiveFieldSize(gridSize.second, textSize)` takes the smaller of the grid and text estimates. A full-width slot a third of the screen high reports `grid=(60, 20)`, which is `EXTRA_LARGE` — every layout must accept it (weight-based layouts, no size guard). Triple row cells reuse the horizontal Double's `SingleHorizontalField` (icon above number); L/R pairs pass `fit = false` so `fitNumberToChars` can't cut `47/53` to `47/5`. `trimNumberTo3Chars` drops the fraction when the integer part already fills the space (`1234.5` → `1234`, never `123`).
 - **Hide-empty switch**: `hideEmpty` on `DoubleFieldSettings`/`TripleFieldSettings` (default `false`). When set, `isEmptyMetric()` (`EmptyMetric.kt`) hides a metric the Karoo reports as no data, via `visibleIndices()`; never while `Searching`, never in preview, and large slots keep at least 2 metrics. Route metrics have no special sticky path: after a route is cleared they expire through the normal 7 s sticky (see "Sticky stream state"). Run tests with `./gradlew :app:testDebugUnitTest`.
 - **L/R dual fields** (`powerField = true`): rendered as a single `left/right` pair. `multipleStreamValues()` in `DataTypeFunctions.kt` reads the pair via `MultiFields` (in `Configdata.kt`): two field keys from one `DataPoint`, or `onlyfirst = true` to derive `right = 100 − left` from a single value (native pedal balance). The view shows `--/--` when the stream is not `Streaming`. (KPower no longer publishes balance/dynamics streams — the Karoo shows those natively for a paired meter — so the only KPower fields consumed here are single-value power streams.)
 
@@ -104,6 +105,7 @@ adb install app/release/app-release.apk
 | `datatype/EmptyMetric.kt` | Pure hide-empty rule: `isEmptyMetric`, `visibleIndices` (JVM tests in `app/src/test`) |
 | `datatype/CustomRollingTypeBase.kt` | Base `startView()` for cyclic rolling fields |
 | `datatype/CustomDoubleTypeView.kt` | Glance composables for field rendering |
+| `Diag.kt` / `FileLogTree.kt` | Opt-in diagnostic file log (see "Logging") |
 | `extensions/Extensions.kt` | DataStore stream helpers, `streamDataFlow`, `streamUserProfile` |
 | `extensions/Zones.kt` | Zone color lookup (`getZone`), slope/W′ zone definitions |
 | `extensions/KarooCustomFieldExtension.kt` | Extension entry point, `types` registry |
@@ -112,7 +114,9 @@ adb install app/release/app-release.apk
 
 Timber is used throughout. Debug builds log everything; release builds log `ERROR` only (R8 strips `Timber.v/d/i/w` via `proguard-rules.pro`).
 
-**Diagnostic file log** (opt-in, works in release): General settings → "Log de diagnóstico" (`GeneralSettings.isfilelogging`). `Diag.kt` writes prefixed lines (`BOOT`, `SETTINGS`, `FIELD`, `RAWSTATE`, `STATE`, `HIDE`, `RENDER`, `VALUE`, `SUBEND`, `CRASH`) straight to `FileLogTree.write` — never through Timber, which R8 strips. Files: `Android/data/com.enderthor.kCustomField/files/logs/` (5 MB per file, last 6, 20 MB total). Off cost is a volatile read per call: never build strings before the `on` check. Log prefixes:
+**Diagnostic file log** (opt-in, works in release): General settings → "Log de diagnóstico" (`GeneralSettings.isfilelogging`). `Diag.kt` writes prefixed lines (`BOOT`, `SETTINGS`, `FIELD`, `RAWSTATE`, `STATE`, `HIDE`, `RENDER`, `VALUE`, `SUBEND`, `CRASH`) straight to `FileLogTree.write` — never through Timber, which R8 strips. Files: `Android/data/com.enderthor.kCustomField/files/logs/` (5 MB per file, last 6, 20 MB total). Off cost is a volatile read per call: never build strings before the `on` check. As a Timber tree it also captures Timber INFO+ that survives R8, including karoo-ext's own instance-tree warnings (e.g. `ViewEmitter: ignoring updateView, too soon`). Stall detection (`RENDER`) uses `RenderTracker`, tested in `app/src/test`.
+
+Timber log prefixes:
 - `"DOUBLE ..."` — dual-metric field events
 - `"TRIPLE ..."` — triple field events
 - `"ROLLING ..."` — rolling field events  
