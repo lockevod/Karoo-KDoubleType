@@ -210,9 +210,12 @@ fun convertValue(
             UserProfile.PreferredUnit.UnitType.IMPERIAL ->
                 if (convert == "distance") value / 1609.345 else value * 2.237
         }
+        // El SDK no documenta la unidad de FIELD_TIRE_PRESSURE. Observado (un reporte TyreWiz):
+        // 2560 cuando el campo nativo muestra 256 kPa → escala ×10 kPa (mbar). Con /100 salía 25.6.
+        // Métrico en kPa entero, como el campo nativo.
         "pressure" -> when (unitType) {
-            UserProfile.PreferredUnit.UnitType.METRIC -> value / 100.0
-            UserProfile.PreferredUnit.UnitType.IMPERIAL -> value * 0.145038
+            UserProfile.PreferredUnit.UnitType.METRIC -> value / 10.0
+            UserProfile.PreferredUnit.UnitType.IMPERIAL -> value * 0.0145038
         }
         "elevation" -> when (unitType) {
             // stream proporciona elevación en metros
