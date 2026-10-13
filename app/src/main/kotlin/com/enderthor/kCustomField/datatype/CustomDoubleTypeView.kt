@@ -242,6 +242,10 @@ fun trimNumberTo3Chars(x: String): String {
     if (!hasDecimal || x.endsWith('k') || x.endsWith('L')) return x
 
     val limit = if (x.startsWith('-')) 4 else 3
+    // Si la parte entera ya ocupa el hueco, se quita el decimal entero: take(3) de "1234.5"
+    // daba "123", un valor 10x menor.
+    val intPart = x.substringBefore('.')
+    if (intPart.length >= limit) return intPart
     val cut = x.take(limit)
 
     return cut.trimEnd('.')
@@ -569,7 +573,7 @@ private fun SextupleBigCellContent(number: String, icon: Int, colorFilter: Color
 
 
 @Composable
-private fun SingleHorizontalField(icon: Int, iconColor: ColorProvider, layout: FieldPosition, fieldSize: FieldSize, zoneColor: ColorProvider, number: String, isheadwind: Boolean, iszone: Boolean, thousandsSuffix: Char = 'k') {
+private fun SingleHorizontalField(icon: Int, iconColor: ColorProvider, layout: FieldPosition, fieldSize: FieldSize, zoneColor: ColorProvider, number: String, isheadwind: Boolean, iszone: Boolean, thousandsSuffix: Char = 'k', fit: Boolean = true) {
     val height = when (fieldSize) {
         FieldSize.LARGE -> 12.dp
         FieldSize.SMALL -> 6.dp
@@ -587,7 +591,8 @@ private fun SingleHorizontalField(icon: Int, iconColor: ColorProvider, layout: F
     // que fitNumberToChars conserva aparte; +1 al budget cuando está presente.
     val core = number.removePrefix("~")
     val maxChars = (if (core.startsWith('-')) 5 else 4) + (number.length - core.length)
-    val fitted = fitNumberToChars(number, maxChars, thousandsSuffix)
+    // fit=false para pares L/R ("47/53"): el recorte genérico los dejaría en "47/5".
+    val fitted = if (fit) fitNumberToChars(number, maxChars, thousandsSuffix) else number
     if (isheadwind && fieldSize == FieldSize.MEDIUM) NumberRow(fitted, zoneColor, layout, fieldSize, false,true,iszone,iconColor)
     else NumberRow(fitted, zoneColor, layout, fieldSize, false,false,iszone,iconColor)
 
@@ -801,7 +806,7 @@ fun DoubleScreenSelector(
                 isdivider
             )
 
-            FieldSize.MEDIUM, FieldSize.LARGE -> DoubleTypesVerticalScreenBig(
+            FieldSize.MEDIUM, FieldSize.LARGE, FieldSize.EXTRA_LARGE -> DoubleTypesVerticalScreenBig(
                 newLeft,
                 newRight,
                 leftIcon,
@@ -817,7 +822,6 @@ fun DoubleScreenSelector(
                 isdivider
             )
 
-            FieldSize.EXTRA_LARGE -> NotSupported("Size Not Supported", 24)
         }
     } else {
         DoubleTypesScreenHorizontal(
@@ -1036,7 +1040,7 @@ fun SextupleScreenSelector(
 data class TripleCell(val value: Double, val valueRight: Double, val field: DoubleFieldType, val iconColor: ColorProvider, val zoneColor: ColorProvider, val state: StreamState?)
 
 // Celda ya formateada, lista para pintar.
-private data class TripleCellView(val number: String, val icon: Int, val iconColor: ColorProvider, val zoneColor: ColorProvider, val iszone: Boolean, val isHeadwind: Boolean)
+private data class TripleCellView(val number: String, val icon: Int, val iconColor: ColorProvider, val zoneColor: ColorProvider, val iszone: Boolean, val isHeadwind: Boolean, val isPair: Boolean, val thousandsSuffix: Char)
 
 // Hueco número↔icono del triple (mismo valor que el sextuple pequeño).
 private const val TRIPLE_ICON_GAP = 12
@@ -1048,10 +1052,8 @@ fun TripleScreenSelector(
     cells: List<TripleCell>, ishorizontal: Boolean, fieldSize: FieldSize, isKaroo3: Boolean, layout: FieldPosition,
     isdivider: Boolean, distanceWithDecimals: Boolean, windtext: String, windDirection: Int, baseBitmap: Bitmap
 ) {
-    if (fieldSize == FieldSize.EXTRA_LARGE) {
-        NotSupported("Size Not Supported", 24)
-        return
-    }
+    // Sin tope de tamaño: las capas reparten por pesos. Un hueco de ancho completo y 1/3 de alto
+    // llega como grid=(60, 20) → EXTRA_LARGE, y rechazarlo dejaba el campo en "Size Not Supported".
     val views = cells.map { cell ->
         val kaction = cell.field.kaction
         val iszone = if (checkRealZone(kaction, cell.field.iszone, cell.value, cell.valueRight)) cell.field.iszone else false
@@ -1059,16 +1061,16 @@ fun TripleScreenSelector(
         // respeta "distancia con decimales" y la excepción de presión.
         val number = formatCellNumber(kaction, cell.state, cell.value, cell.valueRight,
             isIntField(kaction, kaction.powerField, false, distanceWithDecimals))
-        TripleCellView(trimNumberTo3Chars(number), kaction.icon, cell.iconColor, cell.zoneColor, iszone, kaction.name == "HEADWIND")
+        TripleCellView(trimNumberTo3Chars(number), kaction.icon, cell.iconColor, cell.zoneColor, iszone, kaction.name == "HEADWIND", kaction.powerField, thousandsSuffixFor(kaction))
     }
-    // Fuente por el valor más largo, como el sextuple pequeño (icono en línea con el número).
+    // Columna (3x1): fuente por el valor más largo, como el sextuple pequeño (icono en línea).
     val maxLen = views.maxOfOrNull { it.number.length } ?: 0
     val (fontSize, iconSize) = when {
         maxLen <= 3 -> 38 to 20
         maxLen == 4 -> 30 to 18
         else -> 24 to 16
     }
-    if (ishorizontal) TripleTypesScreenRow(views, fontSize, iconSize, isKaroo3, layout, isdivider, windtext, windDirection, baseBitmap)
+    if (ishorizontal) TripleTypesScreenRow(views, fieldSize, isKaroo3, layout, isdivider, windtext, windDirection, baseBitmap)
     else TripleTypesScreenColumn(views, fontSize, iconSize, isKaroo3, layout, isdivider, windtext, windDirection, baseBitmap)
 }
 
@@ -1478,7 +1480,7 @@ private fun SextupleTypesVerticalScreenSmall(
         }
     }
 }
-// Celda del triple: icono en línea con el número (HorizontalScreenContent, maxLines=1),
+// Celda de la columna del triple (3x1): icono en línea con el número (HorizontalScreenContent, maxLines=1),
 // o la flecha de viento si la métrica es HEADWIND (fondo neutro, como en el doble).
 @Composable
 private fun TripleCellContent(cell: TripleCellView, layout: FieldPosition, fontSize: Int, iconSize: Int, windtext: String, windDirection: Int, baseBitmap: Bitmap) {
@@ -1491,19 +1493,21 @@ private fun tripleCellBackground(cell: TripleCellView): ColorProvider = if (cell
 // 1x3: una fila de N celdas de igual peso (N = 2 o 3 según los slots ocultos).
 @Composable
 private fun TripleTypesScreenRow(
-    cells: List<TripleCellView>, fontSize: Int, iconSize: Int, isKaroo3: Boolean, layout: FieldPosition, isdivider: Boolean,
+    cells: List<TripleCellView>, fieldSize: FieldSize, isKaroo3: Boolean, layout: FieldPosition, isdivider: Boolean,
     windtext: String, windDirection: Int, baseBitmap: Bitmap
 ) {
+    // Cada celda como la mitad de un doble horizontal: icono arriba y número debajo, ambos
+    // con el alineado elegido (SingleHorizontalField). El número es el mismo que en la columna
+    // (trimNumberTo3Chars); los pares L/R no pasan por el recorte de 4 caracteres. La columna
+    // (3x1) sigue como el doble vertical, con el icono en línea.
     Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
         Row(modifier = GlanceModifier.fillMaxSize().background(TextNightDay).let { if (isKaroo3) it.cornerRadius(8.dp) else it }) {
             cells.forEachIndexed { index, cell ->
                 // Separador de 1 dp siempre presente (como el sextuple); isdivider solo cambia su color.
                 if (index > 0) Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(if (isdivider) TextDayNight else TextNightDay))
-                Column(
-                    modifier = GlanceModifier.defaultWeight().fillMaxHeight().background(tripleCellBackground(cell)),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TripleCellContent(cell, layout, fontSize, iconSize, windtext, windDirection, baseBitmap)
+                Column(modifier = GlanceModifier.defaultWeight().fillMaxHeight().background(tripleCellBackground(cell))) {
+                    if (cell.isHeadwind) HeadwindDirectionDoubleType(baseBitmap, windDirection, 38, windtext)
+                    else SingleHorizontalField(cell.icon, cell.iconColor, layout, fieldSize, cell.zoneColor, cell.number, false, cell.iszone, cell.thousandsSuffix, fit = !cell.isPair)
                 }
             }
         }
