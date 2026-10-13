@@ -13,6 +13,7 @@ KarooCustomFieldExtension (KarooExtension)
   └─ karooSystem: KarooSystemService        ← connects to Karoo sensor bus
   └─ types: List<DataTypeImpl>
        ├─ CustomDoubleType (×6)             ← horizontal/vertical dual metrics
+       ├─ CustomTripleType (×3)             ← three metrics, row (1x3) or column (3x1)
        ├─ CustomRollingType (×3)            ← cycles between up to 3 metrics
        ├─ CustomClimbType (×1)              ← smart climb composite field
        └─ BellActionDataType (×1)           ← tap-to-beep action field
@@ -50,6 +51,7 @@ All config lives in `DataStore<Preferences>` named `"settings"` (defined as `Con
 | `generalsettings` | `GeneralSettings` | `defaultGeneralSettings` |
 | `doublefieldsettings` | `List<DoubleFieldSettings>` (6 entries, indices 0–5) | `defaultDoubleFieldSettings` |
 | `onefieldsettings` | `List<OneFieldSettings>` (3 entries) | `defaultOneFieldSettings` |
+| `triplefieldsettings` | `List<TripleFieldSettings>` (3 entries) | `defaultTripleFieldSettings` |
 | `climbfieldsettings` | `List<ClimbFieldSettings>` | `defaultClimbFieldSettings` |
 | `wprimebalancesettings` | `WPrimeBalanceSettings` | `defaultWPrimeBalanceSettings` |
 
@@ -59,13 +61,15 @@ Defaults are pre-encoded JSON strings in `Configdata.kt` (e.g. `val defaultGener
 
 ## Key Patterns
 
-- **Sticky stream state**: `StickyStreamState.process()` in `DataTypeFunctions.kt` caches the last valid `StreamState.Streaming` for 7 seconds to survive brief sensor dropout.
+- **Sticky stream state**: `StickyStreamState.process()` in `DataTypeFunctions.kt` caches the last valid `StreamState.Streaming` for 7 seconds to survive brief sensor dropout. `getFieldFlow` dedups AFTER the sticky (per subscription), not on the raw stream, so a repeated `NotAvailable`/`Idle`/`Searching` re-evaluates expiry and an old value cannot freeze; a repeated `Streaming` refreshes the timestamp. Internal stream errors (the `catch` inside the loop) emit `Searching` (unknown), not `NotAvailable` (no data).
 - **Cancellation guard**: `@Volatile private var isCancelled` + global `ViewState.setCancelled()` — check before every `emitter.updateView()` call.
-- **Hardware throttle**: `karooSystem.hardwareType == HardwareType.K2` → use `RefreshTime.MID` (800 ms) instead of `RefreshTime.HALF` (200 ms). Always coerce refresh to `≥ 100L`.
+- **View update spacing**: karoo-ext 1.1.9 `ViewEmitter.updateView` silently drops (in our process, logging `ViewEmitter: ignoring updateView, too soon`) any update less than 900 ms after the last accepted one — an intended 1 Hz limit — and never resends it, so a dropped final change leaves the field stale. Every base routes `updateView` (seed included) through a per-view `ViewPacer`: it waits, just before the call, only what is missing to reach `Delay.VIEW_UPDATE` (950 ms) since the last accepted update. Steady 1 Hz input never waits (no latency drift); bursts are absorbed by `conflate()` upstream, so the next render shows the latest state. `refreshTime` (`RefreshTime.HALF`/`MID`) now only paces the headwind flow. The SDK compares wall-clock time: a backwards clock jump drops every update until the clock catches up (not fixable from our side).
 - **Retry pattern**: `.retryWhen { cause, attempt -> delay(…); true }` — max 4 retries with `RETRY_SHORT`/`RETRY_LONG` delays from `Configdata.kt`.
 - **Synthetic streams**: `WPRIME_BALANCE`, `VO2MAX`, `FTPG` are computed locally inside `getFieldFlow()`, not streamed from Karoo sensors. State for W′ is held in `WPrimeBalanceState` singleton.
 - **External headwind**: Guarded by `generalSettings.isheadwindenabled`; reads from extension id `karoo-headwind`. If disabled, replaced by `flowOf(StreamHeadWindData(0.0, 0.0))`.
 - **Extension-field pickers**: the `Dropdown*Field` composables in `TabFunctions.kt` build options from `KarooAction.entries`, `.sortedBy { it.name }` (alphabetical), then filter by `generalSettings` toggles — `isheadwindenabled` (HEADWIND), `iskpowerenabled` (`::kpower::`), `iskghostenabled` (`::kghost::`). KPower/KGhost default ON and filtering is **non-destructive** (the currently-selected action is re-added so it stays visible; no reset). HEADWIND is the exception: it resets to `SPEED` when disabled (a headwind field is broken without the extension).
+- **Field size**: `getEffectiveFieldSize(gridSize.second, textSize)` takes the smaller of the grid and text estimates. A full-width slot a third of the screen high reports `grid=(60, 20)`, which is `EXTRA_LARGE` — every layout must accept it (weight-based layouts, no size guard). Triple row cells reuse the horizontal Double's `SingleHorizontalField` (icon above number); L/R pairs pass `fit = false` so `fitNumberToChars` can't cut `47/53` to `47/5`. `trimNumberTo3Chars` drops the fraction when the integer part already fills the space (`1234.5` → `1234`, never `123`).
+- **Hide-empty switch**: `hideEmpty` on `DoubleFieldSettings`/`TripleFieldSettings` (default `false`). When set, `isEmptyMetric()` (`EmptyMetric.kt`) hides a metric the Karoo reports as no data, via `visibleIndices()`; never while `Searching`, never in preview, and large slots keep at least 2 metrics. Route metrics have no special sticky path: after a route is cleared they expire through the normal 7 s sticky (see "Sticky stream state"). Run tests with `./gradlew :app:testDebugUnitTest`.
 - **L/R dual fields** (`powerField = true`): rendered as a single `left/right` pair. `multipleStreamValues()` in `DataTypeFunctions.kt` reads the pair via `MultiFields` (in `Configdata.kt`): two field keys from one `DataPoint`, or `onlyfirst = true` to derive `right = 100 − left` from a single value (native pedal balance). The view shows `--/--` when the stream is not `Streaming`. (KPower no longer publishes balance/dynamics streams — the Karoo shows those natively for a paired meter — so the only KPower fields consumed here are single-value power streams.)
 
 ## Adding a New Metric
@@ -97,16 +101,24 @@ adb install app/release/app-release.apk
 | `datatype/Configdata.kt` | All enums, data classes, default settings, timing constants |
 | `datatype/DataTypeFunctions.kt` | `getFieldFlow()`, zone coloring, value conversion, W′ model |
 | `datatype/CustomDoubleTypeBase.kt` | Base `startView()` for dual-metric fields |
+| `datatype/CustomTripleTypeBase.kt` | Base `startView()` for triple-metric fields |
+| `datatype/EmptyMetric.kt` | Pure hide-empty rule: `isEmptyMetric`, `visibleIndices` (JVM tests in `app/src/test`) |
 | `datatype/CustomRollingTypeBase.kt` | Base `startView()` for cyclic rolling fields |
 | `datatype/CustomDoubleTypeView.kt` | Glance composables for field rendering |
+| `Diag.kt` / `FileLogTree.kt` | Opt-in diagnostic file log (see "Logging") |
 | `extensions/Extensions.kt` | DataStore stream helpers, `streamDataFlow`, `streamUserProfile` |
 | `extensions/Zones.kt` | Zone color lookup (`getZone`), slope/W′ zone definitions |
 | `extensions/KarooCustomFieldExtension.kt` | Extension entry point, `types` registry |
 
 ## Logging
 
-Timber is used throughout. Debug builds log everything; release builds log `WARN+` only. Log prefixes:
+Timber is used throughout. Debug builds log everything; release builds log `ERROR` only (R8 strips `Timber.v/d/i/w` via `proguard-rules.pro`).
+
+**Diagnostic file log** (opt-in, works in release): General settings → "Log de diagnóstico" (`GeneralSettings.isfilelogging`). `Diag.kt` writes prefixed lines (`BOOT`, `SETTINGS`, `FIELD`, `RAWSTATE`, `STATE`, `HIDE`, `RENDER`, `VALUE`, `SUBEND`, `CRASH`) straight to `FileLogTree.write` — never through Timber, which R8 strips. Files: `Android/data/com.enderthor.kCustomField/files/logs/` (5 MB per file, last 6, 20 MB total). Off cost is a volatile read per call: never build strings before the `on` check. As a Timber tree it also captures Timber INFO+ that survives R8, including karoo-ext's own instance-tree warnings (e.g. `ViewEmitter: ignoring updateView, too soon`). Stall detection (`RENDER`) uses `RenderTracker`, tested in `app/src/test`.
+
+Timber log prefixes:
 - `"DOUBLE ..."` — dual-metric field events
+- `"TRIPLE ..."` — triple field events
 - `"ROLLING ..."` — rolling field events  
 - `"CLIMB ..."` — climb field events
 

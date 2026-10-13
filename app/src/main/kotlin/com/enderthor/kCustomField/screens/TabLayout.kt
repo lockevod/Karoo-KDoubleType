@@ -55,6 +55,7 @@ fun TabLayout() {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf(
         stringResource(R.string.tab_field),
+        stringResource(R.string.tab_3field),
         stringResource(R.string.tab_6field),
         stringResource(R.string.tab_rolling),
         stringResource(R.string.tab_smart),
@@ -112,11 +113,12 @@ fun TabLayout() {
 
             when (selectedTabIndex) {
                 0 -> ConfFields(ctx)
-                1 -> Conf6Fields(ctx)
-                2 -> ConfRolling(ctx)
-                3 -> ConfSmart(ctx)
-                4 -> ConfWBal(ctx)
-                5 -> ConfGeneral()
+                1 -> ConfTripleFields(ctx)
+                2 -> Conf6Fields(ctx)
+                3 -> ConfRolling(ctx)
+                4 -> ConfSmart(ctx)
+                5 -> ConfWBal(ctx)
+                6 -> ConfGeneral()
 
             }
 
@@ -517,6 +519,9 @@ fun ConfFields(ctx: Context) {
                         doubleFieldSettingsList[index] =
                             doubleFieldSettings.copy(ishorizontal = newHorizontal)
                     }
+                    ZoneMultiSwitch(4, doubleFieldSettings.hideEmpty, true) {
+                        doubleFieldSettingsList[index] = doubleFieldSettings.copy(hideEmpty = it)
+                    }
                 }
             }
 
@@ -526,6 +531,146 @@ fun ConfFields(ctx: Context) {
                 coroutineScope.launch {
                     savedDialogVisible = true
                     saveDoubleFieldSettings(ctx, doubleFieldSettingsList)
+                }
+            }) {
+                Icon(Icons.Default.Done, contentDescription = stringResource(R.string.save_custom_desc))
+                Spacer(modifier = Modifier.width(5.dp))
+                Text(stringResource(R.string.save_custom))
+                Spacer(modifier = Modifier.width(5.dp))
+            }
+        }
+    }
+
+    if (savedDialogVisible) {
+        SimpleOkDialog(show = true, onDismiss = { savedDialogVisible = false }, text = { Text(stringResource(R.string.settings_saved)) })
+    }
+}
+
+//Triple: 3 campos de 3 metricas (horizontal o vertical)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConfTripleFields(ctx: Context) {
+
+    val coroutineScope = rememberCoroutineScope()
+
+    var savedDialogVisible by remember { mutableStateOf(false) }
+
+    val tripleFieldSettingsList = remember { mutableStateListOf(TripleFieldSettings(), TripleFieldSettings(), TripleFieldSettings()) }
+
+    var generalSettings by remember { mutableStateOf(GeneralSettings()) }
+
+    LaunchedEffect(Unit) {
+        ctx.streamGeneralSettings().collect { settings ->
+            generalSettings = settings
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        ctx.streamTripleFieldSettings().collect { settings ->
+            if (settings.isNotEmpty()) {
+                tripleFieldSettingsList.clear()
+                tripleFieldSettingsList.addAll(settings)
+            }
+        }
+    }
+
+    val tripleFieldSettingsDerived = remember {
+        derivedStateOf { tripleFieldSettingsList.toList() }
+    }
+
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .background(MaterialTheme.colorScheme.background)) {
+        Column(
+            modifier = Modifier
+                .padding(5.dp)
+                .verticalScroll(rememberScrollState())
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            tripleFieldSettingsDerived.value.forEachIndexed { index, t ->
+                TopAppBar(title = { Text(stringResource(R.string.custom_field_title, index + 1)) })
+
+                DropdownDoubleField(
+                    stringResource(R.string.first_field),
+                    t.onefield,
+                    generalSettings
+                ) { newAction ->
+                    val updatedZone =
+                        if (newAction.kaction.zone == "none") false else t.onefield.iszone
+                    tripleFieldSettingsList[index] =
+                        t.copy(onefield = newAction.copy(iszone = updatedZone))
+                }
+                ZoneMultiSwitch(
+                    0,
+                    t.onefield.iszone,
+                    t.onefield.kaction.zone != "none"
+                ) { newZone ->
+                    val updatedZone =
+                        if (t.onefield.kaction.zone == "none") false else newZone
+                    tripleFieldSettingsList[index] = t.copy(
+                        onefield = t.onefield.copy(iszone = updatedZone)
+                    )
+                }
+
+                DropdownDoubleField(
+                    stringResource(R.string.second_field),
+                    t.secondfield,
+                    generalSettings
+                ) { newAction ->
+                    val updatedZone =
+                        if (newAction.kaction.zone == "none") false else t.secondfield.iszone
+                    tripleFieldSettingsList[index] =
+                        t.copy(secondfield = newAction.copy(iszone = updatedZone))
+                }
+                ZoneMultiSwitch(
+                    0,
+                    t.secondfield.iszone,
+                    t.secondfield.kaction.zone != "none"
+                ) { newZone ->
+                    val updatedZone =
+                        if (t.secondfield.kaction.zone == "none") false else newZone
+                    tripleFieldSettingsList[index] = t.copy(
+                        secondfield = t.secondfield.copy(iszone = updatedZone)
+                    )
+                }
+
+                DropdownDoubleField(
+                    stringResource(R.string.third_field),
+                    t.thirdfield,
+                    generalSettings
+                ) { newAction ->
+                    val updatedZone =
+                        if (newAction.kaction.zone == "none") false else t.thirdfield.iszone
+                    tripleFieldSettingsList[index] =
+                        t.copy(thirdfield = newAction.copy(iszone = updatedZone))
+                }
+                ZoneMultiSwitch(
+                    0,
+                    t.thirdfield.iszone,
+                    t.thirdfield.kaction.zone != "none"
+                ) { newZone ->
+                    val updatedZone =
+                        if (t.thirdfield.kaction.zone == "none") false else newZone
+                    tripleFieldSettingsList[index] = t.copy(
+                        thirdfield = t.thirdfield.copy(iszone = updatedZone)
+                    )
+                }
+
+                ZoneMultiSwitch(1, t.ishorizontal, true) { newHorizontal ->
+                    tripleFieldSettingsList[index] = t.copy(ishorizontal = newHorizontal)
+                }
+                ZoneMultiSwitch(4, t.hideEmpty, true) {
+                    tripleFieldSettingsList[index] = t.copy(hideEmpty = it)
+                }
+            }
+
+            FilledTonalButton(modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp), onClick = {
+                coroutineScope.launch {
+                    savedDialogVisible = true
+                    saveTripleFieldSettings(ctx, tripleFieldSettingsList)
                 }
             }) {
                 Icon(Icons.Default.Done, contentDescription = stringResource(R.string.save_custom_desc))
@@ -983,6 +1128,7 @@ fun ConfGeneral() {
     var iskghostenabled by remember { mutableStateOf(true) }
     var isdivider by remember { mutableStateOf(true) }
     var distanceWithDecimals by remember { mutableStateOf(false) }
+    var isfilelogging by remember { mutableStateOf(false) }
     var bellsong by remember {mutableStateOf(KarooKey.BELL4) }
 
     var powerLoss by remember { mutableStateOf("2.2") }
@@ -1006,6 +1152,7 @@ fun ConfGeneral() {
             iskghostenabled = settings.iskghostenabled
             isdivider = settings.isdivider
             distanceWithDecimals = settings.distanceWithDecimals
+            isfilelogging = settings.isfilelogging
             bellsong = settings.bellBeepKey
         }
         ctx.streamStoredPowerSettings().collect { settings ->
@@ -1029,6 +1176,7 @@ fun ConfGeneral() {
                 iskghostenabled = gs.iskghostenabled
                 isdivider = gs.isdivider
                 distanceWithDecimals = gs.distanceWithDecimals
+                isfilelogging = gs.isfilelogging
                 bellsong = gs.bellBeepKey
 
                 val ps = ctx.streamStoredPowerSettings().first()
@@ -1306,6 +1454,16 @@ fun ConfGeneral() {
                 }
             }, onClose = { showBackupPicker = false })
 
+            Spacer(modifier = Modifier.height(2.dp))
+            TopAppBar(title = { Text(stringResource(R.string.file_logging_title)) })
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = isfilelogging, onCheckedChange = {
+                    isfilelogging = it
+                })
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(stringResource(R.string.file_logging_question))
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
 
@@ -1322,7 +1480,8 @@ fun ConfGeneral() {
                      iskghostenabled = iskghostenabled,
                      isdivider = isdivider,
                      bellBeepKey = bellsong,
-                     distanceWithDecimals = distanceWithDecimals
+                     distanceWithDecimals = distanceWithDecimals,
+                     isfilelogging = isfilelogging
 
                  )
 

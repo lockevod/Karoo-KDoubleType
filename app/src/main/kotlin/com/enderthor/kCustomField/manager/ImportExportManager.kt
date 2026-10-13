@@ -2,6 +2,7 @@
 
 package com.enderthor.kCustomField.manager
 
+import com.enderthor.kCustomField.extensions.streamGeneralSettings
 import android.content.Context
 import android.net.Uri
 import com.enderthor.kCustomField.datatype.*
@@ -31,6 +32,7 @@ object ImportExportManager {
         val general = ctx.streamGeneralSettings().first()
         val doubleFields = ctx.streamDoubleFieldSettings().first()
         val sextupleFields = ctx.streamSextupleFieldSettings().first()
+        val tripleFields = ctx.streamTripleFieldSettings().first()
         val oneFields = ctx.streamOneFieldSettings().first()
         val smartFields = ctx.streamSmartFieldSettings().first()
         val climbFields = ctx.streamClimbFieldSettings().first()
@@ -48,6 +50,7 @@ object ImportExportManager {
              generalSettings = general,
              doubleFieldSettings = doubleFields,
              sextupleFieldSettings = sextupleFields,
+             tripleFieldSettings = tripleFields,
              oneFieldSettings = oneFields,
              smartFieldSettings = smartFields,
              climbFieldSettings = climbFields,
@@ -110,9 +113,14 @@ object ImportExportManager {
 
     suspend fun applyPayload(ctx: Context, payload: ExportPayload) {
         // apply known sections using existing save helpers
-        payload.generalSettings?.let { saveGeneralSettings(ctx, it) }
+        // El log de diagnóstico es del dispositivo, no de la config: un backup no lo enciende ni lo apaga.
+        payload.generalSettings?.let {
+            val logging = runCatching { ctx.streamGeneralSettings().first().isfilelogging }.getOrDefault(false)
+            saveGeneralSettings(ctx, it.copy(isfilelogging = logging))
+        }
         payload.doubleFieldSettings?.let { saveDoubleFieldSettings(ctx, it) }
         payload.sextupleFieldSettings?.let { saveSextupleFieldSettings(ctx, it) }
+        payload.tripleFieldSettings?.let { saveTripleFieldSettings(ctx, it) }
         payload.oneFieldSettings?.let { saveOneFieldSettings(ctx, it) }
         payload.smartFieldSettings?.let { saveSmartFieldSettings(ctx, it) }
         payload.climbFieldSettings?.let { saveClimbFieldSettings(ctx, it) }
@@ -140,6 +148,7 @@ object ImportExportManager {
         if (payload.generalSettings != null) list.add("General")
         if (payload.doubleFieldSettings != null) list.add("Custom Fields")
         if (payload.sextupleFieldSettings != null) list.add("Sextuple Fields")
+        if (payload.tripleFieldSettings != null) list.add("Triple Fields")
         if (payload.oneFieldSettings != null) list.add("Rolling Fields")
         if (payload.smartFieldSettings != null) list.add("Smart Fields")
         if (payload.climbFieldSettings != null) list.add("Climb Fields")

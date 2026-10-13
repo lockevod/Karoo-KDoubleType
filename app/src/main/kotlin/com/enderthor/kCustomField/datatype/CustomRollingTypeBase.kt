@@ -1,5 +1,6 @@
 package com.enderthor.kCustomField.datatype
 
+import com.enderthor.kCustomField.Diag
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -127,6 +128,9 @@ abstract class CustomRollingTypeBase(
         // puede disparar DESPUÉS de haber arrancado la siguiente — ponía el flag a true y
         // congelaba la vista nueva el resto de la ruta, con todos sus streams vivos.
         val isCancelled = AtomicBoolean(false)
+        val diagKey = Diag.viewKey("ROLLING", index, config.preview)
+        val pacer = ViewPacer()
+        Diag.fieldStart(diagKey, "grid=${config.gridSize} text=${config.textSize}")
         ViewState.setCancelled(false)
 
 
@@ -184,7 +188,7 @@ abstract class CustomRollingTypeBase(
                             val startedRemoteViews = glance.compose(context, DpSize.Unspecified) {
                                 NotSupported("Searching...", 22)
                             }.remoteViews
-                            emitter.updateView(startedRemoteViews)
+                            emitter.updateView(startedRemoteViews); pacer.mark()
                         }
 
                         delay(600L + (Random.nextInt(5) * 100L))
@@ -248,6 +252,7 @@ abstract class CustomRollingTypeBase(
                         val primaryField = firstField(currentSetting)
                         val secondaryField = secondField(currentSetting)
                         val thirdField = thirdField(currentSetting)
+                        Diag.fieldConfig(diagKey, listOf(primaryField, secondaryField, thirdField).map { it.kaction })
 
                         val headwindFlow =
                             if (listOf(
@@ -320,10 +325,11 @@ abstract class CustomRollingTypeBase(
                     // completa del render, así que distinctUntilChanged es correcto otra vez.
                     .combine(userProfileFlow) { data, profile -> data to profile }
                     .distinctUntilChanged()
-                    // conflate() descarta emisiones intermedias mientras el render está ocupado.
-                    // El SDK Karoo limita los streams a 1Hz máximo, así que el tiempo de
-                    // composición de Glance (~50-100ms) ya actúa de throttle suficiente.
+                    // conflate() descarta emisiones intermedias mientras el render está ocupado
+                    // (composición o espera de ViewPacer): el siguiente pinta el estado más reciente.
+                    .onEach { Diag.input(diagKey) }
                     .conflate()
+                    .onEach { Diag.renderStart(diagKey) }
                     .onEach { (data, userProfile) ->
                         val (fieldStates, settingsData) = data
 
@@ -400,12 +406,11 @@ abstract class CustomRollingTypeBase(
                                     )
                                 }.remoteViews
                                 //Timber.d("ROLLING Updating view: $extension $index cyclic: $cyclicIndex value: $value ")
-                                if (!isCancelled.get()) emitter.updateView(newView)
+                                pacer.awaitSlot()
+                                if (!isCancelled.get()) { emitter.updateView(newView); pacer.mark(); Diag.rendered(diagKey) }
                             }
-                            // Sin delay: el SDK Karoo limita los streams a 1Hz como máximo,
-                            // así que el tiempo de composición de Glance (~50-100ms) ya actúa
-                            // de throttle suficiente. conflate() actúa de red de seguridad.
-
+                        } catch (e: CancellationException) {
+                            throw e   // cancelación de la vista (p.ej. durante pacer.awaitSlot): no es un error
                         } catch (e: Exception) {
                             Timber.e(e, "ROLLING Error composing/updating view: $extension $index")
                         }
@@ -480,6 +485,7 @@ abstract class CustomRollingTypeBase(
 
                 Timber.d("Cancelando todos los jobs y flujos")
                 isCancelled.set(true)
+                Diag.fieldStop(diagKey)
                 ViewState.setCancelled(true)
 
                 configjob.cancel()

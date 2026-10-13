@@ -12,8 +12,8 @@ android {
         applicationId = "com.enderthor.kCustomField"
         minSdk = 23
         targetSdk = 34
-        versionCode = 202609071
-        versionName = "4.5.0"
+        versionCode = 202610021
+        versionName = "4.6.0"
     }
 
     buildTypes {
@@ -30,6 +30,9 @@ android {
         viewBinding = true
         compose = true
         buildConfig = true
+    }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 }
 
@@ -53,4 +56,5 @@ dependencies {
     implementation(libs.timber)
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.foundation.layout.android)
+    testImplementation(libs.junit)
 }

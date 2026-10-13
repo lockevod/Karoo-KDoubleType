@@ -25,6 +25,7 @@ KDoubleType allows you to use custom fields with double types (HR, Power, etc.)
 | Field | Slots | Description |
 |-------|-------|-------------|
 | **KDouble** (×3) | 1 slot | Two metrics side by side — horizontal or vertical split |
+| **KTriple** (×3) | 1 slot | Three metrics in a row (1×3) or a column (3×1) |
 | **KRolling** (×3) | 1 slot | Cycles automatically between up to 3 metrics |
 | **KSextuple** (×3) | 1 slot (large) | Six metrics in a 2×3 grid — ideal for a single full-width slot |
 | **Smart Climb** (×1) | 1 slot | Adaptive climb field: 4 standard metrics + 1 smart center that switches between start-of-climb / on-climb metrics |
@@ -34,6 +35,7 @@ KDoubleType allows you to use custom fields with double types (HR, Power, etc.)
 
 - Add custom fields to your profiles (HR, Power, Speed, etc.).
 - **Double fields**: show two metrics horizontally (left/right) or vertically (top/bottom).
+- **Triple fields**: show three metrics at once, in a row or in a column. Configure them in the Triple tab; the first one starts with Ascent / Descent / Grade. In a row each metric looks like half of a horizontal Double (icon above the number, both following your alignment setting); in a column the icon sits beside the number, like a vertical Double. Triple fields work in any slot size, including a full-width slot a third of the screen high.
 - **Rolling fields**: show one metric at a time and cycle between up to three — configurable interval (5 / 10 / 20 / 30 s). If you pick only one metric it behaves as a static field.
 - **Sextuple fields**: show six metrics simultaneously in a compact 2×3 grid. Best used in a full-width or large slot. Up to 3 independent sextuple fields available. ⚠️ Avoid using more than one sextuple field simultaneously in the same profile on low-resource devices.
 - **Smart Climb field**: designed for the Karoo map page (1×2 large space). Displays 4 configurable metrics plus a smart center panel that shows a *start-of-climb* metric by default and automatically switches to an *on-climb* metric (e.g. distance-to-top) when a climb is detected. The field respects the reduced slot size inside the Karoo climber screen.
@@ -47,6 +49,8 @@ KDoubleType allows you to use custom fields with double types (HR, Power, etc.)
 - Vertical fields show up to 5 characters (including decimal point for speed and slope).
 - Colour zones are based on your Karoo zones. Slope zones use Hammerhead climber zones, or you can switch to Zwift colours.
 - Alignment can be set to left, centre, or right, or you can follow the default Karoo profile alignment.
+- **Hide metric without data?** (Double and Triple fields, off by default): when the Karoo has no data for a metric (e.g. Distance Remaining with no route loaded) it is hidden and the others use its space. It never hides a sensor that is still searching, and it doesn't apply in the profile editor preview. In large slots at least two metrics always stay visible. If every metric in the field has no data, all are shown as usual.
+- **Route cleared:** route metrics (distance remaining, time to destination, ascent remaining) stop showing the old value within about 15 seconds at most after the route is cleared (it no longer stays frozen), whatever the switch above is set to.
 - **Rolling fields** — *Extra Time* option: when enabled the first metric gets 3× the display time of the others.
 - **Headwind field**: reads data from the [timklge Headwind extension](https://github.com/timklge?tab=repositories). You must install and configure that app separately, and also add its headwind field to the same profile.
 - **Show KPower / Show KGhost fields** (General tab): toggles whether the KPower (`KPW…`) and KGhost (`Ghost…`) metrics appear in the field pickers. Both default ON; turn one OFF to declutter the pickers if you don't use that extension. Existing configured fields are left untouched.
@@ -141,6 +145,16 @@ meter**.
 > longer publishes streams for these — the Karoo shows them natively for a paired meter (torque,
 > average/max torque, L/R pedal balance, torque effectiveness, pedal smoothness), and KPower still
 > writes them to the FIT. Use the Karoo's own native fields for those metrics.
+
+## Diagnostic log
+
+If something looks wrong (a field that freezes or goes blank, a metric that hides when it shouldn't, a value that doesn't match the Karoo's own field), you can record a diagnostic log and send it to the developer.
+
+- Turn on **Diagnostic log** at the bottom of the **General** tab and press **Save**. It is off by default.
+- Ride as usual. The log is written to `Android/data/com.enderthor.kCustomField/files/logs/` on the Karoo. Copy it with `adb pull` or a file manager.
+- It records which fields are on screen and how they are configured, the state of each metric (streaming / searching / no data), what the hide-empty switch decided, fields that stopped updating, and a sample of raw and converted values every few minutes. Location (latitude/longitude) is never written.
+- Files are capped (5 MB each, the last 6 kept, 20 MB in total). With the switch off it costs essentially nothing. Turn it off again when you are done.
+- Importing a backup does not change this switch.
 
 ## Known Bugs / Limitations
 

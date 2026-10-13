@@ -13,6 +13,9 @@ class KCustomApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         val test = false
+        // Siempre plantado; FileLogTree.enabled (Ajustes generales) decide, también en release.
+        FileLogTree.start(this)
+        plant(FileLogTree)
 
         if (BuildConfig.DEBUG || test) {
             plant(object : DebugTree() {

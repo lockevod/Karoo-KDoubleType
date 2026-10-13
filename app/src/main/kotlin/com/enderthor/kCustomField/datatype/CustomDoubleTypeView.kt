@@ -135,10 +135,6 @@ fun formatNumber(number: Double, isInt: Boolean, isTime: Boolean = false, isCivi
 // power y climb fuerzan entero. Si el usuario activa "distancia con decimales"
 // (ajuste global), los campos de distancia (convert=="distance") pasan a decimal.
 fun isIntField(kaction: KarooAction, isPower: Boolean, isClimb: Boolean, distanceWithDecimals: Boolean): Boolean {
-    // "pressure" va con decimal SIEMPRE, y antes que los overrides: en métrico son bar (6.2) y
-    // un `|| isClimb` posterior lo devolvería a "6" — un 3% de error, justo la precisión que
-    // esta excepción existe para conservar.
-    if (kaction.convert == "pressure") return false
     val base = !(kaction.convert == "speed" || kaction.zone == "slopeZones" || kaction.label == "IF")
     val adjusted = if (distanceWithDecimals && kaction.convert == "distance") false else base
     return adjusted || isPower || isClimb
@@ -246,6 +242,10 @@ fun trimNumberTo3Chars(x: String): String {
     if (!hasDecimal || x.endsWith('k') || x.endsWith('L')) return x
 
     val limit = if (x.startsWith('-')) 4 else 3
+    // Si la parte entera ya ocupa el hueco, se quita el decimal entero: take(3) de "1234.5"
+    // daba "123", un valor 10x menor.
+    val intPart = x.substringBefore('.')
+    if (intPart.length >= limit) return intPart
     val cut = x.take(limit)
 
     return cut.trimEnd('.')
@@ -418,6 +418,23 @@ private fun powerPair(state: StreamState?, left: Double, right: Double): String 
     if (state is StreamState.Streaming) formatNumber(left, true) + "/" + formatNumber(right, true)
     else "--/--"
 
+// Formateo de una celda compartido por doble y triple: marcador "~" de KGhost delante,
+// FA, par L/R y si no número normal. `horizontal` es la rama horizontal del doble
+// (isInt forzado y caso IF); null = número normal con isInt.
+private fun formatCellNumber(
+    kaction: KarooAction, state: StreamState?, value: Double, valueSecond: Double, isInt: Boolean,
+    horizontal: (() -> String)? = null
+): String {
+    val isTime = kaction.action == KarooAction.TIMETODEST.action
+    val isCivil = kaction.action == KarooAction.CIVIL_DUSK.action || kaction.action == KarooAction.CIVIL_DAWN.action
+    return estimateMarker(kaction, state) + when {
+        kaction.name.startsWith("FA_") && state != null -> formatFAValue(state, kaction.name)
+        kaction.powerField -> powerPair(state, value, valueSecond)
+        horizontal != null -> horizontal()
+        else -> ghostOrNumber(kaction, value, isInt, isTime, isCivil, thousandsSuffix = thousandsSuffixFor(kaction))
+    }
+}
+
 @Composable
 private fun OneNumberRow(
     number: String,
@@ -556,7 +573,7 @@ private fun SextupleBigCellContent(number: String, icon: Int, colorFilter: Color
 
 
 @Composable
-private fun SingleHorizontalField(icon: Int, iconColor: ColorProvider, layout: FieldPosition, fieldSize: FieldSize, zoneColor: ColorProvider, number: String, isheadwind: Boolean, iszone: Boolean, thousandsSuffix: Char = 'k') {
+private fun SingleHorizontalField(icon: Int, iconColor: ColorProvider, layout: FieldPosition, fieldSize: FieldSize, zoneColor: ColorProvider, number: String, isheadwind: Boolean, iszone: Boolean, thousandsSuffix: Char = 'k', fit: Boolean = true) {
     val height = when (fieldSize) {
         FieldSize.LARGE -> 12.dp
         FieldSize.SMALL -> 6.dp
@@ -574,7 +591,8 @@ private fun SingleHorizontalField(icon: Int, iconColor: ColorProvider, layout: F
     // que fitNumberToChars conserva aparte; +1 al budget cuando está presente.
     val core = number.removePrefix("~")
     val maxChars = (if (core.startsWith('-')) 5 else 4) + (number.length - core.length)
-    val fitted = fitNumberToChars(number, maxChars, thousandsSuffix)
+    // fit=false para pares L/R ("47/53"): el recorte genérico los dejaría en "47/5".
+    val fitted = if (fit) fitNumberToChars(number, maxChars, thousandsSuffix) else number
     if (isheadwind && fieldSize == FieldSize.MEDIUM) NumberRow(fitted, zoneColor, layout, fieldSize, false,true,iszone,iconColor)
     else NumberRow(fitted, zoneColor, layout, fieldSize, false,false,iszone,iconColor)
 
@@ -728,10 +746,6 @@ fun DoubleScreenSelector(
     val ispowerLeft= leftField.kaction.powerField
     val ispowerRight= rightField.kaction.powerField
     
-    // Detectar si son campos de Flight Attendant
-    val isLeftFA = leftField.kaction.name.startsWith("FA_")
-    val isRightFA = rightField.kaction.name.startsWith("FA_")
-    
     val isLeftInt= isIntField(leftField.kaction, ispowerLeft, isClimb, distanceWithDecimals)
     val isRightInt= isIntField(rightField.kaction, ispowerRight, isClimb, distanceWithDecimals)
     val leftCivil=leftField.kaction.action==KarooAction.CIVIL_DUSK.action ||  leftField.kaction.action==KarooAction.CIVIL_DAWN.action
@@ -743,30 +757,26 @@ fun DoubleScreenSelector(
     val iszoneLeft= if (checkRealZone(leftField.kaction,leftField.iszone,leftNumber,leftNumberSecond)) leftField.iszone else false
     val iszoneRight= if (checkRealZone(rightField.kaction,rightField.iszone,rightNumber,rightNumberSecond)) rightField.iszone else false
 
-    // Formateo especial para campos FA; el marcador "~" de estimación (KGhost) se
-    // antepone al valor real (devuelve "" salvo en gap estimado, así no afecta al resto).
-    val newLeft = estimateMarker(leftField.kaction, leftFieldState) + when {
-        isLeftFA && leftFieldState != null -> formatFAValue(leftFieldState, leftField.kaction.name)
-        ispowerLeft -> powerPair(leftFieldState, leftNumber, leftNumberSecond)
-        !showH -> ghostOrNumber(leftField.kaction, leftNumber, isLeftInt, leftTime, leftCivil, thousandsSuffix = thousandsSuffixFor(leftField.kaction))
-        else -> when (selector) {
-            0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString()
-                .take(3) else ghostOrNumber(leftField.kaction, leftNumber, true, leftTime, leftCivil, thousandsSuffix = thousandsSuffixFor(leftField.kaction))
-            else -> "0.0"
-        }
-    }
+    // Formateo común (FA, par L/R, "~" de KGhost) en formatCellNumber; aquí solo la
+    // rama horizontal propia del doble (isInt forzado y caso IF).
+    val newLeft = formatCellNumber(leftField.kaction, leftFieldState, leftNumber, leftNumberSecond, isLeftInt,
+        if (showH) ({
+            when (selector) {
+                0, 3 -> if (leftLabel == "IF") ((leftNumber * 10.0).roundToInt() / 10.0).toString()
+                    .take(3) else ghostOrNumber(leftField.kaction, leftNumber, true, leftTime, leftCivil, thousandsSuffix = thousandsSuffixFor(leftField.kaction))
+                else -> "0.0"
+            }
+        }) else null)
 
 
-    val newRight = estimateMarker(rightField.kaction, rightFieldState) + when {
-        isRightFA && rightFieldState != null -> formatFAValue(rightFieldState, rightField.kaction.name)
-        ispowerRight -> powerPair(rightFieldState, rightNumber, rightNumberSecond)
-        !showH -> ghostOrNumber(rightField.kaction, rightNumber, isRightInt, rightTime, rightCivil, thousandsSuffix = thousandsSuffixFor(rightField.kaction))
-        else -> when (selector) {
-            1, 3 -> if (rightLabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString()
-                .take(3) else ghostOrNumber(rightField.kaction, rightNumber, true, rightTime, rightCivil, thousandsSuffix = thousandsSuffixFor(rightField.kaction))
-            else -> "0.0"
-        }
-    }
+    val newRight = formatCellNumber(rightField.kaction, rightFieldState, rightNumber, rightNumberSecond, isRightInt,
+        if (showH) ({
+            when (selector) {
+                1, 3 -> if (rightLabel == "IF") ((rightNumber * 10.0).roundToInt() / 10.0).toString()
+                    .take(3) else ghostOrNumber(rightField.kaction, rightNumber, true, rightTime, rightCivil, thousandsSuffix = thousandsSuffixFor(rightField.kaction))
+                else -> "0.0"
+            }
+        }) else null)
 
 
     val icon1 = if (selector == 0 || selector == 3) leftIcon else 1
@@ -796,7 +806,7 @@ fun DoubleScreenSelector(
                 isdivider
             )
 
-            FieldSize.MEDIUM, FieldSize.LARGE -> DoubleTypesVerticalScreenBig(
+            FieldSize.MEDIUM, FieldSize.LARGE, FieldSize.EXTRA_LARGE -> DoubleTypesVerticalScreenBig(
                 newLeft,
                 newRight,
                 leftIcon,
@@ -812,7 +822,6 @@ fun DoubleScreenSelector(
                 isdivider
             )
 
-            FieldSize.EXTRA_LARGE -> NotSupported("Size Not Supported", 24)
         }
     } else {
         DoubleTypesScreenHorizontal(
@@ -1026,6 +1035,44 @@ fun SextupleScreenSelector(
     }
 }
 
+
+// Una celda del campo triple: valor (y segundo valor para pares L/R), métrica y colores.
+data class TripleCell(val value: Double, val valueRight: Double, val field: DoubleFieldType, val iconColor: ColorProvider, val zoneColor: ColorProvider, val state: StreamState?)
+
+// Celda ya formateada, lista para pintar.
+private data class TripleCellView(val number: String, val icon: Int, val iconColor: ColorProvider, val zoneColor: ColorProvider, val iszone: Boolean, val isHeadwind: Boolean, val isPair: Boolean, val thousandsSuffix: Char)
+
+// Hueco número↔icono del triple (mismo valor que el sextuple pequeño).
+private const val TRIPLE_ICON_GAP = 12
+
+// Campo triple: 1x3 (ishorizontal) o 3x1. `cells` trae 2 o 3 celdas (los slots vacíos
+// ya ocultados); las capas reparten el espacio entre las que lleguen.
+@Composable
+fun TripleScreenSelector(
+    cells: List<TripleCell>, ishorizontal: Boolean, fieldSize: FieldSize, isKaroo3: Boolean, layout: FieldPosition,
+    isdivider: Boolean, distanceWithDecimals: Boolean, windtext: String, windDirection: Int, baseBitmap: Bitmap
+) {
+    // Sin tope de tamaño: las capas reparten por pesos. Un hueco de ancho completo y 1/3 de alto
+    // llega como grid=(60, 20) → EXTRA_LARGE, y rechazarlo dejaba el campo en "Size Not Supported".
+    val views = cells.map { cell ->
+        val kaction = cell.field.kaction
+        val iszone = if (checkRealZone(kaction, cell.field.iszone, cell.value, cell.valueRight)) cell.field.iszone else false
+        // Mismo formateo que el doble (FA, par L/R, marcador "~" de KGhost); isIntField
+        // respeta "distancia con decimales" y la excepción de presión.
+        val number = formatCellNumber(kaction, cell.state, cell.value, cell.valueRight,
+            isIntField(kaction, kaction.powerField, false, distanceWithDecimals))
+        TripleCellView(trimNumberTo3Chars(number), kaction.icon, cell.iconColor, cell.zoneColor, iszone, kaction.name == "HEADWIND", kaction.powerField, thousandsSuffixFor(kaction))
+    }
+    // Columna (3x1): fuente por el valor más largo, como el sextuple pequeño (icono en línea).
+    val maxLen = views.maxOfOrNull { it.number.length } ?: 0
+    val (fontSize, iconSize) = when {
+        maxLen <= 3 -> 38 to 20
+        maxLen == 4 -> 30 to 18
+        else -> 24 to 16
+    }
+    if (ishorizontal) TripleTypesScreenRow(views, fieldSize, isKaroo3, layout, isdivider, windtext, windDirection, baseBitmap)
+    else TripleTypesScreenColumn(views, fontSize, iconSize, isKaroo3, layout, isdivider, windtext, windDirection, baseBitmap)
+}
 
 fun getFieldTypeSelector(firstFieldState:String,secondFieldState:String) :Int
 {
@@ -1433,6 +1480,82 @@ private fun SextupleTypesVerticalScreenSmall(
         }
     }
 }
+// Celda de la columna del triple (3x1): icono en línea con el número (HorizontalScreenContent, maxLines=1),
+// o la flecha de viento si la métrica es HEADWIND (fondo neutro, como en el doble).
+@Composable
+private fun TripleCellContent(cell: TripleCellView, layout: FieldPosition, fontSize: Int, iconSize: Int, windtext: String, windDirection: Int, baseBitmap: Bitmap) {
+    if (cell.isHeadwind) HeadwindDirectionDoubleType(baseBitmap, windDirection, fontSize, windtext)
+    else HorizontalScreenContent(cell.number, cell.icon, cell.iconColor, layout, cell.iszone, fontSize, iconSize, 1, TRIPLE_ICON_GAP)
+}
+
+private fun tripleCellBackground(cell: TripleCellView): ColorProvider = if (cell.isHeadwind) TextNightDay else cell.zoneColor
+
+// 1x3: una fila de N celdas de igual peso (N = 2 o 3 según los slots ocultos).
+@Composable
+private fun TripleTypesScreenRow(
+    cells: List<TripleCellView>, fieldSize: FieldSize, isKaroo3: Boolean, layout: FieldPosition, isdivider: Boolean,
+    windtext: String, windDirection: Int, baseBitmap: Bitmap
+) {
+    // Cada celda como la mitad de un doble horizontal: icono arriba y número debajo, ambos
+    // con el alineado elegido (SingleHorizontalField). El número es el mismo que en la columna
+    // (trimNumberTo3Chars); los pares L/R no pasan por el recorte de 4 caracteres. La columna
+    // (3x1) sigue como el doble vertical, con el icono en línea.
+    Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
+        Row(modifier = GlanceModifier.fillMaxSize().background(TextNightDay).let { if (isKaroo3) it.cornerRadius(8.dp) else it }) {
+            cells.forEachIndexed { index, cell ->
+                // Separador de 1 dp siempre presente (como el sextuple); isdivider solo cambia su color.
+                if (index > 0) Spacer(modifier = GlanceModifier.fillMaxHeight().width(1.dp).background(if (isdivider) TextDayNight else TextNightDay))
+                Column(modifier = GlanceModifier.defaultWeight().fillMaxHeight().background(tripleCellBackground(cell))) {
+                    if (cell.isHeadwind) HeadwindDirectionDoubleType(baseBitmap, windDirection, 38, windtext)
+                    else SingleHorizontalField(cell.icon, cell.iconColor, layout, fieldSize, cell.zoneColor, cell.number, false, cell.iszone, cell.thousandsSuffix, fit = !cell.isPair)
+                }
+            }
+        }
+    }
+}
+
+// 3x1: una columna de N filas de igual peso, separador de 1 dp entre filas.
+@Composable
+private fun TripleTypesScreenColumn(
+    cells: List<TripleCellView>, fontSize: Int, iconSize: Int, isKaroo3: Boolean, layout: FieldPosition, isdivider: Boolean,
+    windtext: String, windDirection: Int, baseBitmap: Bitmap
+) {
+    Box(modifier = GlanceModifier.fillMaxSize().padding(start = 1.dp, end = 1.dp)) {
+        Column(modifier = GlanceModifier.fillMaxSize().background(TextNightDay).let { if (isKaroo3) it.cornerRadius(8.dp) else it }) {
+            cells.forEachIndexed { index, cell ->
+                // Separador de 1 dp siempre presente (como el sextuple); isdivider solo cambia su color.
+                if (index > 0) Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(if (isdivider) TextDayNight else TextNightDay))
+                Column(
+                    modifier = GlanceModifier.defaultWeight().fillMaxWidth().background(tripleCellBackground(cell)),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TripleCellContent(cell, layout, fontSize, iconSize, windtext, windDirection, baseBitmap)
+                }
+            }
+        }
+    }
+}
+
+private val previewTripleCells = listOf(
+    TripleCell(25.4, 0.0, DoubleFieldType(KarooAction.SPEED, false), TextDayNight, TextNightDay, null),
+    TripleCell(245.0, 0.0, DoubleFieldType(KarooAction.POWER, false), TextDayNight, TextNightDay, null),
+    TripleCell(88.0, 0.0, DoubleFieldType(KarooAction.CADENCE, false), TextDayNight, TextNightDay, null)
+)
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 200, heightDp = 150)
+@Composable
+private fun TripleRowPreview() {
+    TripleScreenSelector(previewTripleCells, true, FieldSize.MEDIUM, true, FieldPosition.CENTER, true, false, "", 0, Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 200, heightDp = 150)
+@Composable
+private fun TripleColumnPreview() {
+    TripleScreenSelector(previewTripleCells, false, FieldSize.MEDIUM, true, FieldPosition.CENTER, true, false, "", 0, Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
+}
+
 
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150)

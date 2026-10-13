@@ -1,5 +1,6 @@
 package com.enderthor.kCustomField.datatype
 
+import com.enderthor.kCustomField.Diag
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -135,6 +136,9 @@ abstract class CustomSextupleTypeBase(
         // puede disparar DESPUÉS de haber arrancado la siguiente — ponía el flag a true y
         // congelaba la vista nueva el resto de la ruta, con todos sus streams vivos.
         val isCancelled = AtomicBoolean(false)
+        val diagKey = Diag.viewKey("SEXTUPLE", globalIndex, config.preview)
+        val pacer = ViewPacer()
+        Diag.fieldStart(diagKey, "grid=${config.gridSize} text=${config.textSize}")
         ViewState.setCancelled(false)
 
         val dataflow = context.streamSextupleFieldSettings()
@@ -180,7 +184,7 @@ abstract class CustomSextupleTypeBase(
                                 }.remoteViews
                             }
                             withContext(Dispatchers.Main) {
-                                emitter.updateView(initialRemoteViews)
+                                emitter.updateView(initialRemoteViews); pacer.mark()
                             }
 
                         } catch (e: Exception) {
@@ -218,6 +222,7 @@ abstract class CustomSextupleTypeBase(
                             val fourthField = fourthField(currentSettings)
                             val fifthField = fifthField(currentSettings)
                             val sixthField = sixthField(currentSettings)
+                            Diag.fieldConfig(diagKey, listOf(primaryField, secondaryField, thirdField, fourthField, fifthField, sixthField).map { it.kaction })
 
                             val headwindFlow =
                                 if (listOf(
@@ -307,7 +312,9 @@ abstract class CustomSextupleTypeBase(
                         // repite, la composición Glance y el updateView por Binder que vendrían
                         // detrás son trabajo tirado. StreamState/DataPoint son data class.
                         .distinctUntilChanged()
+                        .onEach { Diag.input(diagKey) }
                         .conflate()
+                        .onEach { Diag.renderStart(diagKey) }
                         .onEach { result ->
 
                         if (isCancelled.get()) {
@@ -450,7 +457,8 @@ abstract class CustomSextupleTypeBase(
                                             sixthFieldState = sixthFieldState as? StreamState
                                         )
                                     }.remoteViews
-                                    if (!isCancelled.get()) emitter.updateView(newView)
+                                    pacer.awaitSlot()
+                                    if (!isCancelled.get()) { emitter.updateView(newView); pacer.mark(); Diag.rendered(diagKey) }
                                 }
                             } catch (e: Exception) {
                                 if (e is CancellationException) {
@@ -463,7 +471,6 @@ abstract class CustomSextupleTypeBase(
                                 }
                             }
 
-                            delay(refreshTime)
                         }
                         .catch { e ->
                             when (e) {
@@ -537,6 +544,7 @@ abstract class CustomSextupleTypeBase(
                 Timber.d("SEXTUPLE Emitter.setCancellable: extension=$extension index=$globalIndex")
 
                 isCancelled.set(true)
+                Diag.fieldStop(diagKey)
                 ViewState.setCancelled(true)
                 configjob.cancel()
                 viewjob.cancel()

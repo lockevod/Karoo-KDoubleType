@@ -1,5 +1,7 @@
 package com.enderthor.kCustomField.datatype
 
+import com.enderthor.kCustomField.Diag
+import com.enderthor.kCustomField.FileLogTree
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -32,6 +34,7 @@ import io.hammerhead.karooext.internal.ViewEmitter
 
 import com.enderthor.kCustomField.extensions.streamDoubleFieldSettings
 import com.enderthor.kCustomField.extensions.streamGeneralSettings
+import com.enderthor.kCustomField.BuildConfig
 import com.enderthor.kCustomField.R
 
 import com.enderthor.kCustomField.extensions.streamUserProfile
@@ -131,7 +134,11 @@ abstract class CustomDoubleTypeBase(
         // puede disparar DESPUÉS de haber arrancado la siguiente — ponía el flag a true y
         // congelaba la vista nueva el resto de la ruta, con todos sus streams vivos.
         val isCancelled = AtomicBoolean(false)
+        val diagKey = Diag.viewKey("DOUBLE", globalIndex, config.preview)
+        val pacer = ViewPacer()
+        Diag.fieldStart(diagKey, "grid=${config.gridSize} text=${config.textSize}")
         ViewState.setCancelled(false)
+        val effectiveFieldSize = getEffectiveFieldSize(config.gridSize.second, config.textSize)
 
         val dataflow = context.streamDoubleFieldSettings()
             .onStart {
@@ -176,7 +183,7 @@ abstract class CustomDoubleTypeBase(
                                     }.remoteViews
                                 }
                                 withContext(Dispatchers.Main) {
-                                    emitter.updateView(initialRemoteViews)
+                                    emitter.updateView(initialRemoteViews); pacer.mark()
                                 }
 
                             } catch (e: Exception) {
@@ -208,6 +215,7 @@ abstract class CustomDoubleTypeBase(
 
                             val primaryField = firstField(currentSettings)
                             val secondaryField = secondField(currentSettings)
+                            Diag.fieldConfig(diagKey, listOf(primaryField.kaction, secondaryField.kaction), "hide=${currentSettings.hideEmpty}")
 
                             val headwindFlow =
                                 if (listOf(primaryField, secondaryField).any { it.kaction.name == "HEADWIND" } && generalSettings.isheadwindenabled)
@@ -225,7 +233,9 @@ abstract class CustomDoubleTypeBase(
                     // la igualdad es estructural: si la terna repite, la composición Glance y el
                     // updateView por Binder que vendrían detrás son trabajo tirado.
                     .distinctUntilChanged()
-                    .conflate().onEach { (firstFieldState, secondFieldState, globalConfig) ->
+                    .onEach { Diag.input(diagKey) }
+                    .conflate()
+                    .onEach { Diag.renderStart(diagKey) }.onEach { (firstFieldState, secondFieldState, globalConfig) ->
 
                         if (isCancelled.get()) {
                             Timber.d("DOUBLE Skipping update, job cancelled: $extension $globalIndex")
@@ -279,6 +289,17 @@ abstract class CustomDoubleTypeBase(
                                 else -> generalSettings.iscentervertical
                             }
 
+                            // Ocultar mitad sin datos: solo con el switch y nunca en preview (los
+                            // DataPoints de preview solo llevan SINGLE). RollingFieldScreen solo
+                            // soporta SMALL/MEDIUM, así que en tamaños mayores no se oculta nada.
+                            val minVisible = if (effectiveFieldSize == FieldSize.SMALL || effectiveFieldSize == FieldSize.MEDIUM) 1 else 2
+                            val empty = listOf(
+                                isEmptyMetric(firstFieldState as? StreamState, firstField(settings).kaction),
+                                isEmptyMetric(secondFieldState as? StreamState, secondField(settings).kaction)
+                            )
+                            val visible = visibleIndices(settings.hideEmpty && !config.preview, empty, minVisible)
+                            if (settings.hideEmpty && FileLogTree.enabled) Diag.hide(diagKey, visible, empty, listOf(firstFieldState, secondFieldState))
+
                             try {
                                 if (isCancelled.get()) {
                                     Timber.d("DOUBLE Skipping composition, job cancelled: $extension $globalIndex")
@@ -287,7 +308,30 @@ abstract class CustomDoubleTypeBase(
                                 withContext(Dispatchers.Main) {
                                     if (isCancelled.get()) return@withContext
                                     val newView = glance.compose(context, DpSize.Unspecified) {
-                                        DoubleScreenSelector(
+                                        if (visible.size == 1) {
+                                            val first = visible[0] == 0
+                                            val rawState = if (first) firstFieldState else secondFieldState
+                                            val kaction = (if (first) firstField(settings) else secondField(settings)).kaction
+                                            RollingFieldScreen(
+                                                if (first) firstvalue else secondvalue,
+                                                isIntField(kaction, false, false, generalSettings.distanceWithDecimals),
+                                                kaction,
+                                                if (first) firstIconcolor else secondIconcolor,
+                                                if (first) firstColorzone else secondColorzone,
+                                                effectiveFieldSize,
+                                                isKaroo,
+                                                clayout,
+                                                windtext,
+                                                winddiff.roundToInt(),
+                                                baseBitmap,
+                                                rawState is StreamState,
+                                                config.textSize,
+                                                if (first) isleftzone else isrightzone,
+                                                config.preview,
+                                                if (first) firstvalueRight else secondvalueRight,
+                                                fieldState = rawState as? StreamState
+                                            )
+                                        } else DoubleScreenSelector(
                                             fieldNumber,
                                             ishorizontal(settings),
                                             firstvalue,
@@ -298,7 +342,7 @@ abstract class CustomDoubleTypeBase(
                                             secondIconcolor,
                                             firstColorzone,
                                             secondColorzone,
-                                            getEffectiveFieldSize(config.gridSize.second, config.textSize),
+                                            effectiveFieldSize,
                                             isKaroo,
                                             clayout,
                                             windtext,
@@ -314,11 +358,9 @@ abstract class CustomDoubleTypeBase(
                                             generalSettings.distanceWithDecimals
                                         )
                                     }.remoteViews
-                                    if (!isCancelled.get()) emitter.updateView(newView)
+                                    pacer.awaitSlot()
+                                    if (!isCancelled.get()) { emitter.updateView(newView); pacer.mark(); Diag.rendered(diagKey) }
                                 }
-                                // Sin delay: SDK Karoo limita streams a 1Hz máximo.
-                                // El tiempo de composición Glance (~50-100ms) ya es throttle suficiente.
-                                // conflate() actúa como red de seguridad ante cualquier ráfaga.
                             } catch (e: Exception) {
                                 if (e is CancellationException) {
                                     Timber.d("DOUBLE View update cancelled normally: $extension $globalIndex")
@@ -329,6 +371,7 @@ abstract class CustomDoubleTypeBase(
                                     }
                                 }
                             }
+
                         }
                         .catch { e ->
                             when (e) {
@@ -405,6 +448,7 @@ abstract class CustomDoubleTypeBase(
                 Timber.d("Iniciando cancelación de CustomDoubleTypeBase")
 
                 isCancelled.set(true)
+                Diag.fieldStop(diagKey)
                 ViewState.setCancelled(true)
 
                 configjob.cancel()
