@@ -135,6 +135,7 @@ abstract class CustomDoubleTypeBase(
         // congelaba la vista nueva el resto de la ruta, con todos sus streams vivos.
         val isCancelled = AtomicBoolean(false)
         val diagKey = Diag.viewKey("DOUBLE", globalIndex, config.preview)
+        val pacer = ViewPacer()
         Diag.fieldStart(diagKey, "grid=${config.gridSize} text=${config.textSize}")
         ViewState.setCancelled(false)
         val effectiveFieldSize = getEffectiveFieldSize(config.gridSize.second, config.textSize)
@@ -182,7 +183,7 @@ abstract class CustomDoubleTypeBase(
                                     }.remoteViews
                                 }
                                 withContext(Dispatchers.Main) {
-                                    emitter.updateView(initialRemoteViews)
+                                    emitter.updateView(initialRemoteViews); pacer.mark()
                                 }
 
                             } catch (e: Exception) {
@@ -357,11 +358,9 @@ abstract class CustomDoubleTypeBase(
                                             generalSettings.distanceWithDecimals
                                         )
                                     }.remoteViews
-                                    if (!isCancelled.get()) { emitter.updateView(newView); Diag.rendered(diagKey) }
+                                    pacer.awaitSlot()
+                                    if (!isCancelled.get()) { emitter.updateView(newView); pacer.mark(); Diag.rendered(diagKey) }
                                 }
-                                // Sin delay: SDK Karoo limita streams a 1Hz máximo.
-                                // El tiempo de composición Glance (~50-100ms) ya es throttle suficiente.
-                                // conflate() actúa como red de seguridad ante cualquier ráfaga.
                             } catch (e: Exception) {
                                 if (e is CancellationException) {
                                     Timber.d("DOUBLE View update cancelled normally: $extension $globalIndex")
@@ -372,6 +371,7 @@ abstract class CustomDoubleTypeBase(
                                     }
                                 }
                             }
+
                         }
                         .catch { e ->
                             when (e) {

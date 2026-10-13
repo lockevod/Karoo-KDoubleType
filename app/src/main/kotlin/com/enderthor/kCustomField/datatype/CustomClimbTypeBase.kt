@@ -165,6 +165,7 @@ abstract class CustomClimbTypeBase(
         // congelaba la vista nueva el resto de la ruta, con todos sus streams vivos.
         val isCancelled = AtomicBoolean(false)
         val diagKey = Diag.viewKey("CLIMB", globalIndex, config.preview)
+        val pacer = ViewPacer()
         Diag.fieldStart(diagKey, "grid=${config.gridSize} text=${config.textSize}")
         ViewState.setCancelled(false)
 
@@ -218,7 +219,7 @@ abstract class CustomClimbTypeBase(
                                     }.remoteViews
                                 }
                                 withContext(Dispatchers.Main) {
-                                    emitter.updateView(initialRemoteViews)
+                                    emitter.updateView(initialRemoteViews); pacer.mark()
                                 }
 
 
@@ -533,9 +534,11 @@ abstract class CustomClimbTypeBase(
                                     )
                                 }.remoteViews
                                 // Timber.d("CLIMB Updating view: $extension $globalIndex values: $firstvalue, $secondvalue layout: $clayout")
-                                if (!isCancelled.get()) { emitter.updateView(newView); Diag.rendered(diagKey) }
+                                pacer.awaitSlot()
+                                if (!isCancelled.get()) { emitter.updateView(newView); pacer.mark(); Diag.rendered(diagKey) }
                             }
-                            delay(refreshTime)
+                        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                            throw e   // cancelación de la vista (p.ej. durante pacer.awaitSlot): no es un error
                         } catch (e: Exception) {
                             Timber.e(
                                 e,

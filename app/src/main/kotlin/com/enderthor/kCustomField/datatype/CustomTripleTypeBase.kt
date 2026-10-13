@@ -135,6 +135,7 @@ abstract class CustomTripleTypeBase(
         // congelaba la vista nueva el resto de la ruta, con todos sus streams vivos.
         val isCancelled = AtomicBoolean(false)
         val diagKey = Diag.viewKey("TRIPLE", globalIndex, config.preview)
+        val pacer = ViewPacer()
         Diag.fieldStart(diagKey, "grid=${config.gridSize} text=${config.textSize}")
         ViewState.setCancelled(false)
 
@@ -181,7 +182,7 @@ abstract class CustomTripleTypeBase(
                                 }.remoteViews
                             }
                             withContext(Dispatchers.Main) {
-                                emitter.updateView(initialRemoteViews)
+                                emitter.updateView(initialRemoteViews); pacer.mark()
                             }
 
                         } catch (e: Exception) {
@@ -349,7 +350,8 @@ abstract class CustomTripleTypeBase(
                                             baseBitmap
                                         )
                                     }.remoteViews
-                                    if (!isCancelled.get()) { emitter.updateView(newView); Diag.rendered(diagKey) }
+                                    pacer.awaitSlot()
+                                    if (!isCancelled.get()) { emitter.updateView(newView); pacer.mark(); Diag.rendered(diagKey) }
                                 }
                             } catch (e: Exception) {
                                 if (e is CancellationException) {
@@ -362,7 +364,6 @@ abstract class CustomTripleTypeBase(
                                 }
                             }
 
-                            delay(refreshTime)
                         }
                         .catch { e ->
                             when (e) {

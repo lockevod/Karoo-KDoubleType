@@ -343,7 +343,10 @@ enum class Delay( val time: Long) {
     // PREVIEW_GRACE: margen entre que el host cancela el emitter de un preview y que apagamos
     // su scope. Cancelar en el acto dejaba el editor de perfiles en blanco; no cancelar nunca
     // dejaba un previewFlow por datatype vivo el resto de la sesión.
-    PREVIEW (2000L), PREVIEW_GRACE (10000L), RETRY_SHORT (1500L), RETRY_LONG (6000L),
+    // VIEW_UPDATE: hueco mínimo entre dos emitter.updateView de una vista (ver ViewPacer).
+    // karoo-ext 1.1.9 descarta cualquier update a < 900 ms del último aceptado ("~1Hz with 100ms
+    // for slop"); 950 deja 50 ms de margen entre su reloj de pared y nuestro elapsedRealtime.
+    PREVIEW (2000L), PREVIEW_GRACE (10000L), RETRY_SHORT (1500L), RETRY_LONG (6000L), VIEW_UPDATE (950L),
 }
 
 @Serializable

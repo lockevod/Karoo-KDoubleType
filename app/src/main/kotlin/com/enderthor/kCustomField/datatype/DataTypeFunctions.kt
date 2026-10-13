@@ -1,6 +1,7 @@
 package com.enderthor.kCustomField.datatype
 
 import android.content.Context
+import android.os.SystemClock
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import androidx.glance.color.ColorProvider
@@ -125,6 +126,24 @@ internal class StickyEmitter(
     }
 }
 
+
+// Espaciado de emitter.updateView por vista. karoo-ext 1.1.9 (ViewEmitter.updateView) descarta en
+// NUESTRO proceso cualquier update a < 900 ms del último aceptado ("ViewEmitter: ignoring
+// updateView, too soon", límite intencionado de 1 Hz) y no lo reenvía: si el descartado era el
+// último cambio, el campo se quedaba con el valor anterior (o en "Searching...") hasta el siguiente.
+// Se espera justo antes del updateView, y solo lo que falte desde el anterior: a 1 Hz estable no
+// espera nunca (una pausa fija DESPUÉS sumaba el tiempo de composición y acumulaba retraso); en una
+// ráfaga, conflate() de delante deja que el siguiente render pinte el estado más reciente.
+// Un solo colector por vista: sin concurrencia.
+internal class ViewPacer(private val now: () -> Long = SystemClock::elapsedRealtime) {
+    private var lastUpdate = Long.MIN_VALUE / 2
+
+    fun waitMs(): Long = (lastUpdate + Delay.VIEW_UPDATE.time - now()).coerceAtLeast(0)
+
+    suspend fun awaitSlot() { waitMs().takeIf { it > 0 }?.let { delay(it) } }
+
+    fun mark() { lastUpdate = now() }
+}
 
 internal object ViewState {
     @Volatile
