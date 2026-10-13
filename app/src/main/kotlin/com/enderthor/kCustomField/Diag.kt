@@ -51,6 +51,11 @@ object Diag {
 
     private val on get() = FileLogTree.enabled
 
+    // Sube en cada reset/enable: un SubTracker con otra generación vuelve a escribir su estado.
+    @Volatile
+    internal var generation = 0
+        private set
+
     private fun emit(line: String) {
         FileLogTree.write(line)
         if (BuildConfig.DEBUG) Log.i("KDiag", line)
@@ -64,6 +69,7 @@ object Diag {
 
     /** Al apagar: olvida el dedup para que al volver a encender se reescriba todo. */
     fun reset() = synchronized(lock) {
+        generation++
         lastLine.clear(); lastValue.clear()
         views.values.forEach { it.render.clear() }
     }
@@ -72,6 +78,7 @@ object Diag {
         val version = runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
         }.getOrNull()
+        generation++
         emit("BOOT v$version model=${Build.MODEL} fw=${Build.DISPLAY} sdk=${Build.VERSION.SDK_INT}")
         val active = synchronized(lock) {
             views.map { (k, v) -> "FIELD ACTIVE $k ${v.detail} ${v.config ?: ""}".trimEnd() }
@@ -146,20 +153,45 @@ object Diag {
         stalled.forEach { emit("RENDER $it update pending >${STALL_MS / 1000}s, not rendered") }
     }
 
-    /** Etiqueta de una suscripción de getFieldFlow: `POWER@s12`. */
-    fun subTag(action: String): String = "$action@s${subIds.incrementAndGet()}"
+    /** Seguimiento de una suscripción de getFieldFlow, etiquetada `POWER@s12`. */
+    fun sub(action: String): SubTracker = SubTracker("$action@s${subIds.incrementAndGet()}")
 
-    fun rawState(tag: String, state: Any) {
-        if (on) changed("RAW $tag", "RAWSTATE $tag ${summary(state)}")
+    /**
+     * RAWSTATE/STATE/SUBEND de una suscripción. Llega una emisión por métrica y segundo (≈100/s en
+     * una página llena), así que compara tipo + claves sin montar texto ni tomar el lock global, y
+     * solo construye la línea cuando cambia. Montar el texto en cada emisión costaba ~5 puntos de
+     * CPU con el log encendido. Un solo colector por suscripción: sin concurrencia.
+     */
+    class SubTracker internal constructor(private val tag: String) {
+        private val raw = Signature()
+        private val out = Signature()
+        private var wrote = false
+
+        fun raw(state: Any) {
+            if (on && raw.changed(state)) { wrote = true; emit("RAWSTATE $tag ${summary(state)}") }
+        }
+
+        fun state(state: Any) {
+            if (on && out.changed(state)) { wrote = true; emit("STATE $tag ${summary(state)}") }
+        }
+
+        fun end() {
+            if (on && wrote) emit("SUBEND $tag")
+        }
     }
 
-    fun state(tag: String, state: Any) {
-        if (on) changed("STATE $tag", "STATE $tag ${summary(state)}")
-    }
+    internal class Signature {
+        private var gen = -1
+        private var type: Class<*>? = null
+        private var keys: Set<String>? = null
 
-    fun endSub(tag: String) {
-        val known = synchronized(lock) { (lastLine.remove("RAW $tag") != null) or (lastLine.remove("STATE $tag") != null) }
-        if (on && known) emit("SUBEND $tag")
+        fun changed(state: Any): Boolean {
+            val k = (state as? StreamState.Streaming)?.dataPoint?.values?.keys
+            val g = generation
+            if (g == gen && state.javaClass == type && k == keys) return false
+            gen = g; type = state.javaClass; keys = k
+            return true
+        }
     }
 
     fun hide(key: String?, visible: List<Int>, empty: List<Boolean>, states: List<Any?>) {

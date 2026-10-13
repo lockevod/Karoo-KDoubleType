@@ -387,7 +387,7 @@ fun KarooSystemService.getFieldFlow(
     context: Context? = null,
     isCancelledProvider: () -> Boolean = { ViewState.isCancelledByEmitter }
 ): Flow<Any> {
-  val diagTag = Diag.subTag(when (field) {
+  val diag = Diag.sub(when (field) {
       is DoubleFieldType -> field.kaction.name
       is OneFieldType -> field.kaction.name
       else -> "?"
@@ -598,7 +598,7 @@ fun KarooSystemService.getFieldFlow(
                 // re-suscripción empieza de cero y el re-seed tras el timeout llega downstream.
                 val stickyEmitter = StickyEmitter(action.name, isStickyExtStream, extStickyTimeout)
                 streamFlow.collect { state ->
-                    Diag.rawState(diagTag, state)
+                    diag.raw(state)
                     stickyEmitter.next(state)?.let { emit(it) }
                 }
 
@@ -664,8 +664,8 @@ fun KarooSystemService.getFieldFlow(
         }
     }
     // Frontera final: STATE ve todo lo que llega al campo (semillas, Searching de error, Idle de reintento).
-    .onEach { Diag.state(diagTag, it) }
-    .onCompletion { Diag.endSub(diagTag) }
+    .onEach { diag.state(it) }
+    .onCompletion { diag.end() }
 }
 
 fun calculateVO2max(powerValue: Double, userProfile: UserProfile): Double {
